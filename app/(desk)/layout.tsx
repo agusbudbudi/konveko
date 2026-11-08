@@ -30,7 +30,7 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
           <Wordmark />
           <MobileNav />
         </header>
-        <div className="mx-auto w-full max-w-[1280px] px-4 py-6 lg:px-8 lg:py-8">{children}</div>
+        <div className="mx-auto w-full max-w-[1280px] px-4 py-4 lg:px-6 lg:py-6">{children}</div>
       </div>
     </div>
   );

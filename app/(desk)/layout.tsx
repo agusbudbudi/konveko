@@ -19,7 +19,7 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
         <SidebarNav />
         <div className="h-6 shrink-0" />
         <form action={logout} className="mt-auto border-t border-border px-3 pt-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <Avatar name={user.name} />
             <div className="min-w-0">
               <p className="truncate text-small font-medium text-text">{user.name}</p>

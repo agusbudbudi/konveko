@@ -10,7 +10,7 @@ export function initials(name: string) {
 }
 
 /** Initials avatar. No photos in the system, so this is the user's visual marker. */
-export function Avatar({ name, size = 36, className }: { name: string; size?: number; className?: string }) {
+export function Avatar({ name, size = 28, className }: { name: string; size?: number; className?: string }) {
   return (
     <span
       aria-hidden

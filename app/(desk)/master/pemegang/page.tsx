@@ -16,7 +16,8 @@ export default async function HolderPage() {
     <MasterList
       title="Penjahit dan tim"
       description="Siapa yang bisa memegang bundle: penjahit, tim finishing, produksi, gudang."
-      addLabel="Tambah"
+      addLabel="Tambah pemegang"
+      noun="pemegang"
       canEdit={user?.roles.includes('admin') ?? false}
       columns={['Nama', 'Jenis', 'Nomor HP']}
       fields={[

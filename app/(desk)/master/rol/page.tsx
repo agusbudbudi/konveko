@@ -15,6 +15,7 @@ export default async function RollPage() {
       title="Rol kain"
       description="Satu rol menjadi satu batch produksi."
       addLabel="Tambah rol"
+      noun="rol kain"
       canEdit={user?.roles.includes('admin') ?? false}
       columns={['Kode', 'Bahan', 'Warna', 'Ukuran', 'Supplier']}
       fields={[

@@ -50,10 +50,10 @@ export function EntityForm({
   }, [state]);
 
   return (
-    <form key={state.at} action={formAction} className="flex flex-col gap-4 rounded-md border border-border-strong bg-surface p-4">
+    <form key={state.at} action={formAction} className="flex flex-col gap-5">
       {values.id && <input type="hidden" name="id" value={String(values.id)} />}
       <div className="grid gap-4 sm:grid-cols-2">
-        {fields.map((f) => {
+        {fields.map((f, i) => {
           const id = `f-${f.name}-${values.id ?? 'new'}`;
           const value = (state.error ? lastSubmitted.current[f.name] : undefined) ?? values[f.name] ?? '';
           return (
@@ -63,7 +63,7 @@ export function EntityForm({
                 {!f.required && <span className="font-normal text-text-muted"> (opsional)</span>}
               </Label>
               {f.type === 'select' ? (
-                <Select id={id} name={f.name} defaultValue={String(value)} required={f.required} className="h-10">
+                <Select id={id} name={f.name} defaultValue={String(value)} required={f.required} autoFocus={i === 0} className="h-10">
                   {!f.required && <option value="">-</option>}
                   {f.required && value === '' && (
                     <option value="" disabled>
@@ -83,6 +83,7 @@ export function EntityForm({
                   defaultValue={String(value)}
                   required={f.required}
                   placeholder={f.placeholder}
+                  autoFocus={i === 0}
                   inputMode={f.type === 'decimal' ? 'decimal' : undefined}
                   autoComplete="off"
                   className={cn('h-10', f.mono && 'num', f.type === 'decimal' && 'text-right')}
@@ -94,7 +95,7 @@ export function EntityForm({
         })}
       </div>
       {state.error && <InlineAlert tone="danger">{state.error}</InlineAlert>}
-      <div className="flex justify-end gap-2">
+      <div className="sticky bottom-0 -mx-5 mt-1 flex justify-end gap-2 border-t border-border bg-surface px-5 py-3">
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel} disabled={pending}>
             Batal

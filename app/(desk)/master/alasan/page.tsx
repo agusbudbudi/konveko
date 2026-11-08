@@ -15,6 +15,7 @@ export default async function ReasonPage() {
       title="Alasan"
       description="Pilihan alasan saat scan terima (selisih) dan scan selesai (reject)."
       addLabel="Tambah alasan"
+      noun="alasan"
       canEdit={user?.roles.includes('admin') ?? false}
       columns={['Label', 'Jenis', 'Kode']}
       fields={[

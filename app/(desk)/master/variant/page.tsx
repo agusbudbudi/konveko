@@ -15,6 +15,7 @@ export default async function VariantPage() {
       title="Variant"
       description="Jenis baju per ukuran dan warna. SKU dipakai di label dan stok."
       addLabel="Tambah variant"
+      noun="variant"
       canEdit={user?.roles.includes('admin') ?? false}
       columns={['SKU', 'Produk', 'Ukuran', 'Warna']}
       fields={[

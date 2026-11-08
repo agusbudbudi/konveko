@@ -5,6 +5,7 @@ import { KeyRound, Pencil, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Input, Label, Select } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
 import { Badge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
 import { initialForm, type FormState } from '@/lib/master';
@@ -34,6 +35,7 @@ export function UserManager({ meId, users, holders }: { meId: string; users: Use
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const holderName = new Map(holders.map((h) => [h.id, h.name]));
+  const selected = mode && mode.kind !== 'new' ? users.find((u) => u.id === mode.id) : undefined;
 
   return (
     <>
@@ -57,20 +59,12 @@ export function UserManager({ meId, users, holders }: { meId: string; users: Use
         )}
       </p>
 
-      {mode?.kind === 'new' && (
-        <div className="border-t border-border p-4">
-          <UserForm holders={holders} onClose={() => setMode(null)} />
-        </div>
-      )}
       {error && <p className="border-t border-border px-5 py-2 text-small text-danger">{error}</p>}
 
       <ul className="divide-y divide-border border-t border-border">
         {users.map((u) => (
           <li key={u.id} className={cn('px-5 py-3', !u.is_active && 'text-text-muted')}>
-            {mode && mode.kind === 'edit' && mode.id === u.id ? (
-              <UserForm holders={holders} user={u} isSelf={u.id === meId} onClose={() => setMode(null)} />
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium">
                     {u.name} {u.id === meId && <span className="text-small font-normal text-text-muted">(Anda)</span>}
@@ -112,14 +106,29 @@ export function UserManager({ meId, users, holders }: { meId: string; users: Use
                   )}
                 </div>
               </div>
-            )}
-            {mode && mode.kind === 'secret' && mode.id === u.id && (
-              <SecretForm user={u} onClose={() => setMode(null)} />
-            )}
           </li>
         ))}
       </ul>
     </section>
+
+    <Modal
+      open={mode !== null}
+      onClose={() => setMode(null)}
+      title={
+        mode?.kind === 'new'
+          ? 'Tambah user'
+          : mode?.kind === 'edit'
+            ? `Ubah user ${selected?.name ?? ''}`
+            : `${selected?.phone ? 'Ganti PIN' : 'Ganti password'} ${selected?.name ?? ''}`
+      }
+      width={mode?.kind === 'secret' ? 420 : 640}
+    >
+      {mode?.kind === 'new' && <UserForm holders={holders} onClose={() => setMode(null)} />}
+      {mode?.kind === 'edit' && selected && (
+        <UserForm key={selected.id} holders={holders} user={selected} isSelf={selected.id === meId} onClose={() => setMode(null)} />
+      )}
+      {mode?.kind === 'secret' && selected && <SecretForm key={selected.id} user={selected} onClose={() => setMode(null)} />}
+    </Modal>
     </>
   );
 }
@@ -141,12 +150,12 @@ function UserForm({ holders, user, isSelf, onClose }: { holders: Holder[]; user?
   const floor = roles.includes('penjahit') || roles.includes('finishing');
 
   return (
-    <form key={state.at} action={action} className="flex flex-col gap-4 rounded-md border border-border-strong bg-surface p-4">
+    <form key={state.at} action={action} className="flex flex-col gap-5">
       {user && <input type="hidden" name="id" value={user.id} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="u-name">Nama</Label>
-          <Input id="u-name" name="name" defaultValue={kept('name') ?? user?.name} required className="h-10" />
+          <Input id="u-name" name="name" defaultValue={kept('name') ?? user?.name} required autoFocus className="h-10" />
         </div>
 
         {!user && (
@@ -228,7 +237,7 @@ function UserForm({ holders, user, isSelf, onClose }: { holders: Holder[]; user?
       </div>
 
       {state.error && <InlineAlert tone="danger">{state.error}</InlineAlert>}
-      <div className="flex justify-end gap-2">
+      <div className="sticky bottom-0 -mx-5 mt-1 flex justify-end gap-2 border-t border-border bg-surface px-5 py-3">
         <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>
           Batal
         </Button>
@@ -244,7 +253,7 @@ function SecretForm({ user, onClose }: { user: UserRow; onClose: () => void }) {
   const [state, action, pending] = useActionState(resetSecret, initialForm);
   const isPin = Boolean(user.phone);
   return (
-    <form action={action} className="mt-3 flex max-w-md flex-col gap-3 rounded-md border border-border-strong bg-surface p-4">
+    <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="id" value={user.id} />
       <Label htmlFor={`s-${user.id}`}>{isPin ? 'PIN baru' : 'Password baru'}</Label>
       <Input
@@ -257,11 +266,12 @@ function SecretForm({ user, onClose }: { user: UserRow; onClose: () => void }) {
         minLength={isPin ? 6 : 8}
         autoComplete="new-password"
         required
+        autoFocus
         className="num h-10"
       />
       {state.error && <InlineAlert tone="danger">{state.error}</InlineAlert>}
       {state.ok && <InlineAlert tone="success">{isPin ? 'PIN' : 'Password'} sudah diganti. Beritahu user secara langsung.</InlineAlert>}
-      <div className="flex justify-end gap-2">
+      <div className="sticky bottom-0 -mx-5 mt-1 flex justify-end gap-2 border-t border-border bg-surface px-5 py-3">
         <Button type="button" variant="ghost" onClick={onClose}>
           Tutup
         </Button>

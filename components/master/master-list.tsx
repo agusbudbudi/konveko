@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Pencil, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
 import { Badge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
 import type { FormState } from '@/lib/master';
@@ -16,8 +17,8 @@ export type MasterRow = {
 };
 
 /**
- * Card list with add / inline edit / activate toggle. Server passes rows
- * already rendered as cells; the form posts to a server action.
+ * Card list with add / edit (in a modal) / activate toggle. Server passes
+ * rows already rendered as cells; the form posts to a server action.
  */
 export function MasterList({
   title,
@@ -28,6 +29,7 @@ export function MasterList({
   action,
   canEdit,
   addLabel,
+  noun,
   onToggleActive,
   empty = 'Belum ada data.',
 }: {
@@ -39,6 +41,8 @@ export function MasterList({
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   canEdit: boolean;
   addLabel: string;
+  /** used in the edit modal title: "Ubah <noun>" */
+  noun: string;
   onToggleActive?: (id: string, active: boolean) => Promise<FormState>;
   empty?: string;
 }) {
@@ -55,7 +59,7 @@ export function MasterList({
         <h1 className="text-h1">{title}</h1>
         {description && <p className="mt-1 text-text-muted">{description}</p>}
       </div>
-      {canEdit && editing !== 'new' && (
+      {canEdit && (
         <Button onClick={() => setEditing('new')}>
           <Plus size={16} strokeWidth={1.5} aria-hidden /> {addLabel}
         </Button>
@@ -69,11 +73,6 @@ export function MasterList({
         )}
       </p>
 
-      {editing === 'new' && (
-        <div className="border-t border-border p-4">
-          <EntityForm fields={fields} action={action} submitLabel="Simpan" onDone={() => setEditing(null)} onCancel={() => setEditing(null)} />
-        </div>
-      )}
       {toggleError && <p className="border-t border-border px-5 py-2 text-small text-danger">{toggleError}</p>}
 
       <div className="hidden gap-4 border-t border-border bg-surface-muted px-5 py-2 text-caption tracking-[0.02em] text-text-muted md:grid" style={grid}>
@@ -87,19 +86,7 @@ export function MasterList({
         <p className="border-t border-border px-5 py-4 text-text-muted">{empty}</p>
       ) : (
         <ul className="divide-y divide-border border-t border-border">
-          {rows.map((r) =>
-            editing === r.id ? (
-              <li key={r.id} className="p-4">
-                <EntityForm
-                  fields={fields}
-                  action={action}
-                  values={{ id: r.id, ...r.values }}
-                  submitLabel="Simpan perubahan"
-                  onDone={() => setEditing(null)}
-                  onCancel={() => setEditing(null)}
-                />
-              </li>
-            ) : (
+          {rows.map((r) => (
               <li
                 key={r.id}
                 className={cn('grid items-center gap-x-4 gap-y-1 px-5 py-3 max-md:!grid-cols-1', r.active === false && 'text-text-muted')}
@@ -134,11 +121,28 @@ export function MasterList({
                   </div>
                 )}
               </li>
-            ),
-          )}
+          ))}
         </ul>
       )}
     </section>
+
+    <Modal
+      open={editing !== null}
+      onClose={() => setEditing(null)}
+      title={editing === 'new' ? addLabel : `Ubah ${noun}`}
+    >
+      {editing !== null && (
+        <EntityForm
+          key={editing}
+          fields={fields}
+          action={action}
+          values={editing === 'new' ? {} : { id: editing, ...rows.find((r) => r.id === editing)?.values }}
+          submitLabel={editing === 'new' ? 'Simpan' : 'Simpan perubahan'}
+          onDone={() => setEditing(null)}
+          onCancel={() => setEditing(null)}
+        />
+      )}
+    </Modal>
     </>
   );
 }

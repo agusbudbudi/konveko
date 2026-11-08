@@ -19,10 +19,20 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { next } = await searchParams;
 
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)]">
-      {/* Product panel: desktop only. Shows what the app does with its own building blocks. */}
-      <section className="hidden flex-col justify-between border-r border-border bg-surface-muted px-12 py-10 lg:flex">
+    <main className="grid min-h-dvh lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
+      {/* Form */}
+      <section className="flex flex-col px-4 py-8 sm:px-8 lg:px-12 lg:py-10">
         <Wordmark size="lg" />
+        <div className="mx-auto mt-12 w-full max-w-sm lg:my-auto">
+          <h1 className="text-h1">Masuk</h1>
+          <p className="mt-1 text-text-muted">Gunakan akun yang dibuat oleh admin.</p>
+          <LoginForm next={next ?? ''} />
+        </div>
+      </section>
+
+      {/* Product panel (right): desktop only. Shows what the app does with its own building blocks. */}
+      <section className="hidden flex-col justify-between border-l border-border bg-surface-muted px-12 py-10 lg:flex">
+        <span aria-hidden />
 
         <div className="max-w-md">
           <h2 className="text-[32px] leading-10 font-semibold tracking-[-0.01em]">
@@ -58,18 +68,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
 
         <p className="text-small text-text-subtle">Tracking produksi konveksi</p>
-      </section>
-
-      {/* Form */}
-      <section className="flex flex-col px-4 py-8 sm:px-8 lg:justify-center lg:px-16">
-        <div className="lg:hidden">
-          <Wordmark size="lg" />
-        </div>
-        <div className="mx-auto mt-12 w-full max-w-sm lg:mt-0">
-          <h1 className="text-h1">Masuk</h1>
-          <p className="mt-1 text-text-muted">Gunakan akun yang dibuat oleh admin.</p>
-          <LoginForm next={next ?? ''} />
-        </div>
       </section>
     </main>
   );

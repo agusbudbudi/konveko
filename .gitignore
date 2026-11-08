@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+
+# env (keep the example)
+.env*
+!.env.example
+
+# next.js
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# generated at install (scripts/copy-zxing-wasm.mjs)
+public/vendor/
+
+# supabase cli local state (contains generated secrets)
+supabase/.temp/
+supabase/.branches/
+
+# development docs (PRD, design, architecture)
+doc/
+
+# AI agent files and skills
+.agents/
+.claude/
+.cursor/
+.codex/
+.gemini/
+.windsurf/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+skills-lock.json
+
+# os / editor
+.DS_Store
+.vscode/
+.idea/
+*.log

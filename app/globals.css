@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+/* Light mode only (DESIGN §2). No dark theme. */
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+
+  --shadow-*: initial; /* removes every default shadow utility */
+}
+
+html {
+  color-scheme: light;
+}
+
+:root {
+  --background: #FDFCFB;
+  --surface: #FFFFFF;
+  --surface-muted: #F3F1EE;
+  --border: #EEEBE6;
+  --border-strong: #E0DCD5;
+  --text: #1C1B19;
+  --text-muted: #6B6760;
+  --text-subtle: #9A958D;
+  --primary: #0E5A4F;
+  --primary-hover: #0B4A41;
+  --primary-soft: #E4F1EE;
+  --primary-foreground: #FFFFFF;
+  --highlight: #D9622B;
+
+  --success-soft: #E7F3EA;  --success: #1F6B3A;
+  --info-soft: #E6EEF7;     --info: #1F4F82;
+  --warning-soft: #FBF0DC;  --warning: #8A5A0B;
+  --danger-soft: #FBE8E6;   --danger: #A1271C;  --danger-foreground: #FFFFFF;
+  --neutral-soft: #F0EEEA;  --neutral: #4F4B45;
+
+  /* shadcn/ui mapping */
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --foreground: var(--text);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--text-muted);
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--text);
+  --accent: var(--surface-muted);          /* shadcn hover bg, NOT the orange */
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-foreground);
+  --input: var(--border);
+  --ring: var(--primary);
+  --radius: 6px;
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--primary-soft);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
+}
+
+
+/* Expose tokens as Tailwind utilities: bg-primary, text-muted-foreground, border-border, ... */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-highlight: var(--highlight);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);  --color-success-soft: var(--success-soft);
+  --color-info: var(--info);        --color-info-soft: var(--info-soft);
+  --color-warning: var(--warning);  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);    --color-danger-soft: var(--danger-soft);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-neutral: var(--neutral);  --color-neutral-soft: var(--neutral-soft);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+/* numbers use the same font as text; tabular figures keep columns aligned */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Base (not in DESIGN.md §10 code block, follows its rules) ---- */
+@theme inline {
+  --font-sans: var(--font-jakarta), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* in a layer, so border-* utilities (e.g. border-highlight) still win */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-size: 15px;
+  line-height: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-property: opacity !important;
+    animation: none !important;
+  }
+}
+
+/* Type scale (DESIGN §3.1) -> text-display, text-h1, ... */
+@theme {
+  --text-display: 32px;  --text-display--line-height: 40px;  --text-display--font-weight: 600;
+  --text-h1: 24px;       --text-h1--line-height: 32px;       --text-h1--font-weight: 600;
+  --text-h2: 18px;       --text-h2--line-height: 28px;       --text-h2--font-weight: 600;
+  --text-h3: 16px;       --text-h3--line-height: 24px;       --text-h3--font-weight: 600;
+  --text-body: 15px;     --text-body--line-height: 24px;
+  --text-small: 13px;    --text-small--line-height: 20px;
+  --text-caption: 12px;  --text-caption--line-height: 16px;  --text-caption--font-weight: 500;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}

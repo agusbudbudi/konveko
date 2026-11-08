@@ -21,6 +21,7 @@ export type MasterRow = {
  */
 export function MasterList({
   title,
+  description,
   columns,
   rows,
   fields,
@@ -31,6 +32,7 @@ export function MasterList({
   empty = 'Belum ada data.',
 }: {
   title: string;
+  description?: string;
   columns: string[];
   rows: MasterRow[];
   fields: Field[];
@@ -46,17 +48,26 @@ export function MasterList({
   const grid = { gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr)) ${canEdit ? '200px' : ''}` };
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-surface">
-      <div className="flex items-center justify-between gap-4 px-5 py-4">
-        <h2 className="text-h2">
-          {title} <span className="num text-h3 font-normal text-text-muted">{rows.length}</span>
-        </h2>
-        {canEdit && editing !== 'new' && (
-          <Button onClick={() => setEditing('new')}>
-            <Plus size={16} strokeWidth={1.5} aria-hidden /> {addLabel}
-          </Button>
-        )}
+    <>
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="text-small text-text-muted">Master data</p>
+        <h1 className="text-h1">{title}</h1>
+        {description && <p className="mt-1 text-text-muted">{description}</p>}
       </div>
+      {canEdit && editing !== 'new' && (
+        <Button onClick={() => setEditing('new')}>
+          <Plus size={16} strokeWidth={1.5} aria-hidden /> {addLabel}
+        </Button>
+      )}
+    </div>
+    <section className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
+      <p className="px-5 py-3 text-small text-text-muted">
+        <span className="num text-text">{rows.length}</span> data
+        {rows.some((r) => r.active === false) && (
+          <> · <span className="num">{rows.filter((r) => r.active === false).length}</span> nonaktif</>
+        )}
+      </p>
 
       {editing === 'new' && (
         <div className="border-t border-border p-4">
@@ -128,5 +139,6 @@ export function MasterList({
         </ul>
       )}
     </section>
+    </>
   );
 }

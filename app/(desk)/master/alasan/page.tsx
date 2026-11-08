@@ -12,7 +12,8 @@ export default async function ReasonPage() {
 
   return (
     <MasterList
-      title="Alasan selisih dan reject"
+      title="Alasan"
+      description="Pilihan alasan saat scan terima (selisih) dan scan selesai (reject)."
       addLabel="Tambah alasan"
       canEdit={user?.roles.includes('admin') ?? false}
       columns={['Label', 'Jenis', 'Kode']}

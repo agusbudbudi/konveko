@@ -36,17 +36,26 @@ export function UserManager({ meId, users, holders }: { meId: string; users: Use
   const holderName = new Map(holders.map((h) => [h.id, h.name]));
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-surface">
-      <div className="flex items-center justify-between gap-4 px-5 py-4">
-        <h2 className="text-h2">
-          User <span className="num text-h3 font-normal text-text-muted">{users.length}</span>
-        </h2>
-        {mode?.kind !== 'new' && (
-          <Button onClick={() => setMode({ kind: 'new' })}>
-            <Plus size={16} strokeWidth={1.5} aria-hidden /> Tambah user
-          </Button>
-        )}
+    <>
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="text-small text-text-muted">Master data</p>
+        <h1 className="text-h1">User</h1>
+        <p className="mt-1 text-text-muted">Akun login, role, dan PIN. Penjahit dan finishing login pakai nomor HP + PIN.</p>
       </div>
+      {mode?.kind !== 'new' && (
+        <Button onClick={() => setMode({ kind: 'new' })}>
+          <Plus size={16} strokeWidth={1.5} aria-hidden /> Tambah user
+        </Button>
+      )}
+    </div>
+    <section className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
+      <p className="px-5 py-3 text-small text-text-muted">
+        <span className="num text-text">{users.length}</span> user
+        {users.some((u) => !u.is_active) && (
+          <> · <span className="num">{users.filter((u) => !u.is_active).length}</span> nonaktif</>
+        )}
+      </p>
 
       {mode?.kind === 'new' && (
         <div className="border-t border-border p-4">
@@ -111,6 +120,7 @@ export function UserManager({ meId, users, holders }: { meId: string; users: Use
         ))}
       </ul>
     </section>
+    </>
   );
 }
 

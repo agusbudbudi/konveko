@@ -13,6 +13,7 @@ export default async function RollPage() {
   return (
     <MasterList
       title="Rol kain"
+      description="Satu rol menjadi satu batch produksi."
       addLabel="Tambah rol"
       canEdit={user?.roles.includes('admin') ?? false}
       columns={['Kode', 'Bahan', 'Warna', 'Ukuran', 'Supplier']}

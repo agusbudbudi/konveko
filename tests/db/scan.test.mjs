@@ -460,3 +460,26 @@ describe('PIN login rate limit', () => {
     }
   });
 });
+
+describe('staff_names (FR-23)', () => {
+  it('returns only id + name to active staff, nothing to anon', async () => {
+    await actAs(db, ids.ani);
+    await db.exec(`set role authenticated`);
+    try {
+      const rows = await all(db, `select * from public.staff_names($1)`, [[ids.spv, ids.budi]]);
+      assert.deepEqual(rows.map((r) => r.name).sort(), ['Budi', 'Supervisor']);
+      assert.deepEqual(Object.keys(rows[0]).sort(), ['id', 'name']);
+      // the table itself still hides other users from a penjahit
+      assert.equal((await all(db, `select * from public.app_user where id = $1`, [ids.spv])).length, 0);
+    } finally {
+      await db.exec(`reset role`);
+    }
+    await actAs(db, null);
+    await db.exec(`set role anon`);
+    try {
+      await assert.rejects(db.query(`select * from public.staff_names($1)`, [[ids.spv]]), /permission denied/);
+    } finally {
+      await db.exec(`reset role`);
+    }
+  });
+});

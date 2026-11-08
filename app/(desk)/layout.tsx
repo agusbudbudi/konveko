@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { AlertTriangle, Hourglass, Layers, LayoutDashboard, LogOut, ScanLine } from 'lucide-react';
+import { AlertTriangle, Database, Hourglass, Layers, LayoutDashboard, LogOut, ScanLine } from 'lucide-react';
 import { logout } from '@/app/actions/auth';
 import { Wordmark } from '@/components/brand/wordmark';
 import { getCurrentAppUser } from '@/lib/supabase/server';
@@ -10,6 +10,7 @@ const nav = [
   { href: '/batch', label: 'Batch', icon: Layers },
   { href: '/wip', label: 'WIP', icon: Hourglass },
   { href: '/selisih', label: 'Selisih', icon: AlertTriangle },
+  { href: '/master', label: 'Master data', icon: Database },
   { href: '/scan', label: 'Scan', icon: ScanLine },
 ];
 

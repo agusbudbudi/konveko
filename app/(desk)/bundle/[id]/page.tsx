@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ImageIcon, Printer } from 'lucide-react';
+import { ArrowLeft, Printer } from 'lucide-react';
 import { ReconciliationBar, ReconciliationLegend } from '@/components/recon/reconciliation-bar';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
-import { CORRECTABLE, MOVEMENT_LABEL, qtySummary, type MovementType } from '@/lib/movement';
+import { CORRECTABLE, type MovementType } from '@/lib/movement';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import type { BundleStatus, Reason } from '@/lib/types';
-import { CorrectionPanel } from './correction-panel';
 import { ResolveFlag } from './resolve-flag';
+import { ScanTimeline } from './scan-timeline';
 
 export const metadata: Metadata = { title: 'Detail bundle' };
 
@@ -124,8 +124,6 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
       }),
   );
 
-  const originals = movements.filter((m) => m.type !== 'correction');
-  const correctionsOf = (mid: string) => movements.filter((m) => m.corrects_movement_id === mid);
   const v = bundle.variant;
   const openFlags = discrepancies.filter((d) => d.status === 'terbuka');
 
@@ -231,82 +229,20 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
       )}
 
       <section className="mt-6 rounded-lg border border-border bg-surface">
-        <h2 className="px-5 pt-5 text-h2">Riwayat scan</h2>
-        <ol className="mt-3 divide-y divide-border border-t border-border">
-          {originals.map((m) => {
-            const corrections = correctionsOf(m.id);
-            const active = effectiveIds.has(m.id);
-            const voided = !active;
-            const last = corrections.at(-1);
-            const shown = last && !last.is_void ? last : m;
-            const reason = shown.reason_id ? reasons.get(shown.reason_id) : null;
-            const from = m.from_holder_id ? holderName.get(m.from_holder_id) : null;
-            const to = m.to_holder_id ? holderName.get(m.to_holder_id) : null;
-            return (
-              <li key={m.id} className="px-5 py-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className={voided ? 'text-text-muted line-through' : undefined}>
-                    <p className="font-medium">
-                      {MOVEMENT_LABEL[m.type]}
-                      <span className="num ml-2 font-normal">{qtySummary(m.type, shown)}</span>
-                    </p>
-                    <p className="text-small text-text-muted">
-                      {timeFmt.format(new Date(m.scanned_at))} · {userName.get(m.scanned_by) ?? '-'}
-                      {(m.type === 'receive_sew' || m.type === 'receive_finishing') && from && to && (
-                        <> · {from} → {to}</>
-                      )}
-                      {reason && <> · {reason.label}</>}
-                      {m.note && m.type === 'split' && <> · {m.note}</>}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {voided && <Badge tone="neutral">Dibatalkan</Badge>}
-                    {!voided && corrections.length > 0 && <Badge tone="info">Dikoreksi</Badge>}
-                    {photoUrl.get(m.id) && (
-                      <a
-                        href={photoUrl.get(m.id)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex h-10 items-center gap-1.5 rounded-md px-3 text-small text-text-muted hover:bg-surface-muted hover:text-text"
-                      >
-                        <ImageIcon size={16} strokeWidth={1.5} aria-hidden /> Foto
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {corrections.length > 0 && (
-                  <ul className="mt-3 flex flex-col gap-2 border-l-2 border-border pl-4">
-                    {corrections.map((c) => (
-                      <li key={c.id} className="text-small">
-                        <span className="font-medium">{c.is_void ? 'Dibatalkan' : `Dikoreksi: ${qtySummary(m.type, c)}`}</span>
-                        <span className="text-text-muted">
-                          {' '}
-                          · {timeFmt.format(new Date(c.scanned_at))} · {userName.get(c.scanned_by) ?? '-'} · {c.note}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {isSupervisor && m.id === correctableId && (
-                  <CorrectionPanel
-                    movement={{
-                      id: m.id,
-                      type: m.type,
-                      qty_sent: shown.qty_sent ?? m.qty_sent,
-                      qty_received: shown.qty_received,
-                      qty_good: shown.qty_good,
-                      qty_reject: shown.qty_reject,
-                      reason_id: shown.reason_id,
-                    }}
-                    reasons={[...reasons.values()]}
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ol>
+        <div className="flex items-baseline justify-between gap-3 px-5 pt-5">
+          <h2 className="text-h2">Riwayat scan</h2>
+          <p className="text-small text-text-muted">Terbaru di atas</p>
+        </div>
+        <ScanTimeline
+          movements={movements}
+          effectiveIds={effectiveIds}
+          correctableId={correctableId}
+          reasons={reasons}
+          holderName={holderName}
+          userName={userName}
+          photoUrl={photoUrl}
+          canCorrect={isSupervisor}
+        />
         {isSupervisor && !correctableId && recon.is_active && (
           <p className="border-t border-border px-5 py-3 text-small text-text-muted">Belum ada scan yang bisa dikoreksi.</p>
         )}

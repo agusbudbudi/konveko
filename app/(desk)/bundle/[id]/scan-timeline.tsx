@@ -1,4 +1,4 @@
-import { ImageIcon } from 'lucide-react';
+import { PhotoPreview } from '@/components/ui/photo-preview';
 import { Badge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
 import { MOVEMENT_LABEL, qtySummary, type MovementType } from '@/lib/movement';
@@ -182,20 +182,16 @@ function ScanEntry({
           {reason && <> · {reason.label}</>}
           {m.type === 'split' && m.note && <> · {m.note}</>}
         </p>
+        {photo && (
+          <PhotoPreview
+            url={photo}
+            caption={`Foto selisih · ${MOVEMENT_LABEL[m.type]} · ${timeFmt.format(new Date(m.scanned_at))}`}
+          />
+        )}
       </div>
       <div className="flex items-center gap-2">
         {voided && <Badge tone="neutral">Dibatalkan</Badge>}
         {!voided && corrected && <Badge tone="info">Dikoreksi</Badge>}
-        {photo && (
-          <a
-            href={photo}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-small text-text-muted hover:bg-surface-muted hover:text-text"
-          >
-            <ImageIcon size={16} strokeWidth={1.5} aria-hidden /> Foto
-          </a>
-        )}
       </div>
     </div>
   );

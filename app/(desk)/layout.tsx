@@ -20,9 +20,9 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="flex min-h-dvh">
-      <aside className="hidden w-52 shrink-0 flex-col border-r border-border bg-surface px-3 py-4 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-52 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface px-3 py-4 lg:flex">
         <div className="px-3 pb-6">
-          <Wordmark />
+          <Wordmark size="lg" />
         </div>
         <nav className="flex flex-col gap-1">
           {nav.map(({ href, label, icon: Icon }) => (
@@ -41,7 +41,7 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
         </form>
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4 lg:hidden">
+        <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-surface px-4 lg:hidden">
           <Wordmark />
           <Link href="/scan" className="inline-flex h-10 items-center gap-2 rounded-md px-3 text-text-muted hover:bg-surface-muted">
             <ScanLine size={20} strokeWidth={1.5} aria-hidden /> Scan

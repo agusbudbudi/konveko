@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, SelectHTMLAttributes } from 'react';
+import type { InputHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
 
 const base =
@@ -8,10 +8,6 @@ const base =
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(base, 'h-12 sm:h-10', className)} {...props} />;
-}
-
-export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn(base, 'h-12 appearance-none', className)} {...props} />;
 }
 
 export function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {

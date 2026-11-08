@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import { Input, Label, Select } from '@/components/ui/input';
+import { Combobox } from '@/components/ui/combobox';
+import { Input, Label } from '@/components/ui/input';
 import { createBatch } from '../actions';
 
 type Roll = { id: string; code: string; material: string; color: string };
@@ -42,14 +43,14 @@ export function NewBatchForm({ rolls, variants }: { rolls: Roll[]; variants: Var
     <div className="mt-6 flex flex-col gap-6">
       <section className="rounded-lg border border-border bg-surface p-5">
         <Label htmlFor="roll">Rol kain</Label>
-        <Select id="roll" value={rollId} onChange={(e) => setRollId(e.target.value)} className="h-10">
-          <option value="" disabled>Pilih rol</option>
-          {rolls.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.code} · {r.material} {r.color}
-            </option>
-          ))}
-        </Select>
+        <Combobox
+          id="roll"
+          value={rollId}
+          onChange={setRollId}
+          placeholder="Pilih rol"
+          searchable
+          options={rolls.map((r) => ({ value: r.id, label: r.code, hint: `${r.material} ${r.color}` }))}
+        />
       </section>
 
       <section className="rounded-lg border border-border bg-surface">
@@ -67,19 +68,19 @@ export function NewBatchForm({ rolls, variants }: { rolls: Roll[]; variants: Var
         <ul className="divide-y divide-border">
           {rows.map((row, i) => (
             <li key={row.key} className="grid grid-cols-[1fr_96px_40px] items-center gap-3 px-5 py-3 sm:grid-cols-[1fr_120px_40px]">
-              <Select
+              <Combobox
                 aria-label={`Variant baris ${i + 1}`}
                 value={row.variantId}
-                onChange={(e) => update(row.key, { variantId: e.target.value })}
-                className="h-10"
-              >
-                <option value="">Pilih variant</option>
-                {variants.map((v) => (
-                  <option key={v.id} value={v.id} disabled={used.has(v.id) && v.id !== row.variantId}>
-                    {v.product_name} {v.size} · {v.color} ({v.sku})
-                  </option>
-                ))}
-              </Select>
+                onChange={(v) => update(row.key, { variantId: v })}
+                placeholder="Pilih variant"
+                searchable
+                options={variants.map((v) => ({
+                  value: v.id,
+                  label: `${v.product_name} ${v.size} · ${v.color}`,
+                  hint: v.sku,
+                  disabled: used.has(v.id) && v.id !== row.variantId,
+                }))}
+              />
               <Input
                 aria-label={`Qty baris ${i + 1}`}
                 inputMode="numeric"

@@ -4,7 +4,8 @@ import { useActionState, useEffect, useRef, useState, useTransition } from 'reac
 import { KeyRound, Pencil, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import { Input, Label, Select } from '@/components/ui/input';
+import { Combobox } from '@/components/ui/combobox';
+import { Input, Label } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Badge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
@@ -161,10 +162,16 @@ function UserForm({ holders, user, isSelf, onClose }: { holders: Holder[]; user?
         {!user && (
           <div>
             <Label htmlFor="u-login">Cara login</Label>
-            <Select id="u-login" name="login" value={login} onChange={(e) => setLogin(e.target.value as 'pin' | 'email')} className="h-10">
-              <option value="pin">Nomor HP + PIN (untuk lantai produksi)</option>
-              <option value="email">Email + password</option>
-            </Select>
+            <Combobox
+              id="u-login"
+              name="login"
+              value={login}
+              onChange={(v) => setLogin(v as 'pin' | 'email')}
+              options={[
+                { value: 'pin', label: 'Nomor HP + PIN', hint: 'untuk lantai produksi' },
+                { value: 'email', label: 'Email + password' },
+              ]}
+            />
           </div>
         )}
 
@@ -223,15 +230,17 @@ function UserForm({ holders, user, isSelf, onClose }: { holders: Holder[]; user?
 
         <div className="sm:col-span-2">
           <Label htmlFor="u-holder">Pemegang bundle {!floor && <span className="font-normal text-text-muted">(opsional)</span>}</Label>
-          <Select id="u-holder" name="holder_id" defaultValue={kept('holder_id') ?? user?.holder_id ?? (floor ? 'auto' : '')} className="h-10">
-            <option value="">-</option>
-            <option value="auto">Buat baru dengan nama user ini</option>
-            {holders.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.name} ({h.type})
-              </option>
-            ))}
-          </Select>
+          <Combobox
+            id="u-holder"
+            name="holder_id"
+            defaultValue={kept('holder_id') ?? user?.holder_id ?? (floor ? 'auto' : '')}
+            searchable
+            options={[
+              { value: '', label: '-' },
+              { value: 'auto', label: 'Buat baru dengan nama user ini' },
+              ...holders.map((h) => ({ value: h.id, label: h.name, hint: h.type })),
+            ]}
+          />
           <p className="mt-1 text-small text-text-muted">Penjahit dan finishing wajib punya pemegang, supaya bundle tercatat di tangan siapa.</p>
         </div>
       </div>

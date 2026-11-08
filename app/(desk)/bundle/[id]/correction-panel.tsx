@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react';
 import { Pencil, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import { Label, Select } from '@/components/ui/input';
+import { Combobox } from '@/components/ui/combobox';
+import { Label } from '@/components/ui/input';
 import { QtyStepper } from '@/components/ui/qty-stepper';
 import { MOVEMENT_LABEL, type MovementType } from '@/lib/movement';
 import type { Reason } from '@/lib/types';
@@ -103,18 +104,13 @@ export function CorrectionPanel({ movement: m, reasons }: { movement: M; reasons
           {needsReason && (
             <div>
               <Label htmlFor="fix-reason">Alasan {reasonType}</Label>
-              <Select id="fix-reason" value={reasonId} onChange={(e) => setReasonId(e.target.value)} className="h-10">
-                <option value="" disabled>
-                  Pilih alasan
-                </option>
-                {reasons
-                  .filter((r) => r.type === reasonType)
-                  .map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
-              </Select>
+              <Combobox
+                id="fix-reason"
+                value={reasonId}
+                onChange={setReasonId}
+                required
+                options={reasons.filter((r) => r.type === reasonType).map((r) => ({ value: r.id, label: r.label }))}
+              />
             </div>
           )}
         </div>

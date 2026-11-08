@@ -42,7 +42,7 @@ export function Modal({
       d.showModal();
       // showModal() focuses the first focusable (the close button); start on the first field instead
       d.querySelector<HTMLElement>(
-        '[data-modal-body] input:not([type=hidden]):not([disabled]), [data-modal-body] select, [data-modal-body] textarea',
+        '[data-modal-body] input:not([type=hidden]):not([disabled]):not([aria-hidden=true]), [data-modal-body] select, [data-modal-body] textarea',
       )?.focus();
     }
     if (!open && d.open) d.close();
@@ -73,7 +73,7 @@ export function Modal({
               <X size={20} strokeWidth={1.5} aria-hidden />
             </button>
           </div>
-          <div data-modal-body className={cn('min-h-0 overflow-y-auto px-5 pt-5', bodyClassName)}>
+          <div data-modal-body className={cn('min-h-0 scroll-pb-20 overflow-y-auto px-5 pt-5', bodyClassName)}>
             {children}
           </div>
         </>

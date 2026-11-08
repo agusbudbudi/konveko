@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import { Input, Label, Select } from '@/components/ui/input';
+import { Combobox } from '@/components/ui/combobox';
+import { Input, Label } from '@/components/ui/input';
 import { cn } from '@/lib/cn';
 import { initialForm, type FormState } from '@/lib/master';
 
@@ -63,19 +64,14 @@ export function EntityForm({
                 {!f.required && <span className="font-normal text-text-muted"> (opsional)</span>}
               </Label>
               {f.type === 'select' ? (
-                <Select id={id} name={f.name} defaultValue={String(value)} required={f.required} autoFocus={i === 0} className="h-10">
-                  {!f.required && <option value="">-</option>}
-                  {f.required && value === '' && (
-                    <option value="" disabled>
-                      Pilih
-                    </option>
-                  )}
-                  {f.options?.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
+                <Combobox
+                  id={id}
+                  name={f.name}
+                  defaultValue={String(value)}
+                  required={f.required}
+                  autoFocus={i === 0}
+                  options={[...(f.required ? [] : [{ value: '', label: '-' }]), ...(f.options ?? [])]}
+                />
               ) : (
                 <Input
                   id={id}

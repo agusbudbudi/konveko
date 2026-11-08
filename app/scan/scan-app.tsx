@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { Camera, CircleCheck, ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import { Input, Label, Select } from '@/components/ui/input';
+import { Combobox } from '@/components/ui/combobox';
+import { Input, Label } from '@/components/ui/input';
 import { QtyStepper } from '@/components/ui/qty-stepper';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
@@ -278,16 +279,17 @@ function ReceiveForm({
             </InlineAlert>
             <div>
               <Label htmlFor="reason">Alasan selisih</Label>
-              <Select id="reason" value={reasonId} onChange={(e) => setReasonId(e.target.value)} required aria-invalid={reasonId === '' || undefined}>
-                <option value="" disabled>
-                  Pilih alasan
-                </option>
-                {reasons.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.label}
-                  </option>
-                ))}
-              </Select>
+              <Combobox
+                id="reason"
+                value={reasonId}
+                onChange={setReasonId}
+                required
+                size="lg"
+                searchable={false}
+                invalid={reasonId === ''}
+                placeholder="Pilih alasan"
+                options={reasons.map((r) => ({ value: r.id, label: r.label }))}
+              />
             </div>
             <PhotoInput file={photo} onChange={setPhoto} />
           </div>
@@ -355,16 +357,17 @@ function FinishForm({
         {reject > 0 && (
           <div>
             <Label htmlFor="reject-reason">Alasan reject</Label>
-            <Select id="reject-reason" value={reasonId} onChange={(e) => setReasonId(e.target.value)} required aria-invalid={reasonId === '' || undefined}>
-              <option value="" disabled>
-                Pilih alasan
-              </option>
-              {reasons.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.label}
-                </option>
-              ))}
-            </Select>
+            <Combobox
+                id="reject-reason"
+                value={reasonId}
+                onChange={setReasonId}
+                required
+                size="lg"
+                searchable={false}
+                invalid={reasonId === ''}
+                placeholder="Pilih alasan"
+                options={reasons.map((r) => ({ value: r.id, label: r.label }))}
+              />
           </div>
         )}
         {error && <InlineAlert tone="danger">{error.message}</InlineAlert>}

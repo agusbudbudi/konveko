@@ -120,7 +120,7 @@ function ScannerView({ onCode, loading }: { onCode: (code: string) => void; load
             autoCapitalize="characters"
             enterKeyHint="search"
             autoFocus={fineP}
-            className="num"
+            className="num h-12 sm:h-12"
           />
           <Button type="submit" variant="secondary" size="lg" disabled={loading || !manual.trim()}>
             Cari

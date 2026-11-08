@@ -162,6 +162,50 @@ body {
   [aria-disabled='true'] {
     cursor: not-allowed;
   }
+
+  /* Checkbox (DESIGN 4.2 radius-sm, 2.1 primary = selection, 5.2 focus ring).
+     Native input kept for a11y; only the look is replaced. The tick is a mask
+     filled with --primary-foreground, so it follows the token. */
+  input[type='checkbox'] {
+    appearance: none;
+    flex: none;
+    display: inline-grid;
+    place-content: center;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1), border-color 120ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  input[type='checkbox']::after {
+    content: '';
+    width: 12px;
+    height: 12px;
+    background: var(--primary-foreground);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+    transform: scale(0);
+    transition: transform 120ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  input[type='checkbox']:hover:not(:disabled) {
+    border-color: var(--text-subtle);
+  }
+  input[type='checkbox']:checked {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+  input[type='checkbox']:checked::after {
+    transform: scale(1);
+  }
+  input[type='checkbox']:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  input[type='checkbox']:disabled {
+    opacity: 0.5;
+  }
 }
 
 html {

@@ -200,7 +200,7 @@ function UserForm({ holders, user, isSelf, onClose }: { holders: Holder[]; user?
             {ROLES.map((r) => {
               const locked = isSelf && r.value === 'admin';
               return (
-                <label key={r.value} className="flex items-start gap-3 rounded-md border border-border px-3 py-2">
+                <label key={r.value} className="flex items-start gap-3 rounded-md border border-border px-3 py-2 transition-colors hover:border-border-strong has-[:checked]:border-primary has-[:checked]:bg-primary-soft has-[:disabled]:opacity-70">
                   <input
                     type="checkbox"
                     name="roles"
@@ -208,7 +208,7 @@ function UserForm({ holders, user, isSelf, onClose }: { holders: Holder[]; user?
                     checked={roles.includes(r.value)}
                     disabled={locked}
                     onChange={(e) => setRoles((rs) => (e.target.checked ? [...rs, r.value] : rs.filter((x) => x !== r.value)))}
-                    className="mt-1 size-4 accent-[var(--primary)]"
+                    className="mt-0.5"
                   />
                   {locked && <input type="hidden" name="roles" value="admin" />}
                   <span>

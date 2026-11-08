@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { logout } from '@/app/actions/auth';
 import { Wordmark } from '@/components/brand/wordmark';
+import { Avatar } from '@/components/ui/avatar';
 import { MobileNav, SidebarNav } from '@/components/nav/sidebar-nav';
 import { getCurrentAppUser } from '@/lib/supabase/server';
 
@@ -18,8 +19,13 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
         <SidebarNav />
         <div className="h-6 shrink-0" />
         <form action={logout} className="mt-auto border-t border-border px-3 pt-4">
-          <p className="text-small text-text">{user.name}</p>
-          <p className="text-caption text-text-muted">{user.roles.join(', ')}</p>
+          <div className="flex items-center gap-3">
+            <Avatar name={user.name} />
+            <div className="min-w-0">
+              <p className="truncate text-small font-medium text-text">{user.name}</p>
+              <p className="truncate text-caption text-text-muted">{user.roles.join(', ')}</p>
+            </div>
+          </div>
           <button type="submit" className="mt-3 inline-flex h-10 items-center gap-2 rounded-md text-small text-text-muted hover:text-text">
             <LogOut size={16} strokeWidth={1.5} aria-hidden /> Keluar
           </button>

@@ -41,3 +41,9 @@ export const STATUS_LABEL: Record<BundleStatus, string> = {
   ready_stock: 'Ready stock',
   dipecah: 'Dipecah',
 };
+
+export const BATCH_STATUS = {
+  draft: { label: 'Draft', tone: 'neutral' },
+  berjalan: { label: 'Berjalan', tone: 'info' },
+  selesai: { label: 'Selesai', tone: 'success' },
+} as const;

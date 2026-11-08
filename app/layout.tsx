@@ -26,7 +26,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id" className={jakarta.variable}>
-      <body className="min-h-dvh bg-background font-sans text-text">{children}</body>
+      {/* suppressHydrationWarning: browser extensions inject attributes on <body> */}
+      <body className="min-h-dvh bg-background font-sans text-text" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,0 +1,169 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { ArrowLeft, Printer } from 'lucide-react';
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { Badge, StatusBadge } from '@/components/ui/status-badge';
+import { ReconciliationBar, ReconciliationLegend, type Recon } from '@/components/recon/reconciliation-bar';
+import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
+import { BATCH_STATUS, type BundleStatus } from '@/lib/types';
+import { SplitButton } from './split-button';
+
+export const metadata: Metadata = { title: 'Detail batch' };
+
+type BundleRow = {
+  bundle_id: string;
+  code: string;
+  status: BundleStatus;
+  is_active: boolean;
+  target_qty: number;
+  ready: number;
+  reject: number;
+  selisih: number;
+  wip_menunggu: number;
+  wip_dikerjakan: number;
+  ref_qty: number;
+  variant_id: string;
+};
+
+export default async function BatchDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ baru?: string }>;
+}) {
+  const { id } = await params;
+  const { baru } = await searchParams;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+
+  const supabase = await createClient();
+  const user = await getCurrentAppUser();
+  const [batchRes, bundleRes, parentRes] = await Promise.all([
+    supabase
+      .from('batch_reconciliation')
+      .select('*')
+      .eq('batch_id', id)
+      .maybeSingle(),
+    supabase.from('bundle_reconciliation').select('*').eq('batch_id', id).order('code'),
+    supabase
+      .from('bundle')
+      .select('id, parent_bundle_id, holder:holder!bundle_current_holder_id_fkey(name), batch:production_batch(fabric_roll(code, material, color))')
+      .eq('batch_id', id),
+  ]);
+  const batch = batchRes.data as (Recon & { code: string; status: keyof typeof BATCH_STATUS; open_discrepancies: number }) | null;
+  if (!batch) notFound();
+
+  const bundles = (bundleRes.data ?? []) as BundleRow[];
+  const variantIds = [...new Set(bundles.map((b) => b.variant_id))];
+  const { data: variantData } = await supabase.from('product_variant').select('id, sku, product_name, size, color').in('id', variantIds);
+  const variants = new Map((variantData ?? []).map((v) => [v.id, v]));
+
+  type Extra = { id: string; parent_bundle_id: string | null; holder: { name: string } | null; batch: { fabric_roll: { code: string; material: string; color: string } | null } | null };
+  const extras = new Map(((parentRes.data ?? []) as unknown as Extra[]).map((e) => [e.id, e]));
+  const roll = [...extras.values()][0]?.batch?.fabric_roll;
+  const codeById = new Map(bundles.map((b) => [b.bundle_id, b.code]));
+  const canProduce = user?.roles.includes('produksi') ?? false;
+  const active = bundles.filter((b) => b.is_active);
+
+  return (
+    <>
+      <Link href="/batch" className="inline-flex h-10 items-center gap-2 text-small text-text-muted hover:text-text">
+        <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Batch
+      </Link>
+      <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="num text-h1">{batch.code}</h1>
+            <Badge tone={BATCH_STATUS[batch.status].tone}>{BATCH_STATUS[batch.status].label}</Badge>
+          </div>
+          {roll && (
+            <p className="mt-1 text-text-muted">
+              Rol <span className="num">{roll.code}</span> · {roll.material} {roll.color}
+            </p>
+          )}
+        </div>
+        <Link
+          href={`/print/labels?batch=${id}`}
+          className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary-hover"
+        >
+          <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak semua label ({active.length})
+        </Link>
+      </div>
+
+      {baru && (
+        <InlineAlert tone="success" className="mt-6">
+          Batch dibuat. Pecah bundle dulu jika perlu, lalu cetak label.
+        </InlineAlert>
+      )}
+
+      <section className="mt-6 rounded-lg border border-border bg-surface p-5">
+        <h2 className="text-h2">Rekonsiliasi</h2>
+        <div className="mt-4 flex flex-col gap-3">
+          <ReconciliationBar r={batch} />
+          <ReconciliationLegend r={batch} />
+        </div>
+      </section>
+
+      <section className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
+        <h2 className="px-5 py-4 text-h2">Bundle</h2>
+        <table className="w-full border-t border-border">
+          <thead className="bg-surface-muted text-left text-caption tracking-[0.02em] text-text-muted max-md:hidden">
+            <tr className="h-10">
+              <th className="px-5 font-medium">Bundle</th>
+              <th className="px-5 font-medium">Variant</th>
+              <th className="px-5 font-medium">Status</th>
+              <th className="px-5 text-right font-medium">Target</th>
+              <th className="px-5 text-right font-medium">Qty acuan</th>
+              <th className="px-5 text-right font-medium">Selisih</th>
+              <th className="px-5" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {bundles.map((b) => {
+              const v = variants.get(b.variant_id);
+              const extra = extras.get(b.bundle_id);
+              const parentCode = extra?.parent_bundle_id ? codeById.get(extra.parent_bundle_id) : null;
+              return (
+                <tr
+                  key={b.bundle_id}
+                  className={`max-md:grid max-md:grid-cols-2 max-md:gap-1 max-md:px-5 max-md:py-3 ${!b.is_active ? 'text-text-muted' : ''} ${b.selisih > 0 ? 'border-l-[3px] border-l-warning' : ''}`}
+                >
+                  <td className="px-5 py-3 max-md:p-0">
+                    <span className="num font-medium">{b.code}</span>
+                    {parentCode && <p className="text-small text-text-muted">dari {parentCode}</p>}
+                  </td>
+                  <td className="px-5 py-3 max-md:col-span-2 max-md:row-start-2 max-md:p-0">
+                    {v ? `${v.product_name} ${v.size} · ${v.color}` : '-'}
+                    {extra?.holder && b.is_active && <p className="text-small text-text-muted">{extra.holder.name}</p>}
+                  </td>
+                  <td className="px-5 py-3 max-md:justify-self-end max-md:p-0">
+                    <StatusBadge status={b.status} />
+                  </td>
+                  <td className="num px-5 py-3 text-right max-md:hidden">{b.target_qty}</td>
+                  <td className="num px-5 py-3 text-right max-md:hidden">{b.is_active ? b.ref_qty : '-'}</td>
+                  <td className={`num px-5 py-3 text-right max-md:hidden ${b.selisih > 0 ? 'text-warning' : ''}`}>{b.is_active ? b.selisih : '-'}</td>
+                  <td className="px-5 py-3 text-right max-md:col-span-2 max-md:p-0 max-md:pt-2 max-md:text-left">
+                    {b.is_active && (
+                      <div className="flex flex-wrap items-center justify-end gap-1 max-md:justify-start">
+                        {canProduce && b.status === 'siap_jahit' && b.target_qty >= 2 && (
+                          <SplitButton code={b.code} qty={b.target_qty} />
+                        )}
+                        <Link
+                          href={`/print/labels?bundle=${b.bundle_id}`}
+                          className="inline-flex h-10 items-center gap-1.5 rounded-md px-3 text-small text-text-muted hover:bg-surface-muted hover:text-text"
+                        >
+                          <Printer size={16} strokeWidth={1.5} aria-hidden /> Label
+                        </Link>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </section>
+    </>
+  );
+}

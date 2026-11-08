@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, LogOut, ScanLine } from 'lucide-react';
+import { Layers, LayoutDashboard, LogOut, ScanLine } from 'lucide-react';
 import { logout } from '@/app/actions/auth';
 import { Wordmark } from '@/components/brand/wordmark';
 import { getCurrentAppUser } from '@/lib/supabase/server';
 
 const nav = [
   { href: '/', label: 'Rekonsiliasi', icon: LayoutDashboard },
+  { href: '/batch', label: 'Batch', icon: Layers },
   { href: '/scan', label: 'Scan', icon: ScanLine },
 ];
 

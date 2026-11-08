@@ -1,0 +1,102 @@
+/* Thermal label sheet: 50 × 30 mm, black on white only (DESIGN §7). */
+@page {
+  size: 50mm 30mm;
+  margin: 0;
+}
+
+.print-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.label-sheet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  padding: 0 16px 32px;
+}
+
+.label {
+  box-sizing: border-box;
+  width: 50mm;
+  height: 30mm;
+  padding: 2mm;
+  display: flex;
+  gap: 2mm;
+  align-items: center;
+  background: #fff;
+  color: #000;
+  outline: 1px solid var(--border); /* screen only, removed in print */
+  overflow: hidden;
+  break-inside: avoid;
+}
+
+.label-qr {
+  width: 22mm;
+  height: 22mm;
+  flex: none;
+}
+.label-qr svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.label-text {
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: 7.5pt;
+  line-height: 1.2;
+}
+.label-text p {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.label-code {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 10pt;
+  line-height: 1.15;
+}
+.label-batch {
+  font-family: var(--font-mono);
+  font-size: 7pt;
+}
+.label-qty {
+  font-weight: 600;
+  font-size: 9pt;
+  margin-top: 0.5mm !important;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    margin: 0;
+    padding: 0;
+  }
+  .print-bar {
+    display: none;
+  }
+  .label-sheet {
+    display: block;
+    padding: 0;
+  }
+  .label {
+    outline: none;
+    break-after: page;
+    page-break-after: always;
+  }
+  .label:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

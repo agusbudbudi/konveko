@@ -75,6 +75,14 @@ export async function seedFixture(db) {
   await user('budi', 'Budi', ['penjahit'], 'hBudi');
   await user('finishing', 'Petugas finishing', ['finishing'], 'hFinishing');
   await user('spv', 'Supervisor', ['supervisor', 'admin']);
+  await user('gudang', 'Petugas gudang', ['gudang']);
+
+  const loc = async (key, code, kind) => {
+    ids[key] = (await one(db, `insert into public.location (code, kind) values ($1, $2) returning id`, [code, kind])).id;
+  };
+  await loc('rakA1', 'A1', 'stok');
+  await loc('rakA2', 'A2', 'stok');
+  await loc('rakRJ', 'RJ1', 'reject');
 
   const variant = async (key, sku, size) => {
     ids[key] = (await one(db,
@@ -137,6 +145,40 @@ export async function checkInvariants(db) {
     group by r.bundle_id, r.code, r.selisih
     having r.selisih <> coalesce(sum(d.qty), 0)`);
   for (const r of flags) problems.push(`discrepancy mismatch ${r.code}: selisih ${r.selisih} vs flagged ${r.flagged}`);
+
+  // Fase 2a: one active piece per finished good / reject pcs
+  const pieces = await all(db, `
+    select r.code, r.ready, r.reject,
+           count(p.id) filter (where p.grade = 'baik')::int   as baik,
+           count(p.id) filter (where p.grade = 'reject')::int as rej
+    from public.bundle_reconciliation r
+    left join public.piece p on p.bundle_id = r.bundle_id and p.status = 'aktif'
+    group by r.bundle_id, r.code, r.ready, r.reject
+    having r.ready <> count(p.id) filter (where p.grade = 'baik')
+        or r.reject <> count(p.id) filter (where p.grade = 'reject')`);
+  for (const r of pieces) problems.push(`piece mismatch ${r.code}: ${JSON.stringify(r)}`);
+
+  const ledger = await all(db, `
+    select pv.sku, coalesce((select sum(qty) from public.stock_ledger sl where sl.variant_id = pv.id), 0)::int as ledger,
+           (select count(*) from public.piece p where p.variant_id = pv.id and p.status = 'aktif' and p.grade = 'baik')::int as baik
+    from public.product_variant pv`);
+  for (const r of ledger) if (r.ledger !== r.baik) problems.push(`ledger vs pieces ${r.sku}: ${r.ledger} vs ${r.baik}`);
+
+  const pdrift = await all(db, `
+    select p.code, p.location_id, last.to_location_id
+    from public.piece p
+    left join lateral (
+      select e.type, e.to_location_id from public.piece_event e
+      where e.piece_id = p.id and e.type in ('masuk_rak', 'pindah_rak', 'keluar_rak', 'batal')
+      order by e.seq desc limit 1
+    ) last on true
+    where p.location_id is distinct from (case when last.type in ('masuk_rak', 'pindah_rak') then last.to_location_id end)`);
+  for (const r of pdrift) problems.push(`piece location drift ${r.code}`);
+
+  const wrongKind = await all(db, `
+    select p.code from public.piece p join public.location l on l.id = p.location_id
+    where (p.grade = 'baik') <> (l.kind = 'stok')`);
+  for (const r of wrongKind) problems.push(`piece on wrong rack kind ${r.code}`);
 
   return problems;
 }

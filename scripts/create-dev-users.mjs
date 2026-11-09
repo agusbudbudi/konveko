@@ -10,6 +10,7 @@
 //   penjahit (Ani)         HP 0811 0000 001          PIN 111111
 //   penjahit (Budi)        HP 0811 0000 002          PIN 222222
 //   finishing              HP 0811 0000 003          PIN 333333
+//   gudang                 HP 0811 0000 004          PIN 444444
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -42,6 +43,7 @@ const users = [
   { name: 'Ani', phone: '628110000001', pin: '111111', roles: ['penjahit'], holder: 'ani' },
   { name: 'Budi', phone: '628110000002', pin: '222222', roles: ['penjahit'], holder: 'budi' },
   { name: 'Petugas finishing', phone: '628110000003', pin: '333333', roles: ['finishing'], holder: 'finishing' },
+  { name: 'Petugas gudang', phone: '628110000004', pin: '444444', roles: ['gudang'] },
 ];
 
 async function must(promise, what) {
@@ -99,6 +101,19 @@ await must(
     { onConflict: 'code' },
   ),
   'buat rol',
+);
+
+// Racks: two for good stock, one for rejects
+await must(
+  admin.from('location').upsert(
+    [
+      { code: 'A1', kind: 'stok' },
+      { code: 'A2', kind: 'stok' },
+      { code: 'RJ1', kind: 'reject', note: 'Barang reject' },
+    ],
+    { onConflict: 'code' },
+  ),
+  'buat rak',
 );
 
 // One batch (20 M, 15 L, 15 XL = 50 pcs), created through the real RPC as the produksi user

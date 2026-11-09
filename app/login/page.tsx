@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
+import { getImageProps } from 'next/image';
 import { Wordmark } from '@/components/brand/wordmark';
 import { ReconciliationBar } from '@/components/recon/reconciliation-bar';
 import hero from '@/public/hero-login.png';
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Masuk' };
+
+// 1×1 transparent GIF: what phones get instead of the photo
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 // Example numbers from the PRD (Kemeja M, target 20)
 const sample = { target: 20, ready: 17, reject: 2, wip_menunggu: 0, wip_dikerjakan: 0, selisih: 1 };
@@ -29,20 +32,14 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       {/* Photo panel (right): desktop only. Photo sits inset with 24px padding and 16px corners (login-only exception to the 10px radius cap).
           Shows the whole photo, never cropped: the panel width follows the photo's own ratio (read from
           the file), and object-contain guarantees no crop when the form's 440px minimum caps it.
-          Original file, not recompressed. */}
+          Served through the Next image optimizer (WebP/AVIF at the panel's size). A <picture> source
+          limited to >= 1024px means phones and tablets, where the panel is hidden, never request it. */}
       <section
         style={{ width: `min(calc(${hero.width / hero.height} * (100dvh - 48px) + 48px), calc(100vw - 440px))` }}
         className="hidden h-dvh p-6 lg:block"
       >
         <div className="relative size-full overflow-hidden rounded-2xl bg-surface-muted">
-          <Image
-            src={hero}
-            alt="Penjahit menjahit kain di lantai produksi konveksi"
-            fill
-            unoptimized
-            preload
-            className="object-contain"
-          />
+          <HeroPhoto />
 
         {/* Solid card + border (no shadow/blur, DESIGN §1) so text reads on top of the photo */}
         <div className="absolute bottom-6 left-6 right-6 max-w-sm rounded-lg border border-border-strong bg-surface p-5">
@@ -59,5 +56,24 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
       </section>
     </main>
+  );
+}
+
+function HeroPhoto() {
+  const {
+    props: { srcSet, sizes, ...rest },
+  } = getImageProps({
+    src: hero,
+    alt: 'Penjahit menjahit kain di lantai produksi konveksi',
+    fill: true,
+    sizes: '100vh', // square photo, panel height = viewport height
+    className: 'object-contain',
+  });
+  return (
+    <picture>
+      <source media="(min-width: 1024px)" srcSet={srcSet} sizes={sizes} />
+      {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
+      <img {...rest} src={BLANK} />
+    </picture>
   );
 }

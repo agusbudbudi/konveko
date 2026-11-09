@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   title: { default: 'Konveko', template: '%s · Konveko' },
   description: 'Tracking produksi konveksi dari rol kain sampai stok gudang.',
   applicationName: 'Konveko',
+  // icons: app/icon.png (favicon) and app/apple-icon.png are picked up by file convention
+  appleWebApp: { capable: true, title: 'Konveko', statusBarStyle: 'default' },
 };
 
 export const viewport: Viewport = {

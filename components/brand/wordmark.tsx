@@ -1,12 +1,9 @@
+import Image from 'next/image';
 import { cn } from '@/lib/cn';
 
+/** Brand mark from public/logo-konveko.png (trimmed, 128px copy for the UI). */
 export function BrandMark({ size = 24 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden className="shrink-0">
-      <rect x="6" y="6" width="52" height="52" rx="8" fill="none" stroke="var(--primary)" strokeWidth="5" />
-      <path d="M20 44 L29 35 M35 29 L44 20" stroke="var(--primary)" strokeWidth="6" strokeLinecap="round" />
-    </svg>
-  );
+  return <Image src="/logo-konveko-mark.png" width={size} height={size} alt="" aria-hidden className="shrink-0" priority />;
 }
 
 const sizes = {

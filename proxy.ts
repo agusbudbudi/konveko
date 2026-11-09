@@ -4,7 +4,6 @@ import { createServerClient } from '@supabase/ssr';
 const PUBLIC_PATHS = [
   '/login',
   '/manifest.webmanifest',
-  '/icon.svg',
   ...(process.env.NODE_ENV === 'development' ? ['/dev'] : []),
 ];
 

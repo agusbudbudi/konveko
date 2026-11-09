@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { AlertTriangle, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, CircleCheck, Download, Info, CircleX, Minus } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, CircleCheck, Download, Info, CircleX, Minus } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import { Input } from '@/components/ui/input';
 import { callRpc } from '@/lib/rpc';
 import {
   buckets,
@@ -16,13 +14,14 @@ import {
   pct,
   rejectRate,
   resolvePeriod,
+  todayJakarta,
   type CsvTable,
   type Insight,
-  type Mode,
   type Period,
   type Report,
 } from '@/lib/report';
 import { getCurrentAppUser } from '@/lib/supabase/server';
+import { PeriodPicker } from './period-picker';
 import { TrendChart } from './trend-chart';
 
 export const metadata: Metadata = { title: 'Laporan' };
@@ -49,7 +48,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
             {period.label} <span className="text-text-subtle">· dibanding {period.prevLabel}</span>
           </p>
         </div>
-        <PeriodPicker period={period} />
+        <PeriodPicker period={period} today={todayJakarta()} />
       </div>
 
       {!cur.ok || !prev.ok ? (
@@ -64,69 +63,6 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
 }
 
 // ---------------------------------------------------------------------------
-
-const MODES: { mode: Mode; label: string }[] = [
-  { mode: 'week', label: 'Mingguan' },
-  { mode: 'month', label: 'Bulanan' },
-  { mode: 'custom', label: 'Custom' },
-];
-
-function PeriodPicker({ period }: { period: Period }) {
-  const arrow =
-    'inline-flex size-10 items-center justify-center rounded-md border border-border bg-surface text-text-muted hover:border-border-strong hover:text-text';
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div role="tablist" aria-label="Jenis periode" className="inline-flex rounded-md border border-border bg-surface p-0.5">
-        {MODES.map((m) => (
-          <Link
-            key={m.mode}
-            role="tab"
-            aria-selected={period.mode === m.mode}
-            href={m.mode === 'custom' ? `/laporan?mode=custom&from=${period.from}&to=${period.to}` : `/laporan?mode=${m.mode}`}
-            className={`inline-flex h-9 items-center rounded-sm px-3 text-small font-medium ${
-              period.mode === m.mode ? 'bg-primary-soft text-primary' : 'text-text-muted hover:text-text'
-            }`}
-          >
-            {m.label}
-          </Link>
-        ))}
-      </div>
-
-      {period.mode === 'custom' ? (
-        <form action="/laporan" className="flex flex-wrap items-center gap-2">
-          <input type="hidden" name="mode" value="custom" />
-          <label className="sr-only" htmlFor="r-from">
-            Dari tanggal
-          </label>
-          <Input id="r-from" type="date" name="from" defaultValue={period.from} className="num h-10 !w-40" />
-          <span className="text-text-muted">sampai</span>
-          <label className="sr-only" htmlFor="r-to">
-            Sampai tanggal
-          </label>
-          <Input id="r-to" type="date" name="to" defaultValue={period.to} className="num h-10 !w-40" />
-          <button type="submit" className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary-hover">
-            Terapkan
-          </button>
-        </form>
-      ) : (
-        <div className="flex gap-1">
-          <Link href={`/laporan?mode=${period.mode}&date=${period.prevAnchor}`} className={arrow} aria-label="Periode sebelumnya">
-            <ChevronLeft size={20} strokeWidth={1.5} aria-hidden />
-          </Link>
-          {period.nextAnchor ? (
-            <Link href={`/laporan?mode=${period.mode}&date=${period.nextAnchor}`} className={arrow} aria-label="Periode berikutnya">
-              <ChevronRight size={20} strokeWidth={1.5} aria-hidden />
-            </Link>
-          ) : (
-            <span className={`${arrow} cursor-not-allowed opacity-40`} aria-disabled="true">
-              <ChevronRight size={20} strokeWidth={1.5} aria-hidden />
-            </span>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 

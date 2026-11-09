@@ -12,7 +12,9 @@ set +a
 add() {
   name=$1; value=$2; kind=$3
   [ -n "$value" ] || { echo "✗ $name kosong di .env.production.local"; exit 1; }
-  printf '%s' "$value" | vercel env add "$name" production "$kind" --force --yes >/dev/null
+  # --force does not replace variables created by an integration, so remove first
+  vercel env rm "$name" production --yes >/dev/null 2>&1 || true
+  printf '%s' "$value" | vercel env add "$name" production "$kind" --yes >/dev/null
   echo "✓ $name"
 }
 

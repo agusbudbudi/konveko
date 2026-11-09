@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CircleCheck, Printer } from 'lucide-react';
 import { ReconciliationBar, ReconciliationLegend } from '@/components/recon/reconciliation-bar';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
@@ -126,6 +126,53 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
 
   const v = bundle.variant;
   const openFlags = discrepancies.filter((d) => d.status === 'terbuka');
+  const openQty = openFlags.reduce((n, d) => n + d.qty, 0);
+
+  // Open flags come first and stand out; resolved ones stay quiet below.
+  const flagSection = discrepancies.length > 0 && (
+    <section id="flag-selisih" className="mt-6 scroll-mt-6 rounded-lg border border-border bg-surface">
+      <div className="flex flex-wrap items-center gap-3 px-5 pt-5">
+        <h2 className="text-h2">Flag selisih</h2>
+        {openFlags.length > 0 && <Badge tone="warning">{openFlags.length} terbuka</Badge>}
+      </div>
+      {openFlags.length > 0 && (
+        <p className="px-5 text-small text-text-muted">
+          {isSupervisor ? 'Cek fisik bundle, lalu selesaikan flag dengan catatan.' : 'Menunggu dicek supervisor.'}
+        </p>
+      )}
+      <ul className="mt-3 divide-y divide-border border-t border-border">
+        {[...openFlags, ...discrepancies.filter((d) => d.status !== 'terbuka')].map((d) => {
+          const open = d.status === 'terbuka';
+          const Icon = open ? AlertTriangle : CircleCheck;
+          return (
+            <li
+              key={d.id}
+              className={`flex flex-wrap items-start justify-between gap-3 px-5 py-4 ${open ? 'border-l-[3px] border-l-warning bg-warning-soft' : ''}`}
+            >
+              <div className="flex gap-3">
+                <Icon aria-hidden size={20} strokeWidth={1.5} className={`mt-0.5 shrink-0 ${open ? 'text-warning' : 'text-text-subtle'}`} />
+                <div>
+                  <p className={open ? 'text-warning' : 'text-text-muted'}>
+                    <span className={`num ${open ? 'text-h3' : 'font-medium'}`}>Selisih {d.qty} pcs</span>
+                    <span className={open ? 'text-text' : ''}>, {d.from_step} → {d.to_step}</span>
+                  </p>
+                  <p className="text-small text-text-muted">
+                    {timeFmt.format(new Date(d.created_at))}
+                    {d.note && <> · {d.note}</>}
+                  </p>
+                </div>
+              </div>
+              {open ? (
+                isSupervisor ? <ResolveFlag id={d.id} /> : <Badge tone="warning">Terbuka</Badge>
+              ) : (
+                <Badge tone="success">Selesai</Badge>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 
   return (
     <>
@@ -141,7 +188,7 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="num text-h1">{bundle.code}</h1>
             <StatusBadge status={recon.status} />
-            {openFlags.length > 0 && <Badge tone="warning">Selisih</Badge>}
+            {openFlags.length > 0 && <Badge tone="warning">Selisih {openQty} pcs</Badge>}
           </div>
           <p className="mt-1 text-text-muted">
             {v ? `${v.product_name} ${v.size} · ${v.color}` : '-'} · <span className="num">{v?.sku}</span>
@@ -182,6 +229,8 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
         </InlineAlert>
       )}
 
+      {openFlags.length > 0 && flagSection}
+
       {recon.is_active && (
         <section className="mt-6 grid gap-4 lg:grid-cols-[1fr_280px]">
           <div className="rounded-lg border border-border bg-surface p-5">
@@ -199,34 +248,7 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
         </section>
       )}
 
-      {discrepancies.length > 0 && (
-        <section className="mt-6 rounded-lg border border-border bg-surface">
-          <h2 className="px-5 pt-5 text-h2">Flag selisih</h2>
-          <ul className="mt-3 divide-y divide-border border-t border-border">
-            {discrepancies.map((d) => (
-              <li
-                key={d.id}
-                className={`flex flex-wrap items-start justify-between gap-3 px-5 py-4 ${d.status === 'terbuka' ? 'border-l-[3px] border-l-warning' : ''}`}
-              >
-                <div>
-                  <p>
-                    <span className="num font-medium">{d.qty}</span> pcs, {d.from_step} → {d.to_step}
-                  </p>
-                  <p className="text-small text-text-muted">
-                    {timeFmt.format(new Date(d.created_at))}
-                    {d.note && <> · {d.note}</>}
-                  </p>
-                </div>
-                {d.status === 'terbuka' ? (
-                  isSupervisor ? <ResolveFlag id={d.id} /> : <Badge tone="warning">Terbuka</Badge>
-                ) : (
-                  <Badge tone="success">Selesai</Badge>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {openFlags.length === 0 && flagSection}
 
       <section className="mt-6 rounded-lg border border-border bg-surface">
         <div className="flex items-baseline justify-between gap-3 px-5 pt-5">

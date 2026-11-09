@@ -32,8 +32,8 @@ export default async function RackDetailPage({ params }: { params: Promise<{ cod
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link href="/stok" className="text-small text-text-muted hover:text-text">
-            Stok
+          <Link href="/stok/rak" className="text-small text-text-muted hover:text-text">
+            Stok · Per rak
           </Link>
           <h1 className="flex items-center gap-3 text-h1">
             Rak <span className="num">{rack.code}</span>

@@ -21,7 +21,7 @@ import {
 import { cn } from '@/lib/cn';
 
 type Item = { href: string; label: string; icon: LucideIcon };
-type Sub = { label: string; icon: LucideIcon; base: string; children: { href: string; label: string }[] };
+type Sub = { label: string; icon: LucideIcon; base: string; children: { href: string; label: string; exact?: boolean }[] };
 type Group = { label: string; items: (Item | Sub)[] };
 
 const GROUPS: Group[] = [
@@ -44,7 +44,17 @@ const GROUPS: Group[] = [
   {
     label: 'Gudang',
     items: [
-      { href: '/stok', label: 'Stok', icon: Package },
+      {
+        label: 'Stok',
+        icon: Package,
+        base: '/stok',
+        children: [
+          // exact: /stok must not stay highlighted on /stok/rak or /stok/produk
+          { href: '/stok', label: 'Per variant', exact: true },
+          { href: '/stok/rak', label: 'Per rak' },
+          { href: '/stok/produk', label: 'Per produk' },
+        ],
+      },
       { href: '/label', label: 'Antrian label', icon: Tag },
     ],
   },
@@ -146,8 +156,8 @@ function SubMenu({ sub, path, onNavigate }: { sub: Sub; path: string; onNavigate
               <Link
                 href={c.href}
                 onClick={onNavigate}
-                aria-current={isActive(path, c.href) ? 'page' : undefined}
-                className={cn(itemClass(isActive(path, c.href)), 'h-9 px-3 text-small')}
+                aria-current={(c.exact ? path === c.href : isActive(path, c.href)) ? 'page' : undefined}
+                className={cn(itemClass(c.exact ? path === c.href : isActive(path, c.href)), 'h-9 px-3 text-small')}
               >
                 {c.label}
               </Link>

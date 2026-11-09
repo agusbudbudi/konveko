@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test:db": "node --test \"tests/db/*.test.mjs\"",
     "postinstall": "node scripts/copy-zxing-wasm.mjs",
-    "dev:users": "node --env-file=.env.local scripts/create-dev-users.mjs"
+    "dev:users": "node --env-file=.env.local scripts/create-dev-users.mjs",
+    "admin:create": "node --env-file=.env.production.local scripts/create-admin.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.10",

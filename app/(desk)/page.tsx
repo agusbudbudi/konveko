@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import { ReconciliationBar, ReconciliationLegend, type Recon } from '@/components/recon/reconciliation-bar';
@@ -60,14 +61,43 @@ export default async function ReconciliationPage() {
         </InlineAlert>
       )}
 
-      <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <Kpi label="Target" value={totals.target} />
-        <Kpi label="Ready stock" value={totals.ready} context={waiting > 0 ? `${waiting} pcs belum di rak` : undefined} />
-        <Kpi label="Reject" value={totals.reject} />
-        <Kpi label="WIP" value={totals.wip_menunggu + totals.wip_dikerjakan}
-          context={`${totals.wip_menunggu} menunggu terima`} />
-        <Kpi label="Selisih" value={totals.selisih} warn={totals.selisih > 0}
-          context={openFlags > 0 ? `${openFlags} flag terbuka` : 'Tidak ada flag terbuka'} />
+      <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))]">
+        <div className="col-span-2 flex flex-col rounded-lg border border-border bg-surface p-4 lg:col-span-1 lg:p-5">
+          <p className="text-caption tracking-[0.02em] text-text-muted">Target</p>
+          <p className="mt-1 flex items-baseline gap-1.5">
+            <span className="num text-display">{totals.target}</span>
+            <span className="text-small text-text-muted">pcs dari {batches.length} batch</span>
+          </p>
+          <div className="mt-auto pt-3">
+            <ReconciliationBar r={totals} />
+          </div>
+        </div>
+        <Kpi
+          label="Ready stock"
+          swatch="bg-primary"
+          value={totals.ready}
+          target={totals.target}
+          context={waiting > 0 ? `${waiting} belum di rak` : 'Semua sudah di rak'}
+          href="/stok"
+        />
+        <Kpi label="Reject" swatch="bg-danger" value={totals.reject} target={totals.target} context="Jahit dan QC" />
+        <Kpi
+          label="WIP"
+          swatch="bg-neutral/40"
+          value={totals.wip_menunggu + totals.wip_dikerjakan}
+          target={totals.target}
+          context={`${totals.wip_dikerjakan} dikerjakan · ${totals.wip_menunggu} menunggu`}
+          href="/wip"
+        />
+        <Kpi
+          label="Selisih"
+          swatch="bg-warning"
+          value={totals.selisih}
+          target={totals.target}
+          warn={totals.selisih > 0}
+          context={openFlags > 0 ? `${openFlags} flag terbuka` : 'Tidak ada flag terbuka'}
+          href="/selisih"
+        />
       </section>
 
       <section className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
@@ -102,12 +132,49 @@ export default async function ReconciliationPage() {
   );
 }
 
-function Kpi({ label, value, context, warn }: { label: string; value: number; context?: string; warn?: boolean }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4 lg:p-5">
-      <p className="text-caption tracking-[0.02em] text-text-muted">{label}</p>
-      <p className={`num mt-1 text-display ${warn ? 'text-warning' : ''}`}>{value}</p>
-      {context && <p className="text-small text-text-muted">{context}</p>}
-    </div>
+/** DESIGN §5.6 KPI tile. Swatch and meter use the same color as the reconciliation bar segment. */
+function Kpi({
+  label,
+  swatch,
+  value,
+  target,
+  context,
+  warn,
+  href,
+}: {
+  label: string;
+  swatch: string;
+  value: number;
+  target: number;
+  context?: string;
+  warn?: boolean;
+  href?: string;
+}) {
+  const share = target > 0 ? value / target : 0;
+  const pct = share > 0 && share < 0.01 ? '<1' : String(Math.round(share * 100));
+  const body = (
+    <>
+      <p className="flex items-center gap-2 text-caption tracking-[0.02em] text-text-muted">
+        <span aria-hidden className={`size-2 rounded-sm ${swatch}`} />
+        {label}
+        {href && <ChevronRight size={14} strokeWidth={1.5} aria-hidden className="ml-auto text-text-subtle" />}
+      </p>
+      <p className="mt-1 flex items-baseline gap-1.5">
+        <span className={`num text-display ${warn ? 'text-warning' : ''}`}>{value}</span>
+        <span className="num text-small text-text-muted">{pct}%</span>
+      </p>
+      <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-muted" aria-hidden>
+        <div className={`h-full rounded-full ${swatch}`} style={{ width: `${Math.min(share, 1) * 100}%` }} />
+      </div>
+      {context && <p className={`mt-2 text-small ${warn ? 'text-warning' : 'text-text-muted'}`}>{context}</p>}
+    </>
+  );
+  const cls = 'block rounded-lg border border-border bg-surface p-4 lg:p-5';
+  return href ? (
+    <Link href={href} className={`${cls} transition-colors hover:border-border-strong`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={cls}>{body}</div>
   );
 }

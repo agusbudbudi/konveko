@@ -65,7 +65,7 @@ export default async function StockPage() {
           <label htmlFor="pcs-code" className="sr-only">
             Lacak pcs
           </label>
-          <Input id="pcs-code" name="code" placeholder="P-0000123" autoComplete="off" className="num h-10 w-44" />
+          <Input id="pcs-code" name="code" placeholder="P-0000123" autoComplete="off" className="num h-10 !w-44" />
           <button
             type="submit"
             className="inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"

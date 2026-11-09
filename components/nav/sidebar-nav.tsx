@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   AlertTriangle,
+  BarChart3,
   ChevronDown,
   Database,
   Hourglass,
@@ -30,6 +31,7 @@ const GROUPS: Group[] = [
       { href: '/', label: 'Rekonsiliasi', icon: LayoutDashboard },
       { href: '/wip', label: 'WIP', icon: Hourglass },
       { href: '/selisih', label: 'Selisih', icon: AlertTriangle },
+      { href: '/laporan', label: 'Laporan', icon: BarChart3 },
     ],
   },
   {

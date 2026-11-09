@@ -38,6 +38,11 @@ html {
   --danger-soft: #FBE8E6;   --danger: #A1271C;  --danger-foreground: #FFFFFF;
   --neutral-soft: #F0EEEA;  --neutral: #4F4B45;
 
+  /* chart marks (validated with the dataviz palette checker: lightness band,
+     chroma floor, CVD separation; same hue families as primary and danger) */
+  --chart-ready: #23947F;
+  --chart-reject: #C9483A;
+
   /* shadcn/ui mapping */
   --card: var(--surface);
   --card-foreground: var(--text);
@@ -105,6 +110,8 @@ html {
   --color-danger: var(--danger);    --color-danger-soft: var(--danger-soft);
   --color-danger-foreground: var(--danger-foreground);
   --color-neutral: var(--neutral);  --color-neutral-soft: var(--neutral-soft);
+  --color-chart-ready: var(--chart-ready);
+  --color-chart-reject: var(--chart-reject);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);

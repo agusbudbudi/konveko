@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
-import { CircleCheck, PackageCheck, ScanLine } from 'lucide-react';
+import Image from 'next/image';
 import { Wordmark } from '@/components/brand/wordmark';
 import { ReconciliationBar } from '@/components/recon/reconciliation-bar';
+import hero from '@/public/hero-login.png';
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Masuk' };
@@ -9,17 +10,12 @@ export const metadata: Metadata = { title: 'Masuk' };
 // Example numbers from the PRD (Kemeja M, target 20)
 const sample = { target: 20, ready: 17, reject: 2, wip_menunggu: 0, wip_dikerjakan: 0, selisih: 1 };
 
-const steps = [
-  { icon: ScanLine, title: 'Scan terima', text: 'Qty dicek di setiap serah-terima. Kurang langsung ditandai.' },
-  { icon: CircleCheck, title: 'Scan selesai', text: 'Jadi dan reject dicatat per penjahit dan per step.' },
-  { icon: PackageCheck, title: 'Masuk stok', text: 'Hanya yang lolos QC yang menambah stok gudang.' },
-];
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
 
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
+    <main className="grid min-h-dvh lg:grid-cols-[minmax(440px,1fr)_auto]">
       {/* Form */}
       <section className="flex flex-col px-4 py-8 sm:px-8 lg:px-12 lg:py-10">
         <Wordmark size="lg" />
@@ -30,44 +26,37 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
       </section>
 
-      {/* Product panel (right): desktop only. Shows what the app does with its own building blocks. */}
-      <section className="hidden flex-col justify-between border-l border-border bg-surface-muted px-12 py-10 lg:flex">
-        <span aria-hidden />
+      {/* Photo panel (right): desktop only. Photo sits inset with 24px padding and 16px corners (login-only exception to the 10px radius cap).
+          Shows the whole photo, never cropped: the panel width follows the photo's own ratio (read from
+          the file), and object-contain guarantees no crop when the form's 440px minimum caps it.
+          Original file, not recompressed. */}
+      <section
+        style={{ width: `min(calc(${hero.width / hero.height} * (100dvh - 48px) + 48px), calc(100vw - 440px))` }}
+        className="hidden h-dvh p-6 lg:block"
+      >
+        <div className="relative size-full overflow-hidden rounded-2xl bg-surface-muted">
+          <Image
+            src={hero}
+            alt="Penjahit menjahit kain di lantai produksi konveksi"
+            fill
+            unoptimized
+            preload
+            className="object-contain"
+          />
 
-        <div className="max-w-md">
-          <h2 className="text-[32px] leading-10 font-semibold tracking-[-0.01em]">
-            Setiap potong tercatat, dari rol kain sampai stok.
-          </h2>
-          <ol className="mt-8 flex flex-col gap-5">
-            {steps.map(({ icon: Icon, title, text }, i) => (
-              <li key={title} className="flex gap-4">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-surface text-primary">
-                  <Icon size={20} strokeWidth={1.5} aria-hidden />
-                </span>
-                <div>
-                  <p className="font-medium">
-                    <span className="num mr-2 text-text-subtle">{i + 1}</span>
-                    {title}
-                  </p>
-                  <p className="text-small text-text-muted">{text}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-
-          <div className="mt-8 rounded-lg border border-border bg-surface p-5">
-            <div className="flex items-baseline justify-between">
-              <p className="text-caption tracking-[0.02em] text-text-muted">Contoh rekonsiliasi · Kemeja M</p>
-              <p className="num text-small text-text-muted">target 20</p>
+        {/* Solid card + border (no shadow/blur, DESIGN §1) so text reads on top of the photo */}
+        <div className="absolute bottom-6 left-6 right-6 max-w-sm rounded-lg border border-border-strong bg-surface p-5">
+          <h2 className="text-h2">Setiap potong tercatat, dari rol kain sampai stok.</h2>
+          <p className="mt-2 text-text-muted">Scan QR di setiap serah-terima. Kurang langsung ketahuan.</p>
+          <div className="mt-5">
+            <div className="mb-2 flex items-baseline justify-between text-small text-text-muted">
+              <span>Kemeja M</span>
+              <span className="num">17 dari 20 masuk stok</span>
             </div>
-            <div className="mt-3">
-              <ReconciliationBar r={sample} />
-            </div>
-            <p className="mt-1 text-small text-text-muted">stok + reject + WIP + selisih, selalu sama dengan target.</p>
+            <ReconciliationBar r={sample} />
           </div>
         </div>
-
-        <p className="text-small text-text-subtle">Tracking produksi konveksi</p>
+        </div>
       </section>
     </main>
   );

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
+import { calendarDaysAgo, daysAgoLabel } from '@/lib/date';
 import { createClient } from '@/lib/supabase/server';
 import { STATUS_LABEL, type BundleStatus } from '@/lib/types';
 
@@ -19,7 +20,7 @@ type Row = {
   current_status: BundleStatus;
   current_qty: number;
   holder_name: string | null;
-  days_since_last_scan: number;
+  last_movement_at: string;
 };
 
 export default async function WipPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
@@ -30,7 +31,9 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
   let q = supabase.from('wip_list').select('*').order('last_movement_at', { ascending: true }).limit(500);
   if (status !== 'semua') q = q.eq('current_status', status);
   const { data, error } = await q;
-  const rows = (data ?? []) as Row[];
+  // Calendar days in Jakarta, not the view's elapsed/24h (which shows yesterday evening as "hari ini").
+  const now = new Date();
+  const rows = ((data ?? []) as Row[]).map((r) => ({ ...r, days: calendarDaysAgo(r.last_movement_at, now) }));
 
   const variantIds = [...new Set(rows.map((r) => r.variant_id))];
   const { data: vData } = variantIds.length
@@ -38,7 +41,7 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
     : { data: [] };
   const variants = new Map((vData ?? []).map((v) => [v.id, v]));
   const totalQty = rows.reduce((n, r) => n + r.current_qty, 0);
-  const stale = rows.filter((r) => r.days_since_last_scan >= STALE_DAYS).length;
+  const stale = rows.filter((r) => r.days >= STALE_DAYS).length;
 
   return (
     <>
@@ -88,7 +91,7 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
             <tbody className="divide-y divide-border">
               {rows.map((r) => {
                 const v = variants.get(r.variant_id);
-                const isStale = r.days_since_last_scan >= STALE_DAYS;
+                const isStale = r.days >= STALE_DAYS;
                 return (
                   <tr key={r.bundle_id} className={cn('hover:bg-surface-muted max-md:grid max-md:grid-cols-2 max-md:gap-1 max-md:px-5 max-md:py-3', isStale && 'border-l-[3px] border-l-warning')}>
                     <td className="px-5 py-3 max-md:p-0">
@@ -104,7 +107,7 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
                     <td className="px-5 py-3 max-md:p-0 max-md:text-small max-md:text-text-muted">{r.holder_name ?? '-'}</td>
                     <td className="num px-5 py-3 text-right max-md:p-0">{r.current_qty} pcs</td>
                     <td className={cn('num px-5 py-3 text-right max-md:col-span-2 max-md:p-0 max-md:text-left max-md:text-small', isStale ? 'text-warning' : 'text-text-muted')}>
-                      {r.days_since_last_scan === 0 ? 'hari ini' : `${r.days_since_last_scan} hari lalu`}
+                      {daysAgoLabel(r.days)}
                     </td>
                   </tr>
                 );

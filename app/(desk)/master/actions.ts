@@ -75,7 +75,17 @@ export async function saveReason(_: FormState, fd: FormData): Promise<FormState>
   return upsert('reason', idOf(fd), { type, code, label }, 'Kode alasan');
 }
 
-const ACTIVE_TABLES = ['product_variant', 'holder', 'reason'] as const;
+export async function saveLocation(_: FormState, fd: FormData): Promise<FormState> {
+  const code = str(fd, 'code', 8).toUpperCase().replace(/\s+/g, '');
+  const kind = str(fd, 'kind', 10);
+  const note = str(fd, 'note', 120) || null;
+  if (!code) return fail('Isi kode rak.');
+  if (!/^[A-Z0-9]{1,8}$/.test(code)) return fail('Kode rak hanya huruf dan angka, maksimal 8, tanpa spasi atau tanda minus. Contoh: A1.');
+  if (!['stok', 'reject'].includes(kind)) return fail('Pilih jenis rak.');
+  return upsert('location', idOf(fd), { code, kind, note }, 'Kode rak');
+}
+
+const ACTIVE_TABLES = ['product_variant', 'holder', 'reason', 'location'] as const;
 
 export async function setActive(table: (typeof ACTIVE_TABLES)[number], id: string, active: boolean): Promise<FormState> {
   if (!ACTIVE_TABLES.includes(table) || !UUID.test(id)) return fail('Data tidak valid.');
@@ -88,7 +98,7 @@ export async function setActive(table: (typeof ACTIVE_TABLES)[number], id: strin
 // the caller's own client so RLS applies.
 // ---------------------------------------------------------------------------
 
-const ROLES: Role[] = ['admin', 'produksi', 'penjahit', 'finishing', 'supervisor'];
+const ROLES: Role[] = ['admin', 'produksi', 'penjahit', 'finishing', 'gudang', 'supervisor'];
 const FLOOR: Role[] = ['penjahit', 'finishing'];
 
 async function requireAdmin() {

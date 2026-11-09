@@ -27,6 +27,9 @@ export default async function ReconciliationPage() {
     .order('created_at', { ascending: false })
     .limit(50);
   const batches = (data ?? []) as BatchRow[];
+  const { data: unshelved } = await supabase.from('bundle_unshelved').select('baik, reject, days_waiting');
+  const waiting = (unshelved ?? []).reduce((n, r) => n + r.baik, 0); // good pieces only, matches "Ready stock"
+  const late = (unshelved ?? []).filter((r) => r.days_waiting >= 1).reduce((n, r) => n + r.baik + r.reject, 0);
 
   const totals = batches.reduce(
     (t, b) => ({
@@ -48,9 +51,18 @@ export default async function ReconciliationPage() {
 
       {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
 
+      {late > 0 && (
+        <InlineAlert tone="warning" className="mt-6">
+          <span className="num">{late}</span> pcs sudah jadi lebih dari sehari tapi belum masuk rak.{' '}
+          <Link href="/label" className="font-medium underline">
+            Lihat antrian label
+          </Link>
+        </InlineAlert>
+      )}
+
       <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Kpi label="Target" value={totals.target} />
-        <Kpi label="Ready stock" value={totals.ready} />
+        <Kpi label="Ready stock" value={totals.ready} context={waiting > 0 ? `${waiting} pcs belum di rak` : undefined} />
         <Kpi label="Reject" value={totals.reject} />
         <Kpi label="WIP" value={totals.wip_menunggu + totals.wip_dikerjakan}
           context={`${totals.wip_menunggu} menunggu terima`} />

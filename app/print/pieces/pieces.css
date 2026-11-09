@@ -1,0 +1,143 @@
+/* Piece label: 50 × 30 mm thermal, black only. Same roll as bundle labels. */
+@page {
+  size: 50mm 30mm;
+  margin: 0;
+}
+
+.print-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+.print-confirm {
+  padding-top: 0;
+}
+
+.label-sheet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  padding: 0 16px 32px;
+}
+
+.pl {
+  box-sizing: border-box;
+  width: 50mm;
+  height: 30mm;
+  padding: 1.5mm 2mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #fff;
+  color: #000;
+  outline: 1px solid var(--border); /* screen only */
+  overflow: hidden;
+  break-inside: avoid;
+  font-family: var(--font-sans);
+}
+
+.pl-top {
+  display: flex;
+  gap: 2mm;
+  min-height: 0;
+}
+.pl-qr {
+  width: 16mm;
+  height: 16mm;
+  flex: none;
+}
+.pl-qr svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.pl-text {
+  min-width: 0;
+  font-size: 6.5pt;
+  line-height: 1.2;
+}
+.pl-text p {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.pl-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8mm;
+  font-weight: 600;
+  font-size: 6pt;
+  letter-spacing: -0.01em;
+}
+.pl-brand img {
+  width: 2.6mm;
+  height: 2.6mm;
+}
+.pl-name {
+  margin-top: 0.6mm !important;
+  font-weight: 700;
+  font-size: 7.5pt !important;
+}
+.pl-serial {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-weight: 600;
+}
+
+.pl-bar svg {
+  width: 100%;
+  height: 6.5mm;
+  display: block;
+}
+.pl-sku {
+  margin: 0.3mm 0 0;
+  text-align: center;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 6pt;
+  line-height: 1;
+}
+
+.pl-reject {
+  background: #000;
+  color: #fff;
+  font-weight: 700;
+  font-size: 8pt;
+  line-height: 1;
+  padding: 1.2mm 1.5mm;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    margin: 0;
+    padding: 0;
+  }
+  .print-bar {
+    display: none;
+  }
+  .label-sheet {
+    display: block;
+    padding: 0;
+  }
+  .pl {
+    outline: none;
+    break-after: page;
+    page-break-after: always;
+  }
+  .pl:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .pl-reject {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

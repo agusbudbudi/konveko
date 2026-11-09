@@ -7,7 +7,7 @@ import { normalizePhone, pinEmail } from '@/lib/phone';
 
 export type LoginState = { error: string | null };
 
-const FLOOR_ROLES = ['penjahit', 'finishing'];
+const FLOOR_ROLES = ['penjahit', 'finishing', 'gudang'];
 
 function safeNext(value: FormDataEntryValue | null): string | null {
   const v = typeof value === 'string' ? value : '';

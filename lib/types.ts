@@ -47,3 +47,33 @@ export const BATCH_STATUS = {
   berjalan: { label: 'Berjalan', tone: 'info' },
   selesai: { label: 'Selesai', tone: 'success' },
 } as const;
+
+// ---- Fase 2a: warehouse --------------------------------------------------
+type VariantInfo = { sku: string; product_name: string; size: string; color: string };
+
+export type WarehouseLookup =
+  | { kind: 'location'; id: string; code: string; location_kind: 'stok' | 'reject'; note: string | null; qty: number }
+  | {
+      kind: 'bundle';
+      id: string;
+      code: string;
+      status: BundleStatus;
+      variant: VariantInfo;
+      unshelved_baik: number;
+      unshelved_reject: number;
+      unprinted: number;
+      shelved: number;
+    }
+  | {
+      kind: 'piece';
+      id: string;
+      code: string;
+      grade: 'baik' | 'reject';
+      status: 'aktif' | 'batal';
+      printed: boolean;
+      location_code: string | null;
+      bundle_code: string;
+      variant: VariantInfo;
+    };
+
+export type PutawayResult = { moved: number; location_code: string; code: string; message: string };

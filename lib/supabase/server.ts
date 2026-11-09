@@ -52,4 +52,4 @@ export async function getCurrentAppUser() {
   return data as { id: string; name: string; roles: Role[]; holder_id: string | null; is_active: boolean };
 }
 
-export type Role = 'admin' | 'produksi' | 'penjahit' | 'finishing' | 'supervisor';
+export type Role = 'admin' | 'produksi' | 'penjahit' | 'finishing' | 'supervisor' | 'gudang';

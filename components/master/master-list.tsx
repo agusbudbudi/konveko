@@ -31,6 +31,7 @@ export function MasterList({
   addLabel,
   noun,
   onToggleActive,
+  headerExtra,
   empty = 'Belum ada data.',
 }: {
   title: string;
@@ -44,6 +45,8 @@ export function MasterList({
   /** used in the edit modal title: "Ubah <noun>" */
   noun: string;
   onToggleActive?: (id: string, active: boolean) => Promise<FormState>;
+  /** extra header actions next to the add button (e.g. a print link) */
+  headerExtra?: React.ReactNode;
   empty?: string;
 }) {
   const [editing, setEditing] = useState<string | 'new' | null>(null);
@@ -59,11 +62,14 @@ export function MasterList({
         <h1 className="text-h1">{title}</h1>
         {description && <p className="mt-1 text-text-muted">{description}</p>}
       </div>
-      {canEdit && (
-        <Button onClick={() => setEditing('new')}>
-          <Plus size={16} strokeWidth={1.5} aria-hidden /> {addLabel}
-        </Button>
-      )}
+      <div className="flex flex-wrap items-center gap-2">
+        {headerExtra}
+        {canEdit && (
+          <Button onClick={() => setEditing('new')}>
+            <Plus size={16} strokeWidth={1.5} aria-hidden /> {addLabel}
+          </Button>
+        )}
+      </div>
     </div>
     <section className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
       <p className="px-5 py-3 text-small text-text-muted">

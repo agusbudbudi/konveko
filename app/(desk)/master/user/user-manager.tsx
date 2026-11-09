@@ -26,6 +26,7 @@ type Holder = { id: string; name: string; type: string };
 const ROLES = [
   { value: 'penjahit', label: 'Penjahit', hint: 'scan terima dan selesai jahit' },
   { value: 'finishing', label: 'Finishing', hint: 'scan terima dan selesai finishing' },
+  { value: 'gudang', label: 'Gudang', hint: 'masukkan barang jadi ke rak' },
   { value: 'produksi', label: 'Produksi', hint: 'buat batch, pecah bundle, cetak label' },
   { value: 'supervisor', label: 'Supervisor', hint: 'koreksi scan, selesaikan selisih' },
   { value: 'admin', label: 'Admin', hint: 'master data dan user' },

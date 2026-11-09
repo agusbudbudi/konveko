@@ -11,6 +11,8 @@ import {
   Layers,
   LayoutDashboard,
   Menu,
+  Package,
+  Tag,
   ScanLine,
   X,
   type LucideIcon,
@@ -38,6 +40,13 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    label: 'Gudang',
+    items: [
+      { href: '/stok', label: 'Stok', icon: Package },
+      { href: '/label', label: 'Antrian label', icon: Tag },
+    ],
+  },
+  {
     label: 'Pengaturan',
     items: [
       {
@@ -47,6 +56,7 @@ const GROUPS: Group[] = [
         children: [
           { href: '/master/variant', label: 'Variant' },
           { href: '/master/rol', label: 'Rol kain' },
+          { href: '/master/rak', label: 'Rak' },
           { href: '/master/pemegang', label: 'Penjahit dan tim' },
           { href: '/master/user', label: 'User' },
           { href: '/master/alasan', label: 'Alasan' },

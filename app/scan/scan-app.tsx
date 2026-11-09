@@ -92,7 +92,19 @@ export function ScanApp({
 
 // ---------------------------------------------------------------------------
 
-function ScannerView({ onCode, loading }: { onCode: (code: string) => void; loading: boolean }) {
+export function ScannerView({
+  onCode,
+  loading,
+  label = 'Ketik kode bundle',
+  placeholder = 'B-00231',
+  loadingText = 'Mencari bundle...',
+}: {
+  onCode: (code: string) => void;
+  loading: boolean;
+  label?: string;
+  placeholder?: string;
+  loadingText?: string;
+}) {
   const [manual, setManual] = useState('');
   const [fineP, setFinePointer] = useState(false);
 
@@ -106,17 +118,19 @@ function ScannerView({ onCode, loading }: { onCode: (code: string) => void; load
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (manual.trim()) onCode(manual);
+          if (!manual.trim()) return;
+          onCode(manual);
+          setManual(''); // the view can stay mounted (warehouse: rack -> bundle), start clean
         }}
         className="flex flex-col gap-2"
       >
-        <Label htmlFor="manual-code">Ketik kode bundle</Label>
+        <Label htmlFor="manual-code">{label}</Label>
         <div className="flex gap-2">
           <Input
             id="manual-code"
             value={manual}
             onChange={(e) => setManual(e.target.value)}
-            placeholder="B-00231"
+            placeholder={placeholder}
             autoComplete="off"
             autoCapitalize="characters"
             enterKeyHint="search"
@@ -128,7 +142,7 @@ function ScannerView({ onCode, loading }: { onCode: (code: string) => void; load
           </Button>
         </div>
       </form>
-      {loading && <p className="text-small text-text-muted" aria-live="polite">Mencari bundle...</p>}
+      {loading && <p className="text-small text-text-muted" aria-live="polite">{loadingText}</p>}
     </div>
   );
 }
@@ -424,11 +438,12 @@ function SuccessView({ result }: { result: ScanResult }) {
       <CircleCheck size={24} strokeWidth={1.5} aria-hidden />
       <p className="text-h2">{result.message}</p>
       <p className="text-small">Status sekarang: {STATUS_LABEL[result.status].toLowerCase()}</p>
+      {result.status === 'ready_stock' && <p className="text-small">Label pcs masuk antrian cetak.</p>}
     </div>
   );
 }
 
-function BottomBar({ children }: { children: React.ReactNode }) {
+export function BottomBar({ children }: { children: React.ReactNode }) {
   return (
     <div className="fixed inset-x-0 bottom-0 border-t border-border bg-surface">
       <div className="mx-auto w-full max-w-md px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">{children}</div>

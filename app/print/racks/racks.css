@@ -1,0 +1,101 @@
+/* Rack labels: 100 × 70 mm on A4 (office printer), black only. */
+@page {
+  size: A4;
+  margin: 8mm;
+}
+
+.print-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.rack-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 100mm);
+  gap: 4mm;
+  justify-content: center;
+  padding: 0 16px 32px;
+}
+
+.rack-label {
+  box-sizing: border-box;
+  width: 100mm;
+  height: 70mm;
+  padding: 5mm;
+  display: grid;
+  grid-template-columns: 44mm 1fr;
+  gap: 5mm;
+  align-items: center;
+  background: #fff;
+  color: #000;
+  border: 0.3mm dashed #999; /* cut line */
+  break-inside: avoid;
+  font-family: var(--font-sans);
+}
+
+.rack-qr svg {
+  width: 44mm;
+  height: 44mm;
+  display: block;
+}
+
+.rack-brand {
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
+  font-weight: 600;
+  font-size: 9pt;
+  letter-spacing: -0.01em;
+}
+.rack-brand img {
+  width: 4mm;
+  height: 4mm;
+}
+.rack-caption {
+  margin: 4mm 0 0;
+  font-size: 9pt;
+}
+.rack-code {
+  margin: 0;
+  font-size: 44pt;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.rack-kind {
+  display: inline-block;
+  margin-top: 3mm;
+  padding: 0.6mm 2mm;
+  border: 0.4mm solid #000;
+  font-size: 9pt;
+  font-weight: 600;
+}
+.rack-kind.reject {
+  background: #000;
+  color: #fff;
+}
+.rack-note {
+  margin: 2mm 0 0;
+  font-size: 8pt;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    margin: 0;
+    padding: 0;
+  }
+  .print-bar {
+    display: none;
+  }
+  .rack-sheet {
+    padding: 0;
+    justify-content: start;
+  }
+}

@@ -59,7 +59,7 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
   const user = await getCurrentAppUser();
   const isSupervisor = user?.roles.includes('supervisor') ?? false;
 
-  const [bundleRes, reconRes, movRes, effRes, reasonRes, discRes, childRes] = await Promise.all([
+  const [bundleRes, reconRes, movRes, effRes, reasonRes, discRes, childRes, pieceRes] = await Promise.all([
     supabase
       .from('bundle')
       .select(
@@ -73,6 +73,12 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
     supabase.from('reason').select('id, type, label'),
     supabase.from('discrepancy').select('*').eq('bundle_id', id).order('created_at'),
     supabase.from('bundle').select('id, code, target_qty').eq('parent_bundle_id', id).order('code'),
+    supabase
+      .from('piece')
+      .select('id, code, grade, printed_at, location:location(code)')
+      .eq('bundle_id', id)
+      .eq('status', 'aktif')
+      .order('code'),
   ]);
 
   type BundleRow = {
@@ -98,6 +104,13 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
   const reasons = new Map(((reasonRes.data ?? []) as Reason[]).map((r) => [r.id, r]));
   const discrepancies = (discRes.data ?? []) as Discrepancy[];
   const children = (childRes.data ?? []) as { id: string; code: string; target_qty: number }[];
+  const pieces = (pieceRes.data ?? []) as unknown as {
+    id: string;
+    code: string;
+    grade: 'baik' | 'reject';
+    printed_at: string | null;
+    location: { code: string } | null;
+  }[];
 
   const parent = bundle.parent_bundle_id
     ? (await supabase.from('bundle').select('id, code').eq('id', bundle.parent_bundle_id).maybeSingle()).data
@@ -248,6 +261,8 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
         </section>
       )}
 
+      {pieces.length > 0 && <PieceSummary bundleId={bundle.id} pieces={pieces} />}
+
       {openFlags.length === 0 && flagSection}
 
       <section className="mt-6 rounded-lg border border-border bg-surface">
@@ -270,5 +285,100 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
         )}
       </section>
     </>
+  );
+}
+
+/** Fase 2a: the finished pieces of this bundle, where they are, and their labels. */
+function PieceSummary({
+  bundleId,
+  pieces,
+}: {
+  bundleId: string;
+  pieces: { id: string; code: string; grade: 'baik' | 'reject'; printed_at: string | null; location: { code: string } | null }[];
+}) {
+  const good = pieces.filter((p) => p.grade === 'baik');
+  const reject = pieces.filter((p) => p.grade === 'reject');
+  const unprinted = pieces.filter((p) => !p.printed_at).length;
+  const shelved = pieces.filter((p) => p.location);
+  const racks = new Map<string, number>();
+  for (const p of shelved) racks.set(p.location!.code, (racks.get(p.location!.code) ?? 0) + 1);
+  const waiting = pieces.length - shelved.length;
+
+  return (
+    <section className="mt-6 rounded-lg border border-border bg-surface">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+        <h2 className="text-h2">Pcs</h2>
+        <div className="flex flex-wrap gap-2">
+          {unprinted > 0 && (
+            <Link
+              href={`/print/pieces?bundle=${bundleId}`}
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary-hover"
+            >
+              <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak {unprinted} label pcs
+            </Link>
+          )}
+          <Link
+            href={`/print/pieces?bundle=${bundleId}&all=1`}
+            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
+          >
+            <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak ulang semua
+          </Link>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid grid-cols-2 gap-4 px-5 sm:grid-cols-4">
+        <div>
+          <dt className="text-caption tracking-[0.02em] text-text-muted">Baik</dt>
+          <dd className="num text-h2">{good.length}</dd>
+        </div>
+        <div>
+          <dt className="text-caption tracking-[0.02em] text-text-muted">Reject</dt>
+          <dd className="num text-h2">{reject.length}</dd>
+        </div>
+        <div>
+          <dt className="text-caption tracking-[0.02em] text-text-muted">Di rak</dt>
+          <dd className="num text-h2">{shelved.length}</dd>
+        </div>
+        <div>
+          <dt className="text-caption tracking-[0.02em] text-text-muted">Belum di rak</dt>
+          <dd className={`num text-h2 ${waiting > 0 ? 'text-warning' : ''}`}>{waiting}</dd>
+        </div>
+      </dl>
+
+      {(racks.size > 0 || unprinted > 0) && (
+        <div className="mt-4 flex flex-wrap items-center gap-1.5 px-5">
+          {[...racks.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([code, n]) => (
+              <Link
+                key={code}
+                href={`/stok/rak/${code}`}
+                className="num inline-flex h-7 items-center gap-1.5 rounded-sm border border-border px-2 text-small hover:border-border-strong"
+              >
+                <span className="font-medium text-primary">{code}</span>
+                <span className="text-text-muted">{n}</span>
+              </Link>
+            ))}
+          {unprinted > 0 && <Badge tone="warning">{unprinted} label belum dicetak</Badge>}
+        </div>
+      )}
+
+      <details className="group mt-4 border-t border-border">
+        <summary className="flex h-11 cursor-pointer items-center px-5 text-small text-text-muted hover:text-text">
+          Lihat {pieces.length} kode pcs
+        </summary>
+        <ul className="grid gap-x-6 px-5 pb-4 sm:grid-cols-2 lg:grid-cols-4">
+          {pieces.map((p) => (
+            <li key={p.id} className="flex items-center gap-2 py-1 text-small">
+              <Link href={`/pcs/${p.code}`} className="num font-medium text-primary hover:underline">
+                {p.code}
+              </Link>
+              {p.grade === 'reject' && <span className="text-danger">reject</span>}
+              <span className="num text-text-subtle">{p.location?.code ?? (p.printed_at ? 'belum di rak' : 'belum dicetak')}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </section>
   );
 }

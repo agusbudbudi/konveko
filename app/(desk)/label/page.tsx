@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Printer, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/status-badge';
 import { createClient } from '@/lib/supabase/server';
+import { TabLink, TabList } from '@/components/ui/tab-link';
 
 export const metadata: Metadata = { title: 'Antrian label' };
 
@@ -48,7 +49,6 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-small text-text-muted">Gudang</p>
           <h1 className="text-h1">Antrian label</h1>
           <p className="mt-1 text-text-muted">
             Label pcs dibuat otomatis saat finishing scan selesai. Cetak, tempel di plastik, lalu gudang scan masuk rak.
@@ -61,7 +61,7 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
         )}
       </div>
 
-      <div role="tablist" aria-label="Status label" className="mt-6 flex gap-1 border-b border-border">
+      <TabList label="Status label" className="mt-6">
         <TabLink href="/label" active={tab === 'belum'} label="Belum dicetak" count={total} />
         <TabLink
           href="/label?tab=dicetak"
@@ -69,7 +69,7 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
           label="Sudah dicetak, belum masuk rak"
           count={waiting.reduce((s, r) => s + r.baik + r.reject, 0)}
         />
-      </div>
+      </TabList>
 
       <section role="tabpanel" className="mt-4 overflow-hidden rounded-lg border border-border bg-surface">
         {tab === 'belum' ? (
@@ -79,7 +79,7 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
             <ul className="divide-y divide-border">
               {toPrint.map((r) => (
                 <li key={r.bundle_id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
-                  <Link href={`/bundle/${r.bundle_id}`} className="num w-24 font-medium text-primary hover:underline">
+                  <Link href={`/bundle/${r.bundle_id}`} className="num w-24 link-code">
                     {r.code}
                   </Link>
                   <span className="min-w-0 flex-1 truncate">{variantCell(r)}</span>
@@ -101,7 +101,7 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
           <ul className="divide-y divide-border">
             {waiting.map((r) => (
               <li key={r.bundle_id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
-                <Link href={`/bundle/${r.bundle_id}`} className="num w-24 font-medium text-primary hover:underline">
+                <Link href={`/bundle/${r.bundle_id}`} className="num w-24 link-code">
                   {r.code}
                 </Link>
                 <span className="min-w-0 flex-1 truncate">{variantCell(r)}</span>
@@ -118,21 +118,5 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
         )}
       </section>
     </>
-  );
-}
-
-function TabLink({ href, active, label, count }: { href: string; active: boolean; label: string; count: number }) {
-  return (
-    <Link
-      href={href}
-      role="tab"
-      aria-selected={active}
-      className={`-mb-px inline-flex h-10 items-center gap-2 border-b-2 px-3 text-small font-medium ${
-        active ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-text'
-      }`}
-    >
-      {label}
-      <span className={`num rounded-sm px-1.5 text-caption ${active ? 'bg-primary-soft' : 'bg-surface-muted'}`}>{count}</span>
-    </Link>
   );
 }

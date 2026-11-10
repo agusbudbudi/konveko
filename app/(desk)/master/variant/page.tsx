@@ -9,6 +9,7 @@ export default async function VariantPage() {
   const supabase = await createClient();
   const user = await getCurrentAppUser();
   const { data } = await supabase.from('product_variant').select('*').order('product_name').order('sku');
+  const productNames = [...new Set((data ?? []).map((v) => v.product_name as string))].sort((a, b) => a.localeCompare(b, 'id'));
 
   return (
     <MasterList
@@ -20,7 +21,14 @@ export default async function VariantPage() {
       columns={['SKU', 'Produk', 'Ukuran', 'Warna']}
       fields={[
         { name: 'sku', label: 'SKU', required: true, mono: true, placeholder: 'KMJ-PTH-M', hint: 'Unik per variant. Huruf, angka, dan tanda minus.' },
-        { name: 'product_name', label: 'Nama produk', required: true, placeholder: 'Kemeja' },
+        {
+          name: 'product_name',
+          label: 'Nama produk',
+          required: true,
+          placeholder: 'Kemeja',
+          suggestions: productNames,
+          hint: 'Pilih produk yang sudah ada agar stoknya tergabung, atau ketik nama baru.',
+        },
         { name: 'size', label: 'Ukuran', required: true, placeholder: 'M' },
         { name: 'color', label: 'Warna', required: true, placeholder: 'Putih' },
       ]}

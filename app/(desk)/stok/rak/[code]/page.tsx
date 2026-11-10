@@ -83,7 +83,7 @@ export default async function RackDetailPage({ params }: { params: Promise<{ cod
           <ul className="grid gap-x-6 border-t border-border px-5 py-3 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((p) => (
               <li key={p.id} className="flex items-center gap-3 py-1.5 text-small">
-                <Link href={`/pcs/${p.code}`} className="num font-medium text-primary hover:underline">
+                <Link href={`/pcs/${p.code}`} className="num link-code">
                   {p.code}
                 </Link>
                 <span className="num text-text-muted">{p.variant?.sku}</span>

@@ -58,7 +58,7 @@ export default async function RackPage() {
         active: l.is_active,
         values: { code: l.code, kind: l.kind, note: l.note },
         cells: [
-          <Link key="c" href={`/stok/rak/${l.code}`} className="num font-medium text-primary hover:underline">
+          <Link key="c" href={`/stok/rak/${l.code}`} className="num link-code">
             {l.code}
           </Link>,
           <Badge key="k" tone={l.kind === 'reject' ? 'danger' : 'neutral'}>

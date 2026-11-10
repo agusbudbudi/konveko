@@ -37,7 +37,6 @@ export default async function StockByProductPage() {
 
   return (
     <>
-      <p className="text-small text-text-muted">Stok</p>
       <h1 className="text-h1">Per produk</h1>
       <p className="mt-1 text-text-muted">Stok baik per produk dan ukuran. Klik produk untuk melihat warna dan raknya.</p>
 

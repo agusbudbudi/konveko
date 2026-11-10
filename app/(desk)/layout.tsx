@@ -12,12 +12,12 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
     <CrumbProvider>
       <div className="flex min-h-dvh">
         {/* Logo stays put; only the menu scrolls when it is taller than the screen. */}
-        <aside className="sticky top-0 hidden h-dvh w-52 shrink-0 flex-col border-r border-border bg-surface lg:flex">
+        <aside className="sticky top-0 hidden h-dvh w-52 shrink-0 flex-col bg-sidebar lg:flex [&_*:focus-visible]:outline-sidebar-ring">
           <div className="shrink-0 px-6 pt-5 pb-6">
-            <Wordmark size="lg" />
+            <Wordmark size="lg" onDark />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6">
-            <SidebarNav />
+            <SidebarNav tone="dark" />
           </div>
         </aside>
         <div className="min-w-0 flex-1">

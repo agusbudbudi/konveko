@@ -112,7 +112,7 @@ export default async function ReconciliationPage() {
               <li key={b.batch_id} className={b.open_discrepancies > 0 ? 'border-l-[3px] border-l-warning' : undefined}>
                 <div className="grid gap-3 px-5 py-4 md:grid-cols-[180px_1fr] md:items-center md:gap-6">
                   <div className="flex items-center justify-between gap-3 md:block">
-                    <Link href={`/batch/${b.batch_id}`} className="num font-medium text-primary hover:underline">{b.code}</Link>
+                    <Link href={`/batch/${b.batch_id}`} className="num link-code">{b.code}</Link>
                     <div className="mt-1 flex gap-1.5">
                       <Badge tone={batchTone[b.status]}>{batchLabel[b.status]}</Badge>
                       {b.open_discrepancies > 0 && <Badge tone="warning">Selisih</Badge>}

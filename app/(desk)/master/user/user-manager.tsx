@@ -43,7 +43,6 @@ export function UserManager({ meId, users, holders }: { meId: string; users: Use
     <>
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className="text-small text-text-muted">Master data</p>
         <h1 className="text-h1">User</h1>
         <p className="mt-1 text-text-muted">Akun login, role, dan PIN. Penjahit dan finishing login pakai nomor HP + PIN.</p>
       </div>

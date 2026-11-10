@@ -19,3 +19,16 @@ export function str(fd: FormData, key: string, max = 120): string {
 }
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Product names group stock on "Per produk", so spelling variants must not split a product.
+ * Collapses spaces; reuses an existing name that matches ignoring case ("kemeja" -> "Kemeja");
+ * a new name gets a capital first letter.
+ */
+export function canonicalProductName(raw: string, existing: string[]): string {
+  const name = raw.replace(/\s+/g, ' ').trim();
+  const key = name.toLocaleLowerCase('id');
+  const match = existing.find((e) => e.replace(/\s+/g, ' ').trim().toLocaleLowerCase('id') === key);
+  if (match) return match;
+  return name.charAt(0).toLocaleUpperCase('id') + name.slice(1);
+}

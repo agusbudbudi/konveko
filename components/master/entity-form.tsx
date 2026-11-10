@@ -18,6 +18,8 @@ export type Field = {
   placeholder?: string;
   hint?: string;
   span?: 1 | 2;
+  /** Text field with type-ahead suggestions; any new value is still allowed. */
+  suggestions?: string[];
 };
 
 export function EntityForm({
@@ -82,8 +84,16 @@ export function EntityForm({
                   autoFocus={i === 0}
                   inputMode={f.type === 'decimal' ? 'decimal' : undefined}
                   autoComplete="off"
+                  list={f.suggestions?.length ? `${id}-list` : undefined}
                   className={cn('h-10', f.mono && 'num', f.type === 'decimal' && 'text-right')}
                 />
+              )}
+              {f.suggestions && f.suggestions.length > 0 && (
+                <datalist id={`${id}-list`}>
+                  {f.suggestions.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
               )}
               {f.hint && <p className="mt-1 text-small text-text-muted">{f.hint}</p>}
             </div>

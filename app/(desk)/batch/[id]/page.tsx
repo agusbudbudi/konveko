@@ -132,7 +132,7 @@ export default async function BatchDetailPage({
                   className={`max-md:grid max-md:grid-cols-2 max-md:gap-1 max-md:px-5 max-md:py-3 ${!b.is_active ? 'text-text-muted' : ''} ${b.selisih > 0 ? 'border-l-[3px] border-l-warning' : ''}`}
                 >
                   <td className="px-5 py-3 max-md:p-0">
-                    <Link href={`/bundle/${b.bundle_id}`} className="num font-medium text-primary hover:underline">{b.code}</Link>
+                    <Link href={`/bundle/${b.bundle_id}`} className="num link-code">{b.code}</Link>
                     {parentCode && <p className="text-small text-text-muted">dari {parentCode}</p>}
                   </td>
                   <td className="px-5 py-3 max-md:col-span-2 max-md:row-start-2 max-md:p-0">

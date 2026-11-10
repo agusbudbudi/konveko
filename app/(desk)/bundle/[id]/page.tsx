@@ -220,7 +220,7 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
           {parent && (
             <p className="text-small text-text-muted">
               Pecahan dari{' '}
-              <Link href={`/bundle/${parent.id}`} className="num text-primary hover:underline">
+              <Link href={`/bundle/${parent.id}`} className="num link-code">
                 {parent.code}
               </Link>
             </p>
@@ -380,7 +380,7 @@ function PieceSummary({
         <ul className="grid gap-x-6 px-5 pb-4 sm:grid-cols-2 lg:grid-cols-4">
           {pieces.map((p) => (
             <li key={p.id} className="flex items-center gap-2 py-1 text-small">
-              <Link href={`/pcs/${p.code}`} className="num font-medium text-primary hover:underline">
+              <Link href={`/pcs/${p.code}`} className="num link-code">
                 {p.code}
               </Link>
               {p.grade === 'reject' && <span className="text-danger">reject</span>}

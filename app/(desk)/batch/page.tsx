@@ -50,7 +50,7 @@ export default async function BatchListPage() {
               {rows.map((b) => (
                 <tr key={b.batch_id} className="hover:bg-surface-muted max-md:block max-md:px-5 max-md:py-3">
                   <td className="px-5 py-3 max-md:inline-block max-md:p-0">
-                    <Link href={`/batch/${b.batch_id}`} className="num font-medium text-primary hover:underline">
+                    <Link href={`/batch/${b.batch_id}`} className="num link-code">
                       {b.code}
                     </Link>
                     <p className="text-small text-text-muted">{dateFmt.format(new Date(b.created_at))}</p>

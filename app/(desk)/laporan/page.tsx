@@ -42,7 +42,6 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-small text-text-muted">Monitoring</p>
           <h1 className="text-h1">Laporan</h1>
           <p className="mt-1 text-text-muted">
             {period.label} <span className="text-text-subtle">· dibanding {period.prevLabel}</span>

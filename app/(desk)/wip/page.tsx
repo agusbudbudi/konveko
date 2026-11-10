@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { TabLink, TabList } from '@/components/ui/tab-link';
 import { cn } from '@/lib/cn';
 import { calendarDaysAgo, daysAgoLabel } from '@/lib/date';
 import { createClient } from '@/lib/supabase/server';
@@ -30,7 +31,10 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
   const supabase = await createClient();
   let q = supabase.from('wip_list').select('*').order('last_movement_at', { ascending: true }).limit(500);
   if (status !== 'semua') q = q.eq('current_status', status);
-  const { data, error } = await q;
+  // counts per status for the tabs (status column only, cheap)
+  const [{ data, error }, { data: all }] = await Promise.all([q, supabase.from('wip_list').select('current_status')]);
+  const countOf = (f: BundleStatus | 'semua') =>
+    f === 'semua' ? (all ?? []).length : (all ?? []).filter((r) => r.current_status === f).length;
   // Calendar days in Jakarta, not the view's elapsed/24h (which shows yesterday evening as "hari ini").
   const now = new Date();
   const rows = ((data ?? []) as Row[]).map((r) => ({ ...r, days: calendarDaysAgo(r.last_movement_at, now) }));
@@ -55,21 +59,17 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
         )}
       </p>
 
-      <nav className="mt-6 flex flex-wrap gap-1 rounded-md bg-surface-muted p-1" aria-label="Filter status">
+      <TabList label="Filter status" className="mt-6">
         {FILTERS.map((f) => (
-          <Link
+          <TabLink
             key={f}
             href={f === 'semua' ? '/wip' : `/wip?status=${f}`}
-            aria-current={status === f ? 'page' : undefined}
-            className={cn(
-              'inline-flex h-10 items-center rounded-md px-3 text-small font-medium',
-              status === f ? 'border border-border bg-surface text-text' : 'text-text-muted hover:text-text',
-            )}
-          >
-            {f === 'semua' ? 'Semua' : STATUS_LABEL[f]}
-          </Link>
+            active={status === f}
+            label={f === 'semua' ? 'Semua' : STATUS_LABEL[f]}
+            count={countOf(f)}
+          />
         ))}
-      </nav>
+      </TabList>
 
       {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
 
@@ -95,7 +95,7 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
                 return (
                   <tr key={r.bundle_id} className={cn('hover:bg-surface-muted max-md:grid max-md:grid-cols-2 max-md:gap-1 max-md:px-5 max-md:py-3', isStale && 'border-l-[3px] border-l-warning')}>
                     <td className="px-5 py-3 max-md:p-0">
-                      <Link href={`/bundle/${r.bundle_id}`} className="num font-medium text-primary hover:underline">
+                      <Link href={`/bundle/${r.bundle_id}`} className="num link-code">
                         {r.code}
                       </Link>
                       <p className="num text-small text-text-muted">{r.batch_code}</p>

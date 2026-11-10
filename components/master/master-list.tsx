@@ -58,7 +58,6 @@ export function MasterList({
     <>
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className="text-small text-text-muted">Master data</p>
         <h1 className="text-h1">{title}</h1>
         {description && <p className="mt-1 text-text-muted">{description}</p>}
       </div>

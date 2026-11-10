@@ -83,31 +83,48 @@ function isActive(path: string, href: string) {
   return href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
 }
 
-const itemClass = (active: boolean) =>
-  cn(
-    'flex h-10 w-full items-center gap-3 rounded-md px-3 text-left',
-    active ? 'bg-primary-soft font-medium text-primary' : 'text-text-muted hover:bg-surface-muted hover:text-text',
-  );
+/** `dark` = desktop sidebar on --sidebar; `light` = mobile menu panel on --surface. */
+type Tone = 'dark' | 'light';
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+const TONES = {
+  dark: {
+    active: 'bg-sidebar-accent font-medium text-sidebar-accent-foreground',
+    idle: 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground',
+    inside: 'text-sidebar-foreground',
+    label: 'text-sidebar-subtle',
+    rail: 'border-sidebar-border',
+  },
+  light: {
+    active: 'bg-primary-soft font-medium text-primary',
+    idle: 'text-text-muted hover:bg-surface-muted hover:text-text',
+    inside: 'text-text',
+    label: 'text-text-subtle',
+    rail: 'border-border',
+  },
+} as const;
+
+const itemClass = (active: boolean, tone: Tone) =>
+  cn('flex h-10 w-full items-center gap-3 rounded-md px-3 text-left', active ? TONES[tone].active : TONES[tone].idle);
+
+export function SidebarNav({ onNavigate, tone = 'light' }: { onNavigate?: () => void; tone?: Tone }) {
   const path = usePathname();
 
   return (
     <nav aria-label="Menu utama" className="flex flex-col gap-5">
       {GROUPS.map((g) => (
         <div key={g.label}>
-          <p className="px-3 pb-1.5 text-caption tracking-[0.02em] text-text-subtle">{g.label}</p>
+          <p className={cn('px-3 pb-1.5 text-caption tracking-[0.02em]', TONES[tone].label)}>{g.label}</p>
           <ul className="flex flex-col gap-0.5">
             {g.items.map((item) =>
               'children' in item ? (
-                <SubMenu key={item.label} sub={item} path={path} onNavigate={onNavigate} />
+                <SubMenu key={item.label} sub={item} path={path} tone={tone} onNavigate={onNavigate} />
               ) : (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     onClick={onNavigate}
                     aria-current={isActive(path, item.href) ? 'page' : undefined}
-                    className={itemClass(isActive(path, item.href))}
+                    className={itemClass(isActive(path, item.href), tone)}
                   >
                     <item.icon size={20} strokeWidth={1.5} aria-hidden />
                     {item.label}
@@ -122,7 +139,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function SubMenu({ sub, path, onNavigate }: { sub: Sub; path: string; onNavigate?: () => void }) {
+function SubMenu({ sub, path, tone, onNavigate }: { sub: Sub; path: string; tone: Tone; onNavigate?: () => void }) {
   const inside = isActive(path, sub.base);
   const [open, setOpen] = useState(inside);
   // open automatically when navigating into the section
@@ -138,7 +155,7 @@ function SubMenu({ sub, path, onNavigate }: { sub: Sub; path: string; onNavigate
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls={id}
-        className={cn(itemClass(false), inside && 'text-text')}
+        className={cn(itemClass(false, tone), inside && TONES[tone].inside)}
       >
         <sub.icon size={20} strokeWidth={1.5} aria-hidden />
         <span className="flex-1">{sub.label}</span>
@@ -150,14 +167,14 @@ function SubMenu({ sub, path, onNavigate }: { sub: Sub; path: string; onNavigate
         />
       </button>
       {open && (
-        <ul id={id} className="mt-0.5 ml-[21px] flex flex-col gap-0.5 border-l border-border pl-3">
+        <ul id={id} className={cn('mt-0.5 ml-[21px] flex flex-col gap-0.5 border-l pl-3', TONES[tone].rail)}>
           {sub.children.map((c) => (
             <li key={c.href}>
               <Link
                 href={c.href}
                 onClick={onNavigate}
                 aria-current={(c.exact ? path === c.href : isActive(path, c.href)) ? 'page' : undefined}
-                className={cn(itemClass(c.exact ? path === c.href : isActive(path, c.href)), 'h-9 px-3 text-small')}
+                className={cn(itemClass(c.exact ? path === c.href : isActive(path, c.href), tone), 'h-9 px-3 text-small')}
               >
                 {c.label}
               </Link>

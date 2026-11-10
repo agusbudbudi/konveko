@@ -57,7 +57,6 @@ export default async function StockPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-small text-text-muted">Stok</p>
           <h1 className="text-h1">Per variant</h1>
           <p className="mt-1 text-text-muted">Barang jadi per variant dan per rak. Reject dihitung terpisah.</p>
         </div>

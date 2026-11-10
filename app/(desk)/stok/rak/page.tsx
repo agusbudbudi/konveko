@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ChevronRight, Printer } from 'lucide-react';
+import { ChevronRight, PackageOpen, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/status-badge';
 import { loadStock } from '@/lib/stock';
 import { createClient } from '@/lib/supabase/server';
@@ -34,7 +34,6 @@ export default async function StockByRackPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-small text-text-muted">Stok</p>
           <h1 className="text-h1">Per rak</h1>
           <p className="mt-1 text-text-muted">
             <span className="num">{total}</span> pcs di <span className="num">{byRack.size}</span> rak
@@ -50,15 +49,34 @@ export default async function StockByRackPage() {
         )}
       </div>
 
+      {/* Pieces finished but not on a rack yet: the gudang's to-do, so it goes first and stands out. */}
+      {notShelved > 0 && (
+        <Link
+          href="/label?tab=dicetak"
+          className="mt-6 flex items-center gap-3 rounded-md border-l-[3px] border-l-warning bg-warning-soft px-4 py-3 text-warning hover:bg-[color-mix(in_srgb,var(--warning-soft),var(--warning)_8%)]"
+        >
+          <PackageOpen size={20} strokeWidth={1.5} aria-hidden className="shrink-0" />
+          <span className="min-w-0 flex-1">
+            <span className="font-medium">
+              <span className="num">{notShelved}</span> pcs sudah jadi tapi belum masuk rak.
+            </span>{' '}
+            <span className="text-text">Cetak labelnya, lalu scan masuk rak.</span>
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1 text-small font-medium">
+            Lihat <ChevronRight size={16} strokeWidth={1.5} aria-hidden />
+          </span>
+        </Link>
+      )}
+
       {shown.length === 0 ? (
-        <p className="mt-6 rounded-lg border border-border bg-surface px-5 py-4 text-text-muted">
+        <p className="mt-4 rounded-lg border border-border bg-surface px-5 py-4 text-text-muted">
           Belum ada rak.{' '}
           <Link href="/master/rak" className="font-medium text-primary underline">
             Tambah rak di master data
           </Link>
         </p>
       ) : (
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {shown.map((rack) => {
             const e = byRack.get(rack.id);
             const top = e ? [...e.variants.values()].sort((a, b) => b.qty - a.qty) : [];
@@ -104,17 +122,6 @@ export default async function StockByRackPage() {
         </ul>
       )}
 
-      {notShelved > 0 && (
-        <Link
-          href="/label?tab=dicetak"
-          className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-dashed border-border-strong bg-surface px-5 py-4 hover:border-text-subtle"
-        >
-          <span>
-            <span className="num font-medium text-warning">{notShelved} pcs</span> sudah jadi tapi belum masuk rak
-          </span>
-          <ChevronRight size={16} strokeWidth={1.5} aria-hidden className="text-text-subtle" />
-        </Link>
-      )}
     </>
   );
 }

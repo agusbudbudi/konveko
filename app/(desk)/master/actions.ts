@@ -2,7 +2,7 @@
 
 import { refresh } from 'next/cache';
 import { createClient, createServiceClient, getCurrentAppUser, type Role } from '@/lib/supabase/server';
-import { dbError, done, fail, str, UUID, type FormState } from '@/lib/master';
+import { canonicalProductName, dbError, done, fail, str, UUID, type FormState } from '@/lib/master';
 import { normalizePhone, pinEmail } from '@/lib/phone';
 
 // All master writes go through the signed-in user's client, so RLS
@@ -28,11 +28,14 @@ const idOf = (fd: FormData) => {
 
 export async function saveVariant(_: FormState, fd: FormData): Promise<FormState> {
   const sku = str(fd, 'sku', 40).toUpperCase();
-  const product_name = str(fd, 'product_name');
+  const rawName = str(fd, 'product_name');
   const size = str(fd, 'size', 20);
   const color = str(fd, 'color', 40);
-  if (!sku || !product_name || !size || !color) return fail('Isi SKU, nama produk, ukuran, dan warna.');
+  if (!sku || !rawName || !size || !color) return fail('Isi SKU, nama produk, ukuran, dan warna.');
   if (!/^[A-Z0-9][A-Z0-9-]*$/.test(sku)) return fail('SKU hanya huruf, angka, dan tanda minus.');
+  const supabase = await createClient();
+  const { data: names } = await supabase.from('product_variant').select('product_name');
+  const product_name = canonicalProductName(rawName, [...new Set((names ?? []).map((n) => n.product_name as string))]);
   return upsert('product_variant', idOf(fd), { sku, product_name, size, color }, 'SKU');
 }
 

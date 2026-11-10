@@ -126,7 +126,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
           <dl className="divide-y divide-border border-t border-border">
             <Row label="Lokasi sekarang">
               {p.location ? (
-                <Link href={`/stok/rak/${p.location.code}`} className="num font-medium text-primary hover:underline">
+                <Link href={`/stok/rak/${p.location.code}`} className="num link-code">
                   Rak {p.location.code}
                 </Link>
               ) : p.status === 'batal' ? (
@@ -146,7 +146,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
             </Row>
             <Row label="Batch">
               {p.batch ? (
-                <Link href={`/batch/${p.batch.id}`} className="num text-primary hover:underline">
+                <Link href={`/batch/${p.batch.id}`} className="num link-code">
                   {p.batch.code}
                 </Link>
               ) : (
@@ -154,7 +154,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
               )}
             </Row>
             <Row label="Bundle">
-              <Link href={`/bundle/${p.bundle_id}`} className="num text-primary hover:underline">
+              <Link href={`/bundle/${p.bundle_id}`} className="num link-code">
                 {p.bundle?.code}
               </Link>
             </Row>

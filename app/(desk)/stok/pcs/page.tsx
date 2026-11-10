@@ -136,6 +136,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
         <div className="w-full sm:w-48">
           <Combobox
             name="produk"
+            searchable
             aria-label="Produk"
             defaultValue={produk}
             options={[{ value: '', label: 'Semua produk' }, ...products.map((p) => ({ value: p, label: p }))]}
@@ -144,6 +145,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
         <div className="w-full sm:w-40">
           <Combobox
             name="rak"
+            searchable
             aria-label="Rak"
             defaultValue={rak}
             options={[{ value: '', label: 'Semua rak' }, ...racks.map((r) => ({ value: r.code, label: `Rak ${r.code}` }))]}

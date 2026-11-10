@@ -48,10 +48,10 @@ export default async function LacakPage({ searchParams }: { searchParams: Promis
           className="pointer-events-none absolute inset-0 -z-10"
           style={{
             background:
-              'radial-gradient(55% 100% at 10% 0%, color-mix(in srgb, var(--primary) 26%, transparent) 0%, transparent 70%),' +
-              'radial-gradient(45% 90% at 90% 0%, color-mix(in srgb, var(--info) 22%, transparent) 0%, transparent 70%),' +
-              'radial-gradient(40% 60% at 55% 10%, color-mix(in srgb, var(--highlight) 8%, transparent) 0%, transparent 70%),' +
-              'linear-gradient(to bottom, var(--primary-soft) 0%, var(--background) 100%)',
+              'radial-gradient(60% 100% at 10% 0%, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 75%),' +
+              'radial-gradient(50% 90% at 90% 0%, color-mix(in srgb, var(--info) 10%, transparent) 0%, transparent 75%),' +
+              'radial-gradient(40% 60% at 55% 10%, color-mix(in srgb, var(--highlight) 4%, transparent) 0%, transparent 75%),' +
+              'linear-gradient(to bottom, color-mix(in srgb, var(--primary-soft) 55%, var(--background)) 0%, var(--background) 100%)',
           }}
         />
         <div className="mx-auto max-w-3xl text-center">

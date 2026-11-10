@@ -29,6 +29,16 @@ export type Report = {
   selisih_reasons: { label: string; step: string; qty: number }[];
 };
 
+/** Fase 2b: goods that left the warehouse in the range (app.outbound_report). */
+export type OutboundReport = {
+  from: string;
+  to: string;
+  totals: { docs: number; pcs: number; bs: number; returned: number; returned_rusak: number; adjusted: number; adjust_docs: number };
+  by_type: { type: string; docs: number; pcs: number }[];
+  destinations: { destination: string; docs: number; pcs: number; returned: number }[];
+  variants: { variant_id: string; sku: string; product_name: string; size: string; color: string; pcs: number; bs: number; returned: number; adjusted: number }[];
+};
+
 export type Mode = 'week' | 'month' | 'custom';
 export type Period = {
   mode: Mode;
@@ -321,10 +331,25 @@ export function toCsv(rows: (string | number | null)[][]) {
   return '﻿' + rows.map((r) => r.map(cell).join(';')).join('\r\n') + '\r\n';
 }
 
-export const CSV_TABLES = ['harian', 'penjahit', 'variant', 'alasan'] as const;
+export const CSV_TABLES = ['harian', 'penjahit', 'variant', 'alasan', 'keluar_tujuan', 'keluar_variant'] as const;
 export type CsvTable = (typeof CSV_TABLES)[number];
 
-export function reportCsv(r: Report, table: CsvTable): string {
+export const isOutboundTable = (t: CsvTable): t is 'keluar_tujuan' | 'keluar_variant' => t.startsWith('keluar_');
+
+export function outboundCsv(o: OutboundReport, table: 'keluar_tujuan' | 'keluar_variant'): string {
+  if (table === 'keluar_tujuan') {
+    return toCsv([
+      ['Tujuan', 'Dokumen', 'Dikirim (pcs)', 'Retur (pcs)'],
+      ...o.destinations.map((d) => [d.destination, d.docs, d.pcs, d.returned]),
+    ]);
+  }
+  return toCsv([
+    ['SKU', 'Produk', 'Ukuran', 'Warna', 'Dikirim (pcs)', 'Jual BS (pcs)', 'Retur (pcs)', 'Penyesuaian (pcs)'],
+    ...o.variants.map((v) => [v.sku, v.product_name, v.size, v.color, v.pcs, v.bs, v.returned, v.adjusted]),
+  ]);
+}
+
+export function reportCsv(r: Report, table: Exclude<CsvTable, 'keluar_tujuan' | 'keluar_variant'>): string {
   switch (table) {
     case 'harian':
       return toCsv([

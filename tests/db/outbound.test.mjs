@@ -245,3 +245,41 @@ describe('corrections and shipped pieces', () => {
     await assertInvariants();
   });
 });
+
+describe('outbound report', () => {
+  it('counts shipped, BS, returns and write-offs in the range', async () => {
+    const m = await stocked('kemejaM', 4, 1); // 3 good, 1 reject
+    const sale = await newDoc(ids.gudang, 'jual', { destination: 'Toko A' });
+    await rpc(db, ids.gudang, 'outbound_add', { p_outbound_id: sale.id, p_code: m });
+    await rpc(db, ids.gudang, 'outbound_ship', { p_outbound_id: sale.id });
+    const bs = await newDoc(ids.gudang, 'jual_bs', { destination: 'Pengepul' });
+    await rpc(db, ids.gudang, 'outbound_add', { p_outbound_id: bs.id, p_code: m });
+    await rpc(db, ids.gudang, 'outbound_ship', { p_outbound_id: bs.id });
+    const [first] = (await pieces(m)).filter((p) => p.grade === 'baik');
+    await rpc(db, ids.gudang, 'piece_return', { p_code: first.code, p_condition: 'rusak', p_note: 'Sobek' });
+
+    const l = await stocked('kemejaL', 2);
+    const adj = await newDoc(ids.spv, 'penyesuaian', { destination: 'Penyesuaian stok', note: 'Hilang' });
+    await rpc(db, ids.spv, 'outbound_add', { p_outbound_id: adj.id, p_code: l });
+    await rpc(db, ids.spv, 'outbound_ship', { p_outbound_id: adj.id });
+
+    await actAs(db, null);
+    const today = (await one(db, `select (now() at time zone 'Asia/Jakarta')::date::text as d`)).d;
+    await rejects(rpc(db, ids.ani, 'outbound_report', { p_from: today, p_to: today }), 'forbidden_role');
+    const r = await rpc(db, ids.gudang, 'outbound_report', { p_from: today, p_to: today });
+    assert.deepEqual(r.totals, { docs: 2, pcs: 4, bs: 1, returned: 1, returned_rusak: 1, adjusted: 2, adjust_docs: 1 });
+    assert.deepEqual(
+      r.destinations.map((d) => [d.destination, d.pcs, d.returned]),
+      [['Toko A', 3, 1], ['Pengepul', 1, 0]],
+    );
+    const vm = r.variants.find((v) => v.sku === 'KMJ-PTH-M');
+    assert.deepEqual([vm.pcs, vm.bs, vm.returned, vm.adjusted], [4, 1, 1, 0]);
+    const vl = r.variants.find((v) => v.sku === 'KMJ-PTH-L');
+    assert.deepEqual([vl.pcs, vl.adjusted], [0, 2]);
+
+    // another day: nothing
+    const empty = await rpc(db, ids.gudang, 'outbound_report', { p_from: '2020-01-01', p_to: '2020-01-31' });
+    assert.equal(empty.totals.pcs, 0);
+    assert.deepEqual(empty.variants, []);
+  });
+});

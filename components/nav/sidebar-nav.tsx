@@ -84,6 +84,20 @@ function isActive(path: string, href: string) {
   return href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
 }
 
+/**
+ * Detail pages that have no menu item of their own light up the menu they belong to,
+ * so one item is always active: a bundle sits under Batch, a pcs under Stok > Per pcs.
+ */
+const MENU_ALIASES: [prefix: string, menuHref: string][] = [
+  ['/bundle', '/batch'],
+  ['/pcs', '/stok/pcs'],
+];
+
+function menuPath(path: string) {
+  const hit = MENU_ALIASES.find(([prefix]) => isActive(path, prefix));
+  return hit ? hit[1] : path;
+}
+
 /** `dark` = desktop sidebar on --sidebar; `light` = mobile menu panel on --surface. */
 type Tone = 'dark' | 'light';
 
@@ -108,7 +122,7 @@ const itemClass = (active: boolean, tone: Tone) =>
   cn('flex h-10 w-full items-center gap-3 rounded-md px-3 text-left', active ? TONES[tone].active : TONES[tone].idle);
 
 export function SidebarNav({ onNavigate, tone = 'light' }: { onNavigate?: () => void; tone?: Tone }) {
-  const path = usePathname();
+  const path = menuPath(usePathname());
 
   return (
     <nav aria-label="Menu utama" className="flex flex-col gap-5">

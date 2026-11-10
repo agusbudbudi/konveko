@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/server';
 export const metadata: Metadata = { title: 'Stok per pcs' };
 
 const PAGE_SIZES = [10, 50, 100] as const;
-const DEFAULT_SIZE = 50;
+const DEFAULT_SIZE = 10;
 /** Matches nothing: a filter value that does not exist (unknown product or rack) must give an empty list. */
 const NONE = '00000000-0000-0000-0000-000000000000';
 

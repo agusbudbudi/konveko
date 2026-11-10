@@ -97,7 +97,10 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <SetCrumb root items={[{ label: 'Gudang' }, { label: 'Stok', href: '/stok' }, { label: p.code }]} />
+          <SetCrumb
+            root
+            items={[{ label: 'Gudang' }, { label: 'Stok', href: '/stok' }, { label: 'Per pcs', href: '/stok/pcs' }, { label: p.code }]}
+          />
           <Link href="/stok" className="text-small text-text-muted hover:text-text lg:hidden">
             Stok
           </Link>

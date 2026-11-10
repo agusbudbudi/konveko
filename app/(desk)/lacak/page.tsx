@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Boxes, ChevronRight, CircleAlert, Layers, Package, Scroll, Shirt, Tag, Users, Warehouse, Zap, type LucideIcon } from 'lucide-react';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
@@ -38,6 +39,14 @@ export default async function LacakPage({ searchParams }: { searchParams: Promis
   const shortcuts = extra.shortcuts;
   const found = groups.reduce((n, g) => n + g.total, 0) + shortcuts.length;
 
+  // A scanned label (camera or handheld scanner) is a QR token: open its page straight away.
+  // Typed text never redirects, so the page does not jump away mid-typing.
+  const scanned = QR_TOKEN.test(q.toLowerCase());
+  if (scanned && found === 1) {
+    const hit = groups.find((g) => g.total === 1)?.hits[0];
+    if (hit) redirect(hit.href);
+  }
+
   return (
     <>
       {/* Hero with a soft brand-teal wash (the one gradient in the app, DESIGN §11): bleeds to the
@@ -65,6 +74,10 @@ export default async function LacakPage({ searchParams }: { searchParams: Promis
 
       {q.length < MIN_LENGTH ? (
         <Hints short={q.length > 0} />
+      ) : found === 0 && scanned ? (
+        <p className="mx-auto mt-2 max-w-3xl rounded-lg border border-border bg-surface px-5 py-4 text-text-muted">
+          Label ini tidak dikenal. Pastikan yang di-scan label pcs, bundle, atau rak dari Konveko.
+        </p>
       ) : found === 0 ? (
         <p className="mt-6 rounded-lg border border-border bg-surface px-5 py-4 text-text-muted">
           Tidak ada yang cocok dengan <span className="num font-medium text-text">{q}</span>. Coba kode lain atau sebagian saja, misal{' '}

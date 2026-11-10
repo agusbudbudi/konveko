@@ -50,7 +50,16 @@ async function createDecoder(): Promise<Decoder> {
   };
 }
 
-export function CameraScanner({ onDetected, paused }: { onDetected: (code: string) => void; paused: boolean }) {
+export function CameraScanner({
+  onDetected,
+  paused,
+  fallback = 'Ketik kode bundle di bawah.',
+}: {
+  onDetected: (code: string) => void;
+  paused: boolean;
+  /** What to do instead when the camera cannot be used (shown after the error). */
+  fallback?: string;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const onDetectedRef = useRef(onDetected);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +76,7 @@ export function CameraScanner({ onDetected, paused }: { onDetected: (code: strin
 
     (async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setError('Kamera tidak tersedia di perangkat ini. Ketik kode bundle di bawah.');
+        setError(`Kamera tidak tersedia di perangkat ini. ${fallback}`);
         return;
       }
       try {
@@ -79,8 +88,8 @@ export function CameraScanner({ onDetected, paused }: { onDetected: (code: strin
         const denied = e instanceof DOMException && e.name === 'NotAllowedError';
         setError(
           denied
-            ? 'Izin kamera ditolak. Izinkan kamera di pengaturan browser, atau ketik kode bundle di bawah.'
-            : 'Kamera tidak bisa dibuka. Ketik kode bundle di bawah.',
+            ? `Izin kamera ditolak. Izinkan kamera di pengaturan browser. ${fallback}`
+            : `Kamera tidak bisa dibuka. ${fallback}`,
         );
         return;
       }
@@ -113,7 +122,7 @@ export function CameraScanner({ onDetected, paused }: { onDetected: (code: strin
       if (timer) clearTimeout(timer);
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [paused]);
+  }, [paused, fallback]);
 
   return (
     <div className="relative aspect-[4/5] max-h-[60dvh] w-full overflow-hidden rounded-xl border border-border bg-surface-muted">

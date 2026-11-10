@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/status-badge';
 import { createClient } from '@/lib/supabase/server';
+import { SetCrumb } from '@/components/nav/sidebar-nav';
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   return { title: `Rak ${decodeURIComponent((await params).code).toUpperCase()}` };
@@ -32,7 +33,8 @@ export default async function RackDetailPage({ params }: { params: Promise<{ cod
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link href="/stok/rak" className="text-small text-text-muted hover:text-text">
+          <SetCrumb items={[{ label: `Rak ${rack.code}` }]} />
+          <Link href="/stok/rak" className="text-small text-text-muted hover:text-text lg:hidden">
             Stok · Per rak
           </Link>
           <h1 className="flex items-center gap-3 text-h1">

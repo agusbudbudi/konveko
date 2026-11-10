@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -193,5 +193,92 @@ export function MobileNav() {
         </div>
       )}
     </>
+  );
+}
+
+/* ---------- Breadcrumb ---------- */
+
+export type CrumbItem = { label: string; href?: string };
+type CrumbExtra = { items: CrumbItem[]; root: boolean } | null;
+
+const CrumbContext = createContext<{ extra: CrumbExtra; setExtra: (e: CrumbExtra) => void } | null>(null);
+
+/** Wraps the desk layout so pages can add their own items (a batch code, a rack) to the header breadcrumb. */
+export function CrumbProvider({ children }: { children: React.ReactNode }) {
+  const [extra, setExtra] = useState<CrumbExtra>(null);
+  return <CrumbContext.Provider value={{ extra, setExtra }}>{children}</CrumbContext.Provider>;
+}
+
+/**
+ * Rendered by a page to extend the breadcrumb. `items` are appended after the menu trail;
+ * with `root` they replace it, for pages outside the menu such as /bundle/[id].
+ */
+export function SetCrumb({ items, root = false }: { items: CrumbItem[]; root?: boolean }) {
+  const setExtra = useContext(CrumbContext)?.setExtra;
+  const key = JSON.stringify([items, root]);
+  useEffect(() => {
+    if (!setExtra) return;
+    // keyed on the serialized value, so a new array literal on every render does not loop
+    const [nextItems, nextRoot] = JSON.parse(key) as [CrumbItem[], boolean];
+    setExtra({ items: nextItems, root: nextRoot });
+    return () => setExtra(null);
+  }, [key, setExtra]);
+  return null;
+}
+
+/** Menu trail for the current path: group (no page of its own) > item > sub item. */
+function menuTrail(path: string): CrumbItem[] {
+  for (const g of GROUPS) {
+    for (const item of g.items) {
+      if ('children' in item) {
+        if (!isActive(path, item.base)) continue;
+        const child = item.children.find((c) => (c.exact ? path === c.href : isActive(path, c.href)));
+        return [
+          { label: g.label },
+          { label: item.label, href: item.children[0]!.href },
+          ...(child ? [{ label: child.label, href: child.href }] : []),
+        ];
+      }
+      if (isActive(path, item.href)) return [{ label: g.label }, { label: item.label, href: item.href }];
+    }
+  }
+  return [];
+}
+
+/** Header breadcrumb, e.g. "Produksi / Batch / BT-0001". Items with a page are links, except the last. */
+export function PageCrumb() {
+  const path = usePathname();
+  const extra = useContext(CrumbContext)?.extra;
+  const trail = extra?.root ? extra.items : [...menuTrail(path), ...(extra?.items ?? [])];
+  if (trail.length === 0) return null;
+
+  return (
+    <nav aria-label="Breadcrumb" className="min-w-0">
+      <ol className="flex min-w-0 items-center gap-2 text-small text-text-muted">
+        {trail.map((t, i) => {
+          const last = i === trail.length - 1;
+          return (
+            <li key={`${i}-${t.label}`} className="flex min-w-0 items-center gap-2">
+              {i > 0 && (
+                <span aria-hidden className="text-text-subtle">
+                  /
+                </span>
+              )}
+              {last ? (
+                <span aria-current="page" className="truncate font-medium text-text">
+                  {t.label}
+                </span>
+              ) : t.href ? (
+                <Link href={t.href} className="truncate hover:text-text hover:underline">
+                  {t.label}
+                </Link>
+              ) : (
+                <span className="truncate">{t.label}</span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }

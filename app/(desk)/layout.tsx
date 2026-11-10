@@ -1,9 +1,7 @@
 import { redirect } from 'next/navigation';
-import { LogOut } from 'lucide-react';
-import { logout } from '@/app/actions/auth';
 import { Wordmark } from '@/components/brand/wordmark';
-import { Avatar } from '@/components/ui/avatar';
-import { MobileNav, SidebarNav } from '@/components/nav/sidebar-nav';
+import { CrumbProvider, MobileNav, PageCrumb, SidebarNav } from '@/components/nav/sidebar-nav';
+import { UserMenu } from '@/components/nav/user-menu';
 import { getCurrentAppUser } from '@/lib/supabase/server';
 
 export default async function DeskLayout({ children }: { children: React.ReactNode }) {
@@ -11,35 +9,38 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
   if (!user) redirect('/login');
 
   return (
-    <div className="flex min-h-dvh">
-      {/* Logo and user block stay put; only the menu scrolls when it is taller than the screen. */}
-      <aside className="sticky top-0 hidden h-dvh w-52 shrink-0 flex-col border-r border-border bg-surface lg:flex">
-        <div className="shrink-0 px-6 pt-5 pb-6">
-          <Wordmark size="lg" />
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6">
-          <SidebarNav />
-        </div>
-        <form action={logout} className="shrink-0 border-t border-border px-6 pt-4 pb-4">
-          <div className="flex items-center gap-2.5">
-            <Avatar name={user.name} />
-            <div className="min-w-0">
-              <p className="truncate text-small font-medium text-text">{user.name}</p>
-              <p className="truncate text-caption text-text-muted">{user.roles.join(', ')}</p>
-            </div>
+    <CrumbProvider>
+      <div className="flex min-h-dvh">
+        {/* Logo stays put; only the menu scrolls when it is taller than the screen. */}
+        <aside className="sticky top-0 hidden h-dvh w-52 shrink-0 flex-col border-r border-border bg-surface lg:flex">
+          <div className="shrink-0 px-6 pt-5 pb-6">
+            <Wordmark size="lg" />
           </div>
-          <button type="submit" className="mt-3 inline-flex h-10 items-center gap-2 rounded-md text-small text-text-muted hover:text-text">
-            <LogOut size={16} strokeWidth={1.5} aria-hidden /> Keluar
-          </button>
-        </form>
-      </aside>
-      <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-surface px-4 lg:hidden">
-          <Wordmark />
-          <MobileNav />
-        </header>
-        <div className="mx-auto w-full max-w-[1280px] px-4 py-4 lg:px-6 lg:py-6">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-6">
+            <SidebarNav />
+          </div>
+        </aside>
+        <div className="min-w-0 flex-1">
+          {/* Top bar on every screen size: breadcrumb on the left, profile on the right. */}
+          <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-3 border-b border-border bg-surface px-4 lg:px-6">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="lg:hidden">
+                <Wordmark />
+              </div>
+              <div className="min-w-0 max-lg:hidden">
+                <PageCrumb />
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="lg:hidden">
+                <MobileNav />
+              </div>
+              <UserMenu name={user.name} roles={user.roles} />
+            </div>
+          </header>
+          <div className="mx-auto w-full max-w-[1280px] px-4 py-4 lg:px-6 lg:py-6">{children}</div>
+        </div>
       </div>
-    </div>
+    </CrumbProvider>
   );
 }

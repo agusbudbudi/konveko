@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import { NewBatchForm } from './new-batch-form';
+import { SetCrumb } from '@/components/nav/sidebar-nav';
 
 export const metadata: Metadata = { title: 'Batch baru' };
 
@@ -17,7 +18,8 @@ export default async function NewBatchPage() {
 
   return (
     <div className="max-w-3xl">
-      <Link href="/batch" className="inline-flex h-10 items-center gap-2 text-small text-text-muted hover:text-text">
+      <SetCrumb items={[{ label: 'Batch baru' }]} />
+      <Link href="/batch" className="inline-flex h-10 items-center gap-2 text-small text-text-muted hover:text-text lg:hidden">
         <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Batch
       </Link>
       <h1 className="mt-2 text-h1">Batch baru</h1>

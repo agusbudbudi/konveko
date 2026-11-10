@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { compareSize, loadStock, totals } from '@/lib/stock';
 import { createClient } from '@/lib/supabase/server';
+import { SetCrumb } from '@/components/nav/sidebar-nav';
 
 export async function generateMetadata({ params }: { params: Promise<{ name: string }> }): Promise<Metadata> {
   return { title: decodeURIComponent((await params).name).slice(0, 80) };
@@ -42,7 +43,8 @@ export default async function ProductStockPage({ params }: { params: Promise<{ n
 
   return (
     <>
-      <Link href="/stok/produk" className="inline-flex h-10 items-center gap-2 text-small text-text-muted hover:text-text">
+      <SetCrumb items={[{ label: name }]} />
+      <Link href="/stok/produk" className="inline-flex h-10 items-center gap-2 text-small text-text-muted hover:text-text lg:hidden">
         <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Per produk
       </Link>
       <h1 className="mt-1 text-h1">{name}</h1>

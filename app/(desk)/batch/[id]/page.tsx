@@ -8,6 +8,7 @@ import { ReconciliationBar, ReconciliationLegend, type Recon } from '@/component
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import { BATCH_STATUS, type BundleStatus } from '@/lib/types';
 import { SplitButton } from './split-button';
+import { SetCrumb } from '@/components/nav/sidebar-nav';
 
 export const metadata: Metadata = { title: 'Detail batch' };
 
@@ -68,7 +69,8 @@ export default async function BatchDetailPage({
 
   return (
     <>
-      <Link href="/batch" className="inline-flex h-10 items-center gap-2 text-small text-text-muted hover:text-text">
+      <SetCrumb items={[{ label: batch.code }]} />
+      <Link href="/batch" className="inline-flex h-10 items-center gap-2 text-small text-text-muted hover:text-text lg:hidden">
         <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Batch
       </Link>
       <div className="mt-2 flex flex-wrap items-start justify-between gap-4">

@@ -10,6 +10,7 @@ import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import type { BundleStatus, Reason } from '@/lib/types';
 import { ResolveFlag } from './resolve-flag';
 import { ScanTimeline } from './scan-timeline';
+import { SetCrumb } from '@/components/nav/sidebar-nav';
 
 export const metadata: Metadata = { title: 'Detail bundle' };
 
@@ -189,9 +190,18 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
 
   return (
     <>
+      <SetCrumb
+        root
+        items={[
+          { label: 'Produksi' },
+          { label: 'Batch', href: '/batch' },
+          ...(bundle.batch ? [{ label: bundle.batch.code, href: `/batch/${bundle.batch.id}` }] : []),
+          { label: bundle.code },
+        ]}
+      />
       <Link
         href={bundle.batch ? `/batch/${bundle.batch.id}` : '/batch'}
-        className="inline-flex h-10 items-center gap-2 text-small text-text-muted hover:text-text"
+        className="inline-flex h-10 items-center gap-2 text-small text-text-muted hover:text-text lg:hidden"
       >
         <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Batch <span className="num">{bundle.batch?.code}</span>
       </Link>

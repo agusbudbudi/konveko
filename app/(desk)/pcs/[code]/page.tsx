@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/status-badge';
 import { createClient } from '@/lib/supabase/server';
+import { SetCrumb } from '@/components/nav/sidebar-nav';
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   return { title: `Pcs ${decodeURIComponent((await params).code).toUpperCase()}` };
@@ -96,7 +97,8 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link href="/stok" className="text-small text-text-muted hover:text-text">
+          <SetCrumb root items={[{ label: 'Gudang' }, { label: 'Stok', href: '/stok' }, { label: p.code }]} />
+          <Link href="/stok" className="text-small text-text-muted hover:text-text lg:hidden">
             Stok
           </Link>
           <h1 className="flex flex-wrap items-center gap-3 text-h1">

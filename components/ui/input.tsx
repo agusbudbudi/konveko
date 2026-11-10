@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from 'react';
+import type { ComponentProps } from 'react';
 import { cn } from '@/lib/cn';
 
 const base =
@@ -6,7 +6,7 @@ const base =
   'focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary-soft ' +
   'aria-[invalid=true]:border-danger';
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ className, ...props }: ComponentProps<'input'>) {
   return <input className={cn(base, 'h-12 sm:h-10', className)} {...props} />;
 }
 

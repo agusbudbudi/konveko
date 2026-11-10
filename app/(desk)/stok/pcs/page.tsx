@@ -1,15 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Search } from 'lucide-react';
-import { Combobox } from '@/components/ui/combobox';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Pagination } from '@/components/ui/pagination';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/lib/paging';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/status-badge';
 import { TabLink, TabList } from '@/components/ui/tab-link';
 import { createClient } from '@/lib/supabase/server';
+import { PcsFilters } from './pcs-filters';
 
 export const metadata: Metadata = { title: 'Stok per pcs' };
 
@@ -122,47 +120,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
       <h1 className="text-h1">Per pcs</h1>
       <p className="mt-1 text-text-muted">Setiap pcs barang jadi, satu baris per label.</p>
 
-      {/* GET form: filters end up in the URL; changing a filter starts again at page 1 */}
-      <form action="/stok/pcs" className="mt-6 flex flex-wrap items-end gap-2">
-        {tab !== 'semua' && <input type="hidden" name="tab" value={tab} />}
-        {per !== DEFAULT_SIZE && <input type="hidden" name="per" value={per} />}
-        <div className="relative w-full sm:w-52">
-          <label htmlFor="pcs-q" className="sr-only">
-            Cari kode pcs
-          </label>
-          <Search size={16} strokeWidth={1.5} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-muted" />
-          <Input id="pcs-q" name="q" defaultValue={q} placeholder="Cari kode pcs" autoComplete="off" className="num h-10 pl-9" />
-        </div>
-        <div className="w-full sm:w-48">
-          <Combobox
-            name="produk"
-            searchable
-            aria-label="Produk"
-            defaultValue={produk}
-            options={[{ value: '', label: 'Semua produk' }, ...products.map((p) => ({ value: p, label: p }))]}
-          />
-        </div>
-        <div className="w-full sm:w-40">
-          <Combobox
-            name="rak"
-            searchable
-            aria-label="Rak"
-            defaultValue={rak}
-            options={[{ value: '', label: 'Semua rak' }, ...racks.map((r) => ({ value: r.code, label: `Rak ${r.code}` }))]}
-          />
-        </div>
-        <button
-          type="submit"
-          className="inline-flex h-10 items-center rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
-        >
-          Terapkan
-        </button>
-        {filtered && (
-          <Link href={href({ q: '', produk: '', rak: '', page: '1' })} className="inline-flex h-10 items-center px-2 text-small text-text-muted hover:text-text">
-            Hapus filter
-          </Link>
-        )}
-      </form>
+      <PcsFilters products={products} racks={racks.map((r) => r.code)} />
 
       <TabList label="Status pcs" className="mt-4">
         {TABS.map((t) => (

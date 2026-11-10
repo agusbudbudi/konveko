@@ -35,9 +35,12 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
   const batches = (data ?? []) as BatchRow[];
   const paged = slicePage(batches, query);
   if (paged.outOfRange) redirect(withQuery('/', query, { page: String(paged.pages) }));
-  const { data: unshelved } = await supabase.from('bundle_unshelved').select('baik, reject, days_waiting');
+  const { data: unshelved } = await supabase.from('bundle_unshelved').select('baik, reject, unprinted, days_waiting');
   const waiting = (unshelved ?? []).reduce((n, r) => n + r.baik, 0); // good pieces only, matches "Ready stock"
-  const late = (unshelved ?? []).filter((r) => r.days_waiting >= 1).reduce((n, r) => n + r.baik + r.reject, 0);
+  const lateRows = (unshelved ?? []).filter((r) => r.days_waiting >= 1);
+  const late = lateRows.reduce((n, r) => n + r.baik + r.reject, 0);
+  // open the label queue on the tab where these pieces are: still to print first, else printed but not shelved
+  const lateHref = lateRows.some((r) => r.unprinted > 0) ? '/label' : '/label?tab=dicetak';
 
   const totals = batches.reduce(
     (t, b) => ({
@@ -55,14 +58,14 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
   return (
     <>
       <h1 className="text-h1">Rekonsiliasi</h1>
-      <p className="mt-1 text-small text-text-muted">50 batch terakhir</p>
+      <p className="mt-1 text-small text-text-muted">Semua batch, terbaru di atas</p>
 
       {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
 
       {late > 0 && (
         <InlineAlert tone="warning" className="mt-6">
           <span className="num">{late}</span> pcs sudah jadi lebih dari sehari tapi belum masuk rak.{' '}
-          <Link href="/label" className="font-medium underline">
+          <Link href={lateHref} className="font-medium underline">
             Lihat antrian label
           </Link>
         </InlineAlert>

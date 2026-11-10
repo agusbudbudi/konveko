@@ -11,6 +11,9 @@ import { Badge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
 import { initialForm, type FormState } from '@/lib/master';
 import { createUser, resetSecret, setUserActive, updateUser } from '../actions';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { UrlPagination } from '@/components/ui/pagination';
+import { slicePage } from '@/lib/paging';
 
 export type UserRow = {
   id: string;
@@ -38,6 +41,12 @@ export function UserManager({ meId, users, holders }: { meId: string; users: Use
   const [error, setError] = useState<string | null>(null);
   const holderName = new Map(holders.map((h) => [h.id, h.name]));
   const selected = mode && mode.kind !== 'new' ? users.find((u) => u.id === mode.id) : undefined;
+  // Pagination from the URL (?page, ?per). A page past the end shows the last page.
+  const path = usePathname();
+  const query = Object.fromEntries(useSearchParams().entries());
+  let paged = slicePage(users, query);
+  const pageQuery = paged.outOfRange ? { ...query, page: String(paged.pages) } : query;
+  if (paged.outOfRange) paged = slicePage(users, pageQuery);
 
   return (
     <>
@@ -63,7 +72,7 @@ export function UserManager({ meId, users, holders }: { meId: string; users: Use
       {error && <p className="border-t border-border px-5 py-2 text-small text-danger">{error}</p>}
 
       <ul className="divide-y divide-border border-t border-border">
-        {users.map((u) => (
+        {paged.rows.map((u) => (
           <li key={u.id} className={cn('px-5 py-3', !u.is_active && 'text-text-muted')}>
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -110,6 +119,7 @@ export function UserManager({ meId, users, holders }: { meId: string; users: Use
           </li>
         ))}
       </ul>
+      <UrlPagination path={path} query={pageQuery} total={users.length} unit="user" className="border-t border-border px-5 pb-4" />
     </section>
 
     <Modal

@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { UrlPagination } from '@/components/ui/pagination';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { TabLink, TabList } from '@/components/ui/tab-link';
 import { cn } from '@/lib/cn';
+import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { calendarDaysAgo, daysAgoLabel } from '@/lib/date';
 import { createClient } from '@/lib/supabase/server';
 import { STATUS_LABEL, type BundleStatus } from '@/lib/types';
@@ -24,12 +27,14 @@ type Row = {
   last_movement_at: string;
 };
 
-export default async function WipPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
-  const { status: raw } = await searchParams;
+export default async function WipPage({ searchParams }: { searchParams: Promise<PageQuery> }) {
+  const query = await searchParams;
+  const raw = query.status;
   const status = FILTERS.includes(raw as BundleStatus) ? (raw as BundleStatus) : 'semua';
 
   const supabase = await createClient();
-  let q = supabase.from('wip_list').select('*').order('last_movement_at', { ascending: true }).limit(500);
+  // All open bundles are loaded (active WIP is bounded) so the summary line counts every row, not one page.
+  let q = supabase.from('wip_list').select('*').order('last_movement_at', { ascending: true }).limit(1000);
   if (status !== 'semua') q = q.eq('current_status', status);
   // counts per status for the tabs (status column only, cheap)
   const [{ data, error }, { data: all }] = await Promise.all([q, supabase.from('wip_list').select('current_status')]);
@@ -37,21 +42,24 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
     f === 'semua' ? (all ?? []).length : (all ?? []).filter((r) => r.current_status === f).length;
   // Calendar days in Jakarta, not the view's elapsed/24h (which shows yesterday evening as "hari ini").
   const now = new Date();
-  const rows = ((data ?? []) as Row[]).map((r) => ({ ...r, days: calendarDaysAgo(r.last_movement_at, now) }));
+  const allRows = ((data ?? []) as Row[]).map((r) => ({ ...r, days: calendarDaysAgo(r.last_movement_at, now) }));
+  const paged = slicePage(allRows, query);
+  if (paged.outOfRange) redirect(withQuery('/wip', query, { page: String(paged.pages) }));
+  const rows = paged.rows;
 
   const variantIds = [...new Set(rows.map((r) => r.variant_id))];
   const { data: vData } = variantIds.length
     ? await supabase.from('product_variant').select('id, product_name, size, color').in('id', variantIds)
     : { data: [] };
   const variants = new Map((vData ?? []).map((v) => [v.id, v]));
-  const totalQty = rows.reduce((n, r) => n + r.current_qty, 0);
-  const stale = rows.filter((r) => r.days >= STALE_DAYS).length;
+  const totalQty = allRows.reduce((n, r) => n + r.current_qty, 0);
+  const stale = allRows.filter((r) => r.days >= STALE_DAYS).length;
 
   return (
     <>
       <h1 className="text-h1">WIP</h1>
       <p className="mt-1 text-text-muted">
-        <span className="num text-text">{rows.length}</span> bundle, <span className="num text-text">{totalQty}</span> pcs belum jadi stok
+        <span className="num text-text">{allRows.length}</span> bundle, <span className="num text-text">{totalQty}</span> pcs belum jadi stok
         {stale > 0 && (
           <>
             {' '}· <span className="text-warning">{stale} tidak di-scan ≥ {STALE_DAYS} hari</span>
@@ -63,7 +71,7 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
         {FILTERS.map((f) => (
           <TabLink
             key={f}
-            href={f === 'semua' ? '/wip' : `/wip?status=${f}`}
+            href={withQuery('/wip', query, { status: f === 'semua' ? '' : f, page: '' })}
             active={status === f}
             label={f === 'semua' ? 'Semua' : STATUS_LABEL[f]}
             count={countOf(f)}
@@ -116,6 +124,7 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
           </table>
         )}
       </div>
+      <UrlPagination path="/wip" query={query} total={allRows.length} unit="bundle" />
     </>
   );
 }

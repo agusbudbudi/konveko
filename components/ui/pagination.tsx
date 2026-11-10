@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { PAGE_SIZES, pageCount, readPaging, withQuery, type PageQuery } from '@/lib/paging';
 
 /** 1 … 4 5 6 … 20: always first and last, plus the neighbours of the current page. */
 function pageItems(page: number, pages: number): (number | 'gap')[] {
@@ -122,5 +123,41 @@ function Step({ href, disabled, label, children }: { href: string; disabled: boo
     <Link href={href} aria-label={label} className={cn(box, 'border-border bg-surface text-text hover:border-border-strong')}>
       {children}
     </Link>
+  );
+}
+
+/**
+ * Pagination for a page whose state lives in the URL: builds every link from `path` and the
+ * current query, so filters and tabs are kept. Props are plain data, so it also works inside
+ * client components. Renders nothing for an empty list.
+ */
+export function UrlPagination({
+  path,
+  query,
+  total,
+  unit,
+  className,
+}: {
+  path: string;
+  query: PageQuery;
+  total: number;
+  unit: string;
+  className?: string;
+}) {
+  if (total === 0) return null;
+  const { page, per } = readPaging(query);
+  return (
+    <div className={className}>
+      <Pagination
+        page={page}
+        pages={pageCount(total, per)}
+        total={total}
+        size={per}
+        sizes={PAGE_SIZES}
+        unit={unit}
+        hrefFor={(n) => withQuery(path, query, { page: String(n) })}
+        hrefSize={(n) => withQuery(path, query, { per: String(n), page: '1' })}
+      />
+    </div>
   );
 }

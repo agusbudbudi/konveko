@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Printer } from 'lucide-react';
+import { UrlPagination } from '@/components/ui/pagination';
 import { Badge } from '@/components/ui/status-badge';
+import { pageCount, readPaging, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
 import { SetCrumb } from '@/components/nav/sidebar-nav';
 
@@ -10,8 +12,17 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
   return { title: `Rak ${decodeURIComponent((await params).code).toUpperCase()}` };
 }
 
-export default async function RackDetailPage({ params }: { params: Promise<{ code: string }> }) {
+export default async function RackDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ code: string }>;
+  searchParams: Promise<PageQuery>;
+}) {
   const code = decodeURIComponent((await params).code).toUpperCase().slice(0, 8);
+  const query = await searchParams;
+  const { from, to, page, per } = readPaging(query);
+  const path = `/stok/rak/${encodeURIComponent(code)}`;
   const supabase = await createClient();
   const { data: rack } = await supabase.from('location').select('*').eq('code', code).maybeSingle();
   if (!rack) notFound();
@@ -24,9 +35,12 @@ export default async function RackDetailPage({ params }: { params: Promise<{ cod
       .eq('location_id', rack.id)
       .eq('status', 'aktif')
       .order('code', { ascending: false })
-      .limit(200),
+      .range(from, to),
   ]);
   const total = (stock ?? []).reduce((s, r) => s + r.qty, 0);
+  // = active pieces on this rack; known even when ?page is past the end (that range query errors)
+  const pieceTotal = total;
+  if (page > pageCount(pieceTotal, per)) redirect(withQuery(path, query, { page: String(pageCount(pieceTotal, per)) }));
   const list = (pieces ?? []) as unknown as { id: string; code: string; grade: string; bundle: { code: string } | null; variant: { sku: string } | null }[];
 
   return (
@@ -78,7 +92,7 @@ export default async function RackDetailPage({ params }: { params: Promise<{ cod
       {list.length > 0 && (
         <section className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
           <h2 className="px-5 py-3 text-h3">
-            Pcs <span className="text-small font-normal text-text-muted">{list.length === 200 ? '200 terbaru' : ''}</span>
+            Pcs <span className="num text-small font-normal text-text-muted">{pieceTotal}</span>
           </h2>
           <ul className="grid gap-x-6 border-t border-border px-5 py-3 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((p) => (
@@ -91,6 +105,7 @@ export default async function RackDetailPage({ params }: { params: Promise<{ cod
               </li>
             ))}
           </ul>
+          <UrlPagination path={path} query={query} total={pieceTotal} unit="pcs" className="border-t border-border px-5 pb-4" />
         </section>
       )}
     </>

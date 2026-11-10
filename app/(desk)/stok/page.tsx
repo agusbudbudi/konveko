@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { UrlPagination } from '@/components/ui/pagination';
+import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Stok' };
@@ -27,7 +30,8 @@ type VariantStock = {
   racks: Map<string, number>;
 };
 
-export default async function StockPage() {
+export default async function StockPage({ searchParams }: { searchParams: Promise<PageQuery> }) {
+  const query = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from('stock_location').select('*');
   const rows = (data ?? []) as Loc[];
@@ -47,6 +51,9 @@ export default async function StockPage() {
     if (r.location_code) v.racks.set(r.location_code, (v.racks.get(r.location_code) ?? 0) + r.qty);
   }
   const variants = [...byVariant.values()].sort((a, b) => a.sku.localeCompare(b.sku));
+  // totals use every variant; the table shows one page
+  const paged = slicePage(variants, query);
+  if (paged.outOfRange) redirect(withQuery('/stok', query, { page: String(paged.pages) }));
   const total = variants.reduce((t, v) => ({ baik: t.baik + v.baik, belum: t.belum + v.belumRak, reject: t.reject + v.reject }), {
     baik: 0,
     belum: 0,
@@ -92,7 +99,7 @@ export default async function StockPage() {
           <p className="px-5 py-4 text-text-muted">Belum ada barang jadi.</p>
         ) : (
           <ul className="divide-y divide-border border-t border-border md:border-t-0">
-            {variants.map((v) => (
+            {paged.rows.map((v) => (
               <li
                 key={v.id}
                 className="grid gap-x-4 gap-y-1 px-5 py-3 md:grid-cols-[minmax(0,2fr)_repeat(3,90px)_minmax(0,2fr)] md:items-center"
@@ -132,6 +139,7 @@ export default async function StockPage() {
           </ul>
         )}
       </section>
+      <UrlPagination path="/stok" query={query} total={variants.length} unit="variant" />
     </>
   );
 }

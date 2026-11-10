@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import { ReconciliationBar, ReconciliationLegend, type Recon } from '@/components/recon/reconciliation-bar';
+import { UrlPagination } from '@/components/ui/pagination';
+import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Rekonsiliasi' };
@@ -20,14 +23,18 @@ type BatchRow = Recon & {
 const batchTone = { draft: 'neutral', berjalan: 'info', selesai: 'success' } as const;
 const batchLabel = { draft: 'Draft', berjalan: 'Berjalan', selesai: 'Selesai' } as const;
 
-export default async function ReconciliationPage() {
+export default async function ReconciliationPage({ searchParams }: { searchParams: Promise<PageQuery> }) {
+  const query = await searchParams;
   const supabase = await createClient();
+  // every batch feeds the KPI totals; the list below shows one page
   const { data, error } = await supabase
     .from('batch_reconciliation')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(50);
+    .limit(1000);
   const batches = (data ?? []) as BatchRow[];
+  const paged = slicePage(batches, query);
+  if (paged.outOfRange) redirect(withQuery('/', query, { page: String(paged.pages) }));
   const { data: unshelved } = await supabase.from('bundle_unshelved').select('baik, reject, days_waiting');
   const waiting = (unshelved ?? []).reduce((n, r) => n + r.baik, 0); // good pieces only, matches "Ready stock"
   const late = (unshelved ?? []).filter((r) => r.days_waiting >= 1).reduce((n, r) => n + r.baik + r.reject, 0);
@@ -108,7 +115,7 @@ export default async function ReconciliationPage() {
           <p className="px-5 pb-5 text-text-muted">Belum ada batch.</p>
         ) : (
           <ul className="divide-y divide-border border-t border-border">
-            {batches.map((b) => (
+            {paged.rows.map((b) => (
               <li key={b.batch_id} className={b.open_discrepancies > 0 ? 'border-l-[3px] border-l-warning' : undefined}>
                 <div className="grid gap-3 px-5 py-4 md:grid-cols-[180px_1fr] md:items-center md:gap-6">
                   <div className="flex items-center justify-between gap-3 md:block">
@@ -127,6 +134,7 @@ export default async function ReconciliationPage() {
             ))}
           </ul>
         )}
+        <UrlPagination path="/" query={query} total={batches.length} unit="batch" className="border-t border-border px-5 pb-4" />
       </section>
     </>
   );

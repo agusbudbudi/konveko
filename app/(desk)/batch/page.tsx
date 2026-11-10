@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/status-badge';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { UrlPagination } from '@/components/ui/pagination';
 import { ReconciliationBar, type Recon } from '@/components/recon/reconciliation-bar';
+import { pageCount, readPaging, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
 import { BATCH_STATUS } from '@/lib/types';
 
@@ -13,13 +16,16 @@ type Row = Recon & { batch_id: string; code: string; status: keyof typeof BATCH_
 
 const dateFmt = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
 
-export default async function BatchListPage() {
+export default async function BatchListPage({ searchParams }: { searchParams: Promise<PageQuery> }) {
+  const query = await searchParams;
+  const { from, to, per, page } = readPaging(query);
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('batch_reconciliation')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(100);
+  const [{ data, error }, { count }] = await Promise.all([
+    supabase.from('batch_reconciliation').select('*').order('created_at', { ascending: false }).range(from, to),
+    supabase.from('production_batch').select('id', { count: 'exact', head: true }),
+  ]);
+  const total = count ?? 0;
+  if (page > pageCount(total, per)) redirect(withQuery('/batch', query, { page: String(pageCount(total, per)) }));
   const rows = (data ?? []) as Row[];
 
   return (
@@ -71,6 +77,7 @@ export default async function BatchListPage() {
           </table>
         )}
       </div>
+      <UrlPagination path="/batch" query={query} total={total} unit="batch" />
     </>
   );
 }

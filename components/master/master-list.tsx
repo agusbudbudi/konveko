@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Pencil, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { UrlPagination } from '@/components/ui/pagination';
 import { Badge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
 import type { FormState } from '@/lib/master';
+import { slicePage } from '@/lib/paging';
 import { EntityForm, type Field } from './entity-form';
 
 export type MasterRow = {
@@ -52,6 +55,12 @@ export function MasterList({
   const [editing, setEditing] = useState<string | 'new' | null>(null);
   const [pending, start] = useTransition();
   const [toggleError, setToggleError] = useState<string | null>(null);
+  // Pagination from the URL (?page, ?per). A page past the end shows the last page.
+  const path = usePathname();
+  const query = Object.fromEntries(useSearchParams().entries());
+  let paged = slicePage(rows, query);
+  const pageQuery = paged.outOfRange ? { ...query, page: String(paged.pages) } : query;
+  if (paged.outOfRange) paged = slicePage(rows, pageQuery);
   const grid = { gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr)) ${canEdit ? '200px' : ''}` };
 
   return (
@@ -91,7 +100,7 @@ export function MasterList({
         <p className="border-t border-border px-5 py-4 text-text-muted">{empty}</p>
       ) : (
         <ul className="divide-y divide-border border-t border-border">
-          {rows.map((r) => (
+          {paged.rows.map((r) => (
               <li
                 key={r.id}
                 className={cn('grid items-center gap-x-4 gap-y-1 px-5 py-3 max-md:!grid-cols-1', r.active === false && 'text-text-muted')}
@@ -129,6 +138,7 @@ export function MasterList({
           ))}
         </ul>
       )}
+      <UrlPagination path={path} query={pageQuery} total={rows.length} unit="data" className="border-t border-border px-5 pb-4" />
     </section>
 
     <Modal

@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { TriangleAlert } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { UrlPagination } from '@/components/ui/pagination';
+import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Selisih' };
@@ -19,28 +22,32 @@ type Row = {
 const timeFmt = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
 
 // FR-22: supervisor work list of open selisih flags. Resolving happens on the bundle page.
-export default async function SelisihPage() {
+export default async function SelisihPage({ searchParams }: { searchParams: Promise<PageQuery> }) {
+  const query = await searchParams;
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('discrepancy')
     .select('id, qty, from_step, to_step, created_at, bundle:bundle(id, code, batch:production_batch(code)), movement:movement(reason_id, scanned_by)')
     .eq('status', 'terbuka')
     .order('created_at', { ascending: false })
-    .limit(200);
-  const rows = (data ?? []) as unknown as Row[];
+    .limit(1000); // all open flags, so the summary counts every one; the table shows one page
+  const all = (data ?? []) as unknown as Row[];
+  const paged = slicePage(all, query);
+  if (paged.outOfRange) redirect(withQuery('/selisih', query, { page: String(paged.pages) }));
+  const rows = paged.rows;
 
   const { data: reasons } = await supabase.from('reason').select('id, label');
   const reasonLabel = new Map((reasons ?? []).map((r) => [r.id, r.label]));
   const scannerIds = [...new Set(rows.map((r) => r.movement?.scanned_by).filter(Boolean))] as string[];
   const { data: names } = scannerIds.length ? await supabase.rpc('staff_names', { p_ids: scannerIds }) : { data: [] };
   const nameOf = new Map(((names ?? []) as { id: string; name: string }[]).map((n) => [n.id, n.name]));
-  const total = rows.reduce((n, r) => n + r.qty, 0);
+  const total = all.reduce((n, r) => n + r.qty, 0);
 
   return (
     <>
       <h1 className="text-h1">Selisih</h1>
       <p className="mt-1 text-text-muted">
-        <span className="num text-text">{rows.length}</span> flag terbuka, total <span className="num text-warning">{total}</span> pcs
+        <span className="num text-text">{all.length}</span> flag terbuka, total <span className="num text-warning">{total}</span> pcs
       </p>
 
       {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
@@ -97,6 +104,7 @@ export default async function SelisihPage() {
           </table>
         )}
       </div>
+      <UrlPagination path="/selisih" query={query} total={all.length} unit="flag" />
     </>
   );
 }

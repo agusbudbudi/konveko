@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Pagination } from '@/components/ui/pagination';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/lib/paging';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/status-badge';
 import { TabLink, TabList } from '@/components/ui/tab-link';
@@ -12,8 +13,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Stok per pcs' };
 
-const PAGE_SIZES = [10, 50, 100] as const;
-const DEFAULT_SIZE = 10;
+const DEFAULT_SIZE = DEFAULT_PAGE_SIZE;
 /** Matches nothing: a filter value that does not exist (unknown product or rack) must give an empty list. */
 const NONE = '00000000-0000-0000-0000-000000000000';
 

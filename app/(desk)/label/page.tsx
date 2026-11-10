@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Printer, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/status-badge';
 import { createClient } from '@/lib/supabase/server';
 import { TabLink, TabList } from '@/components/ui/tab-link';
+import { UrlPagination } from '@/components/ui/pagination';
+import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 
 export const metadata: Metadata = { title: 'Antrian label' };
 
@@ -25,8 +28,9 @@ const linkGhost = 'inline-flex h-10 items-center gap-2 rounded-md px-3 text-text
 
 type Tab = 'belum' | 'dicetak';
 
-export default async function LabelQueuePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const tab: Tab = (await searchParams).tab === 'dicetak' ? 'dicetak' : 'belum';
+export default async function LabelQueuePage({ searchParams }: { searchParams: Promise<PageQuery> }) {
+  const query = await searchParams;
+  const tab: Tab = query.tab === 'dicetak' ? 'dicetak' : 'belum';
   const supabase = await createClient();
   const { data } = await supabase.from('bundle_unshelved').select('*').order('since');
   const rows = (data ?? []) as Row[];
@@ -39,6 +43,8 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
   const toPrint = rows.filter((r) => r.unprinted > 0);
   const waiting = rows.filter((r) => r.unprinted === 0);
   const total = toPrint.reduce((s, r) => s + r.unprinted, 0);
+  const paged = slicePage(tab === 'belum' ? toPrint : waiting, query);
+  if (paged.outOfRange) redirect(withQuery('/label', query, { page: String(paged.pages) }));
 
   const variantCell = (r: Row) => {
     const x = v.get(r.variant_id);
@@ -62,9 +68,9 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
       </div>
 
       <TabList label="Status label" className="mt-6">
-        <TabLink href="/label" active={tab === 'belum'} label="Belum dicetak" count={total} />
+        <TabLink href={withQuery('/label', query, { tab: '', page: '' })} active={tab === 'belum'} label="Belum dicetak" count={total} />
         <TabLink
-          href="/label?tab=dicetak"
+          href={withQuery('/label', query, { tab: 'dicetak', page: '' })}
           active={tab === 'dicetak'}
           label="Sudah dicetak, belum masuk rak"
           count={waiting.reduce((s, r) => s + r.baik + r.reject, 0)}
@@ -77,7 +83,7 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
             <p className="px-5 py-4 text-text-muted">Semua label sudah dicetak.</p>
           ) : (
             <ul className="divide-y divide-border">
-              {toPrint.map((r) => (
+              {paged.rows.map((r) => (
                 <li key={r.bundle_id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
                   <Link href={`/bundle/${r.bundle_id}`} className="num w-24 link-code">
                     {r.code}
@@ -99,7 +105,7 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
           <p className="px-5 py-4 text-text-muted">Tidak ada yang menunggu.</p>
         ) : (
           <ul className="divide-y divide-border">
-            {waiting.map((r) => (
+            {paged.rows.map((r) => (
               <li key={r.bundle_id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
                 <Link href={`/bundle/${r.bundle_id}`} className="num w-24 link-code">
                   {r.code}
@@ -117,6 +123,7 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
           </ul>
         )}
       </section>
+      <UrlPagination path="/label" query={query} total={paged.total} unit="bundle" />
     </>
   );
 }

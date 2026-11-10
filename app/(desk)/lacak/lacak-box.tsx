@@ -107,7 +107,8 @@ export function LacakBox() {
 
       <Modal open={scanning} onClose={() => setScanning(false)} title="Scan label">
         {scanning && (
-          <div className="flex flex-col gap-3">
+          // the modal body has no bottom padding (forms use a sticky footer), so add it here
+          <div className="flex flex-col gap-3 pb-5">
             <p className="text-small text-text-muted">Arahkan ke QR di label pcs, bundle, atau rak. Halamannya langsung terbuka.</p>
             <CameraScanner onDetected={onScanned} paused={false} fallback="Tutup, lalu ketik kodenya di kolom cari." />
           </div>

@@ -49,10 +49,11 @@ const GROUPS: Group[] = [
         icon: Package,
         base: '/stok',
         children: [
-          // exact: /stok must not stay highlighted on /stok/rak or /stok/produk
+          // exact: /stok must not stay highlighted on /stok/rak, /stok/produk or /stok/pcs
           { href: '/stok', label: 'Per variant', exact: true },
           { href: '/stok/rak', label: 'Per rak' },
           { href: '/stok/produk', label: 'Per produk' },
+          { href: '/stok/pcs', label: 'Per pcs' },
         ],
       },
       { href: '/label', label: 'Antrian label', icon: Tag },

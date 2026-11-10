@@ -1,17 +1,19 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { redirect } from 'next/navigation';
+import { Search } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { Pagination } from '@/components/ui/pagination';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/status-badge';
 import { TabLink, TabList } from '@/components/ui/tab-link';
-import { cn } from '@/lib/cn';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Stok per pcs' };
 
-const PAGE_SIZE = 50;
+const PAGE_SIZES = [10, 50, 100] as const;
+const DEFAULT_SIZE = 50;
 /** Matches nothing: a filter value that does not exist (unknown product or rack) must give an empty list. */
 const NONE = '00000000-0000-0000-0000-000000000000';
 
@@ -24,7 +26,7 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
 
-type Params = { tab?: string; q?: string; produk?: string; rak?: string; page?: string };
+type Params = { tab?: string; q?: string; produk?: string; rak?: string; page?: string; per?: string };
 
 type Row = {
   id: string;
@@ -50,6 +52,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
   const produk = (sp.produk ?? '').slice(0, 120);
   const rak = (sp.rak ?? '').slice(0, 40);
   const page = Math.max(1, Math.floor(Number(sp.page) || 1));
+  const per = (PAGE_SIZES as readonly number[]).includes(Number(sp.per)) ? Number(sp.per) : DEFAULT_SIZE;
 
   const supabase = await createClient();
   const [{ data: vData }, { data: lData }] = await Promise.all([
@@ -77,7 +80,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
     return x;
   };
 
-  const from = (page - 1) * PAGE_SIZE;
+  const from = (page - 1) * per;
   const listQuery = scoped(
     supabase
       .from('piece')
@@ -90,25 +93,28 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
   )
     .order('created_at', { ascending: false })
     .order('code', { ascending: false })
-    .range(from, from + PAGE_SIZE - 1);
+    .range(from, from + per - 1);
   const countQueries = TABS.map((t) => scoped(supabase.from('piece').select('id', { count: 'exact', head: true }), t.key));
   const [list, ...counts] = await Promise.all([listQuery, ...countQueries]);
   const rows = (list.data ?? []) as unknown as Row[];
-  const total = list.count ?? 0;
+  const total = list.count ?? 0; // = countOf[tab]; the list count is fine when the page is in range
   const countOf = Object.fromEntries(TABS.map((t, i) => [t.key, counts[i]?.count ?? 0])) as Record<TabKey, number>;
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(countOf[tab] / per));
 
   const href = (over: Partial<Params>) => {
     const p = new URLSearchParams();
-    const m = { tab, q, produk, rak, page: String(page), ...over };
+    const m = { tab, q, produk, rak, page: String(page), per: String(per), ...over };
     if (m.tab && m.tab !== 'semua') p.set('tab', m.tab);
     if (m.q) p.set('q', m.q);
     if (m.produk) p.set('produk', m.produk);
     if (m.rak) p.set('rak', m.rak);
     if (m.page && m.page !== '1') p.set('page', m.page);
+    if (m.per && m.per !== String(DEFAULT_SIZE)) p.set('per', m.per);
     const s = p.toString();
     return s ? `/stok/pcs?${s}` : '/stok/pcs';
   };
+  // past the last page (bookmark, or the list shrank): go to the last page instead of an error
+  if (page > pages) redirect(href({ page: String(pages) }));
   const filtered = Boolean(q || produk || rak);
 
   return (
@@ -119,6 +125,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
       {/* GET form: filters end up in the URL; changing a filter starts again at page 1 */}
       <form action="/stok/pcs" className="mt-6 flex flex-wrap items-end gap-2">
         {tab !== 'semua' && <input type="hidden" name="tab" value={tab} />}
+        {per !== DEFAULT_SIZE && <input type="hidden" name="per" value={per} />}
         <div className="relative w-full sm:w-52">
           <label htmlFor="pcs-q" className="sr-only">
             Cari kode pcs
@@ -235,41 +242,17 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
       </section>
 
       {total > 0 && (
-        <nav aria-label="Halaman" className="mt-4 flex items-center justify-between gap-3 text-small text-text-muted">
-          <p className="num">
-            {from + 1}–{Math.min(from + PAGE_SIZE, total)} dari {total} pcs
-          </p>
-          {pages > 1 && (
-            <div className="flex items-center gap-1">
-              <PageLink href={href({ page: String(page - 1) })} disabled={page <= 1} label="Sebelumnya">
-                <ChevronLeft size={16} strokeWidth={1.5} aria-hidden />
-              </PageLink>
-              <span className="num px-2">
-                {page} / {pages}
-              </span>
-              <PageLink href={href({ page: String(page + 1) })} disabled={page >= pages} label="Berikutnya">
-                <ChevronRight size={16} strokeWidth={1.5} aria-hidden />
-              </PageLink>
-            </div>
-          )}
-        </nav>
+        <Pagination
+          page={page}
+          pages={pages}
+          total={total}
+          size={per}
+          sizes={PAGE_SIZES}
+          unit="pcs"
+          hrefFor={(n) => href({ page: String(n) })}
+          hrefSize={(n) => href({ per: String(n), page: '1' })}
+        />
       )}
     </>
-  );
-}
-
-function PageLink({ href, disabled, label, children }: { href: string; disabled: boolean; label: string; children: React.ReactNode }) {
-  const cls = 'inline-flex size-10 items-center justify-center rounded-md border border-border bg-surface';
-  if (disabled) {
-    return (
-      <span aria-disabled className={cn(cls, 'text-text-subtle')} aria-label={label}>
-        {children}
-      </span>
-    );
-  }
-  return (
-    <Link href={href} aria-label={label} className={cn(cls, 'text-text hover:border-border-strong')}>
-      {children}
-    </Link>
   );
 }

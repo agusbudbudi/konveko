@@ -15,6 +15,7 @@ import {
   Package,
   Tag,
   ScanLine,
+  Search,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -22,9 +23,11 @@ import { cn } from '@/lib/cn';
 
 type Item = { href: string; label: string; icon: LucideIcon };
 type Sub = { label: string; icon: LucideIcon; base: string; children: { href: string; label: string; exact?: boolean }[] };
-type Group = { label: string; items: (Item | Sub)[] };
+/** A group without a label is shown on its own at the top (Lacak). */
+type Group = { label?: string; items: (Item | Sub)[] };
 
 const GROUPS: Group[] = [
+  { items: [{ href: '/lacak', label: 'Lacak', icon: Search }] },
   {
     label: 'Monitoring',
     items: [
@@ -127,8 +130,8 @@ export function SidebarNav({ onNavigate, tone = 'light' }: { onNavigate?: () => 
   return (
     <nav aria-label="Menu utama" className="flex flex-col gap-5">
       {GROUPS.map((g) => (
-        <div key={g.label}>
-          <p className={cn('px-3 pb-1.5 text-caption tracking-[0.02em]', TONES[tone].label)}>{g.label}</p>
+        <div key={g.label ?? 'top'}>
+          {g.label && <p className={cn('px-3 pb-1.5 text-caption tracking-[0.02em]', TONES[tone].label)}>{g.label}</p>}
           <ul className="flex flex-col gap-0.5">
             {g.items.map((item) =>
               'children' in item ? (
@@ -261,17 +264,18 @@ export function SetCrumb({ items, root = false }: { items: CrumbItem[]; root?: b
 /** Menu trail for the current path: group (no page of its own) > item > sub item. */
 function menuTrail(path: string): CrumbItem[] {
   for (const g of GROUPS) {
+    const group: CrumbItem[] = g.label ? [{ label: g.label }] : [];
     for (const item of g.items) {
       if ('children' in item) {
         if (!isActive(path, item.base)) continue;
         const child = item.children.find((c) => (c.exact ? path === c.href : isActive(path, c.href)));
         return [
-          { label: g.label },
+          ...group,
           { label: item.label, href: item.children[0]!.href },
           ...(child ? [{ label: child.label, href: child.href }] : []),
         ];
       }
-      if (isActive(path, item.href)) return [{ label: g.label }, { label: item.label, href: item.href }];
+      if (isActive(path, item.href)) return [...group, { label: item.label, href: item.href }];
     }
   }
   return [];

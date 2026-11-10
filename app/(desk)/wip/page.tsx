@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { FilterChip } from '@/components/ui/filter-chip';
+import { UrlSelect } from '@/components/ui/url-select';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { UrlPagination } from '@/components/ui/pagination';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -46,10 +46,10 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
     countQ = countQ.eq('current_holder_id', holderId);
   }
   // counts per status for the tabs (status column only, cheap)
-  const [{ data, error }, { data: all }, { data: holder }] = await Promise.all([
+  const [{ data, error }, { data: all }, { data: holders }] = await Promise.all([
     q,
     countQ,
-    holderId ? supabase.from('holder').select('name').eq('id', holderId).maybeSingle() : Promise.resolve({ data: null }),
+    supabase.from('holder').select('id, name, type').eq('is_active', true).order('name'),
   ]);
   const countOf = (f: BundleStatus | 'semua') =>
     f === 'semua' ? (all ?? []).length : (all ?? []).filter((r) => r.current_status === f).length;
@@ -80,11 +80,14 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
         )}
       </p>
 
-      {holderId && (
-        <div className="mt-4">
-          <FilterChip label="Dipegang" value={holder?.name ?? '-'} removeHref={withQuery('/wip', query, { pemegang: '', page: '' })} />
-        </div>
-      )}
+      <div className="mt-6">
+        <UrlSelect
+          param="pemegang"
+          label="Pemegang"
+          allLabel="Semua pemegang"
+          options={((holders ?? []) as { id: string; name: string; type: string }[]).map((h) => ({ value: h.id, label: h.name, hint: h.type }))}
+        />
+      </div>
 
       <TabList label="Filter status" className="mt-6">
         {FILTERS.map((f) => (

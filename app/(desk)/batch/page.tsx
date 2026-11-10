@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/status-badge';
-import { FilterChip } from '@/components/ui/filter-chip';
+import { UrlSelect } from '@/components/ui/url-select';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { UrlPagination } from '@/components/ui/pagination';
 import { ReconciliationBar, type Recon } from '@/components/recon/reconciliation-bar';
@@ -24,9 +24,8 @@ export default async function BatchListPage({ searchParams }: { searchParams: Pr
   const supabase = await createClient();
   // ?rol=<fabric roll id>: batches cut from one roll (linked from Lacak)
   const rollId = UUID.test(query.rol ?? '') ? query.rol! : null;
-  const roll = rollId
-    ? ((await supabase.from('fabric_roll').select('code').eq('id', rollId).maybeSingle()).data as { code: string } | null)
-    : null;
+  const { data: rollData } = await supabase.from('fabric_roll').select('id, code, material, color').order('created_at', { ascending: false });
+  const rolls = (rollData ?? []) as { id: string; code: string; material: string; color: string }[];
   const rollBatchIds = rollId
     ? ((await supabase.from('production_batch').select('id').eq('fabric_roll_id', rollId)).data ?? []).map((b) => b.id as string)
     : null;
@@ -50,11 +49,14 @@ export default async function BatchListPage({ searchParams }: { searchParams: Pr
         </Link>
       </div>
 
-      {rollId && (
-        <div className="mt-4">
-          <FilterChip label="Dari rol" value={roll?.code ?? '-'} removeHref={withQuery('/batch', query, { rol: '', page: '' })} />
-        </div>
-      )}
+      <div className="mt-6">
+        <UrlSelect
+          param="rol"
+          label="Rol kain"
+          allLabel="Semua rol kain"
+          options={rolls.map((r) => ({ value: r.id, label: r.code, hint: `${r.material} ${r.color}` }))}
+        />
+      </div>
 
       {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
 

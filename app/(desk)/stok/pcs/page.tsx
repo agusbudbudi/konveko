@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { FilterChip } from '@/components/ui/filter-chip';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Pagination } from '@/components/ui/pagination';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/lib/paging';
@@ -57,10 +56,10 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
   const per = (PAGE_SIZES as readonly number[]).includes(Number(sp.per)) ? Number(sp.per) : DEFAULT_SIZE;
 
   const supabase = await createClient();
-  const [{ data: vData }, { data: lData }, { data: reason }, { data: reasonMoves }] = await Promise.all([
+  const [{ data: vData }, { data: lData }, { data: rejectReasons }, { data: reasonMoves }] = await Promise.all([
     supabase.from('product_variant').select('id, product_name'),
     supabase.from('location').select('id, code').order('code'),
-    alasan ? supabase.from('reason').select('label').eq('id', alasan).maybeSingle() : Promise.resolve({ data: null }),
+    supabase.from('reason').select('id, label').eq('type', 'reject').order('label'),
     alasan ? supabase.from('movement').select('id').eq('reason_id', alasan) : Promise.resolve({ data: null }),
   ]);
   const reasonMoveIds = alasan ? ((reasonMoves ?? []) as { id: string }[]).map((m) => m.id) : null;
@@ -129,12 +128,11 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
       <h1 className="text-h1">Per pcs</h1>
       <p className="mt-1 text-text-muted">Setiap pcs barang jadi, satu baris per label.</p>
 
-      <PcsFilters products={products} racks={racks.map((r) => r.code)} />
-      {alasan && (
-        <div className="mt-3">
-          <FilterChip label="Alasan reject" value={(reason as { label: string } | null)?.label ?? '-'} removeHref={href({ alasan: '', page: '1' })} />
-        </div>
-      )}
+      <PcsFilters
+        products={products}
+        racks={racks.map((r) => r.code)}
+        reasons={((rejectReasons ?? []) as { id: string; label: string }[]).map((r) => ({ value: r.id, label: r.label }))}
+      />
 
       <TabList label="Status pcs" className="mt-4">
         {TABS.map((t) => (

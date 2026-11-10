@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { TriangleAlert } from 'lucide-react';
-import { FilterChip } from '@/components/ui/filter-chip';
+import { UrlSelect } from '@/components/ui/url-select';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { UrlPagination } from '@/components/ui/pagination';
 import { UUID } from '@/lib/master';
@@ -40,7 +40,7 @@ export default async function SelisihPage({ searchParams }: { searchParams: Prom
   if (paged.outOfRange) redirect(withQuery('/selisih', query, { page: String(paged.pages) }));
   const rows = paged.rows;
 
-  const { data: reasons } = await supabase.from('reason').select('id, label');
+  const { data: reasons } = await supabase.from('reason').select('id, type, label');
   const reasonLabel = new Map((reasons ?? []).map((r) => [r.id, r.label]));
   const scannerIds = [...new Set(rows.map((r) => r.movement?.scanned_by).filter(Boolean))] as string[];
   const { data: names } = scannerIds.length ? await supabase.rpc('staff_names', { p_ids: scannerIds }) : { data: [] };
@@ -56,11 +56,14 @@ export default async function SelisihPage({ searchParams }: { searchParams: Prom
 
       {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
 
-      {reasonId && (
-        <div className="mt-4">
-          <FilterChip label="Alasan" value={reasonLabel.get(reasonId) ?? '-'} removeHref={withQuery('/selisih', query, { alasan: '', page: '' })} />
-        </div>
-      )}
+      <div className="mt-6">
+        <UrlSelect
+          param="alasan"
+          label="Alasan selisih"
+          allLabel="Semua alasan"
+          options={(reasons ?? []).filter((r) => r.type === 'selisih').map((r) => ({ value: r.id, label: r.label }))}
+        />
+      </div>
 
       <div className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (

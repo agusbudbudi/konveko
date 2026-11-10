@@ -13,7 +13,15 @@ const DEBOUNCE_MS = 300;
  * typing in search waits until the user pauses. The URL stays the source of truth, so a change
  * starts again at page 1 and keeps the tab and page size.
  */
-export function PcsFilters({ products, racks }: { products: string[]; racks: string[] }) {
+export function PcsFilters({
+  products,
+  racks,
+  reasons,
+}: {
+  products: string[];
+  racks: string[];
+  reasons: { value: string; label: string }[];
+}) {
   const router = useRouter();
   const path = usePathname();
   const params = useSearchParams();
@@ -22,6 +30,7 @@ export function PcsFilters({ products, racks }: { products: string[]; racks: str
   const urlQ = params.get('q') ?? '';
   const produk = params.get('produk') ?? '';
   const rak = params.get('rak') ?? '';
+  const alasan = params.get('alasan') ?? '';
   const [text, setText] = useState(urlQ);
   const inputRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -57,7 +66,7 @@ export function PcsFilters({ products, racks }: { products: string[]; racks: str
     if (document.activeElement !== inputRef.current) setText(urlQ);
   }, [urlQ]);
 
-  const filtered = Boolean(urlQ || produk || rak);
+  const filtered = Boolean(urlQ || produk || rak || alasan);
 
   return (
     <div className="mt-6 flex flex-wrap items-center gap-2" aria-busy={pending}>
@@ -96,12 +105,21 @@ export function PcsFilters({ products, racks }: { products: string[]; racks: str
           options={[{ value: '', label: 'Semua rak' }, ...racks.map((r) => ({ value: r, label: `Rak ${r}` }))]}
         />
       </div>
+      <div className="w-full sm:w-56">
+        <Combobox
+          searchable
+          aria-label="Alasan reject"
+          value={alasan}
+          onChange={(v) => apply({ alasan: v })}
+          options={[{ value: '', label: 'Semua alasan reject' }, ...reasons]}
+        />
+      </div>
       {filtered && (
         <button
           type="button"
           onClick={() => {
             setText('');
-            apply({ q: '', produk: '', rak: '' });
+            apply({ q: '', produk: '', rak: '', alasan: '' });
           }}
           className="inline-flex h-10 items-center px-2 text-small text-text-muted hover:text-text"
         >

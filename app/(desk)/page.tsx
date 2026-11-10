@@ -35,7 +35,12 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
   const batches = (data ?? []) as BatchRow[];
   const paged = slicePage(batches, query);
   if (paged.outOfRange) redirect(withQuery('/', query, { page: String(paged.pages) }));
-  const { data: unshelved } = await supabase.from('bundle_unshelved').select('baik, reject, unprinted, days_waiting');
+  const [{ data: unshelved }, { count: shippedCount }] = await Promise.all([
+    supabase.from('bundle_unshelved').select('baik, reject, unprinted, days_waiting'),
+    // Fase 2b: good pieces that left the warehouse still count in Ready stock (produced)
+    supabase.from('piece').select('id', { count: 'exact', head: true }).eq('status', 'keluar').eq('grade', 'baik'),
+  ]);
+  const shipped = shippedCount ?? 0;
   const waiting = (unshelved ?? []).reduce((n, r) => n + r.baik, 0); // good pieces only, matches "Ready stock"
   const lateRows = (unshelved ?? []).filter((r) => r.days_waiting >= 1);
   const late = lateRows.reduce((n, r) => n + r.baik + r.reject, 0);
@@ -87,7 +92,12 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
           swatch="bg-primary"
           value={totals.ready}
           target={totals.target}
-          context={waiting > 0 ? `${waiting} belum di rak` : 'Semua sudah di rak'}
+          context={[
+            shipped > 0 && `${shipped} sudah keluar`,
+            waiting > 0 ? `${waiting} belum di rak` : shipped > 0 ? 'sisanya di rak' : 'Semua sudah di rak',
+          ]
+            .filter(Boolean)
+            .join(' · ')}
           href="/stok"
         />
         <Kpi label="Reject" swatch="bg-danger" value={totals.reject} target={totals.target} context="Jahit dan QC" />

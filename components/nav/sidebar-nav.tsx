@@ -14,6 +14,7 @@ import {
   Menu,
   Package,
   Tag,
+  Truck,
   ScanLine,
   Search,
   X,
@@ -60,6 +61,7 @@ const GROUPS: Group[] = [
         ],
       },
       { href: '/label', label: 'Antrian label', icon: Tag },
+      { href: '/barang-keluar', label: 'Barang keluar', icon: Truck },
     ],
   },
   {
@@ -76,6 +78,7 @@ const GROUPS: Group[] = [
           { href: '/master/pemegang', label: 'Penjahit dan tim' },
           { href: '/master/user', label: 'User' },
           { href: '/master/alasan', label: 'Alasan' },
+          { href: '/master/profil', label: 'Profil usaha' },
         ],
       },
     ],

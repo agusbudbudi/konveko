@@ -69,9 +69,14 @@ export type WarehouseLookup =
       id: string;
       code: string;
       grade: 'baik' | 'reject';
-      status: 'aktif' | 'batal';
+      status: 'aktif' | 'batal' | 'keluar';
+      /** Fase 2b: condition after production (a damaged return is 'rusak'); sellable = baik + baik */
+      condition: 'baik' | 'rusak';
+      sellable: boolean;
       printed: boolean;
       location_code: string | null;
+      /** the draft that reserves it, or the document that shipped it */
+      outbound_code: string | null;
       bundle_code: string;
       variant: VariantInfo;
     };

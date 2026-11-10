@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Boxes, ChevronRight, CircleAlert, Layers, Package, Scroll, Shirt, Tag, Users, Warehouse, Zap, type LucideIcon } from 'lucide-react';
+import { Boxes, ChevronRight, CircleAlert, Layers, Package, Scroll, Shirt, Tag, Truck, Users, Warehouse, Zap, type LucideIcon } from 'lucide-react';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
+import { OUTBOUND_STATUS, OUTBOUND_TYPE, type OutboundStatus, type OutboundType } from '@/lib/outbound';
 import { productHref } from '@/lib/stock';
 import { createClient } from '@/lib/supabase/server';
 import { BATCH_STATUS, type BundleStatus } from '@/lib/types';
@@ -295,6 +296,7 @@ const SHORTCUTS: Shortcut[] = [
   { label: 'WIP proses finishing', href: '/wip?status=proses_finishing', words: ['proses finishing', 'sedang finishing', 'qc'] },
   { label: 'Semua WIP', href: '/wip', words: ['wip', 'dalam proses', 'belum jadi'] },
   { label: 'Stok barang jadi', href: '/stok', words: ['stok', 'ready stock', 'gudang'] },
+  { label: 'Barang keluar', href: '/barang-keluar', words: ['barang keluar', 'surat jalan', 'kirim', 'retur'] },
 ];
 
 /** A shortcut fits when every query word starts a word of one of its phrases ("jahit" -> siap/proses jahit). */
@@ -315,11 +317,27 @@ async function searchMore(q: string): Promise<{ shortcuts: Shortcut[]; groups: G
 
   const supabase = await createClient();
   // holders, rolls and reasons are short lists: match words in memory like variants
-  const [holdersRes, rollsRes, reasonsRes] = await Promise.all([
+  const [holdersRes, rollsRes, reasonsRes, docsRes] = await Promise.all([
     supabase.from('holder').select('id, name, type').eq('is_active', true),
     supabase.from('fabric_roll').select('id, code, material, color, supplier').order('created_at', { ascending: false }).limit(1000),
     supabase.from('reason').select('id, type, code, label'),
+    // Fase 2b: outbound documents by SJ code or destination (q has no commas or parens)
+    supabase
+      .from('outbound')
+      .select('id, code, type, destination, status, created_at, shipped_at', { count: 'exact' })
+      .or(`code.ilike.%${q}%,destination.ilike.%${q}%`)
+      .order('created_at', { ascending: false })
+      .limit(LIMIT),
   ]);
+  const docs = (docsRes.data ?? []) as {
+    id: string;
+    code: string;
+    type: OutboundType;
+    destination: string;
+    status: OutboundStatus;
+    created_at: string;
+    shipped_at: string | null;
+  }[];
   const holders = ((holdersRes.data ?? []) as { id: string; name: string; type: string }[]).filter((h) => matches(h.name, words));
   const rolls = ((rollsRes.data ?? []) as { id: string; code: string; material: string; color: string; supplier: string | null }[]).filter((r) =>
     matches(`${r.code} ${r.material} ${r.color} ${r.supplier ?? ''}`, words),
@@ -372,6 +390,25 @@ async function searchMore(q: string): Promise<{ shortcuts: Shortcut[]; groups: G
   }
 
   const groups: Group[] = [
+    {
+      key: 'keluar',
+      label: 'Barang keluar',
+      icon: Truck,
+      total: docsRes.count ?? docs.length,
+      more: '/barang-keluar',
+      hits: docs.map((d) => ({
+        key: d.id,
+        href: `/barang-keluar/${d.id}`,
+        title: d.code,
+        sub: `${OUTBOUND_TYPE[d.type].label} · ${d.destination}`,
+        meta: (
+          <>
+            <Badge tone={OUTBOUND_STATUS[d.status].tone}>{OUTBOUND_STATUS[d.status].label}</Badge>
+            <span className="num text-small text-text-muted">{dateFmt.format(new Date(d.shipped_at ?? d.created_at))}</span>
+          </>
+        ),
+      })),
+    },
     {
       key: 'pemegang',
       label: 'Penjahit / tim',

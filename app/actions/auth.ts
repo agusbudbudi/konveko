@@ -23,7 +23,8 @@ async function landingPath(next: string | null) {
   const { data } = await supabase.from('app_user').select('roles').eq('id', user.id).maybeSingle();
   const roles: string[] = data?.roles ?? [];
   const floorOnly = roles.length > 0 && roles.every((r) => FLOOR_ROLES.includes(r));
-  return floorOnly ? '/scan' : '/';
+  // floor staff land on the scanner; everyone else starts at Lacak (search over production and stock)
+  return floorOnly ? '/scan' : '/lacak';
 }
 
 export async function loginWithEmail(_: LoginState, formData: FormData): Promise<LoginState> {

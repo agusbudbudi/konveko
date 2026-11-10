@@ -21,6 +21,7 @@ const TABS = [
   { key: 'rak', label: 'Di rak' },
   { key: 'belum', label: 'Belum di rak' },
   { key: 'reject', label: 'Reject' },
+  { key: 'keluar', label: 'Keluar' },
   { key: 'batal', label: 'Dibatalkan' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
@@ -31,7 +32,9 @@ type Row = {
   id: string;
   code: string;
   grade: 'baik' | 'reject';
-  status: 'aktif' | 'batal';
+  status: 'aktif' | 'batal' | 'keluar';
+  condition: 'baik' | 'rusak';
+  outbound: { id: string; code: string } | null;
   created_at: string;
   bundle_id: string;
   variant: { sku: string; product_name: string; size: string; color: string } | null;
@@ -79,10 +82,12 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
     if (rak) x = x.eq('location_id', rackId ?? NONE);
     if (reasonMoveIds) x = x.in('finish_movement_id', reasonMoveIds.length ? reasonMoveIds : [NONE]);
     if (t === 'batal') return x.eq('status', 'batal');
+    if (t === 'keluar') return x.eq('status', 'keluar');
     x = x.eq('status', 'aktif');
     if (t === 'rak') x = x.not('location_id', 'is', null);
     if (t === 'belum') x = x.is('location_id', null);
-    if (t === 'reject') x = x.eq('grade', 'reject');
+    // reject tab: everything that is not sellable (reject grade, or damaged on return)
+    if (t === 'reject') x = x.or('grade.eq.reject,condition.eq.rusak');
     return x;
   };
 
@@ -91,7 +96,8 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
     supabase
       .from('piece')
       .select(
-        'id, code, grade, status, created_at, bundle_id, variant:product_variant(sku, product_name, size, color), ' +
+        'id, code, grade, status, condition, created_at, bundle_id, variant:product_variant(sku, product_name, size, color), ' +
+          'outbound:outbound!piece_outbound_id_fkey(id, code), ' +
           'bundle:bundle(code), batch:production_batch(code), location:location(code)',
         { count: 'exact' },
       ),
@@ -157,7 +163,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
                 <th className="px-5 font-medium">Kode pcs</th>
                 <th className="px-5 font-medium">Produk</th>
                 <th className="px-5 font-medium">Grade</th>
-                <th className="px-5 font-medium">Rak</th>
+                <th className="px-5 font-medium">Lokasi</th>
                 <th className="px-5 font-medium">Bundle</th>
                 <th className="px-5 text-right font-medium">Jadi</th>
               </tr>
@@ -182,14 +188,22 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
                     <td className="px-5 py-3 max-md:col-start-2 max-md:row-start-1 max-md:justify-self-end max-md:p-0">
                       {r.status === 'batal' ? (
                         <Badge tone="neutral">Dibatalkan</Badge>
+                      ) : r.status === 'keluar' ? (
+                        <Badge tone="info">Keluar</Badge>
+                      ) : r.grade === 'reject' || r.condition === 'rusak' ? (
+                        <Badge tone="danger">{r.grade === 'reject' ? 'Reject' : 'Rusak'}</Badge>
                       ) : (
-                        <Badge tone={r.grade === 'reject' ? 'danger' : 'success'}>{r.grade === 'reject' ? 'Reject' : 'Baik'}</Badge>
+                        <Badge tone="success">Baik</Badge>
                       )}
                     </td>
                     <td className="px-5 py-3 max-md:p-0 max-md:text-small">
                       {r.location ? (
                         <Link href={`/stok/rak/${r.location.code}`} className="num link-code">
                           {r.location.code}
+                        </Link>
+                      ) : r.status === 'keluar' && r.outbound ? (
+                        <Link href={`/barang-keluar/${r.outbound.id}`} className="num link-code">
+                          {r.outbound.code}
                         </Link>
                       ) : r.status === 'aktif' ? (
                         <span className="text-warning">Belum di rak</span>

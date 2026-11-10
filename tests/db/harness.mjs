@@ -146,13 +146,13 @@ export async function checkInvariants(db) {
     having r.selisih <> coalesce(sum(d.qty), 0)`);
   for (const r of flags) problems.push(`discrepancy mismatch ${r.code}: selisih ${r.selisih} vs flagged ${r.flagged}`);
 
-  // Fase 2a: one active piece per finished good / reject pcs
+  // Fase 2a/2b: one piece per finished good / reject pcs; shipped ('keluar') pieces still count as produced
   const pieces = await all(db, `
     select r.code, r.ready, r.reject,
            count(p.id) filter (where p.grade = 'baik')::int   as baik,
            count(p.id) filter (where p.grade = 'reject')::int as rej
     from public.bundle_reconciliation r
-    left join public.piece p on p.bundle_id = r.bundle_id and p.status = 'aktif'
+    left join public.piece p on p.bundle_id = r.bundle_id and p.status in ('aktif', 'keluar')
     group by r.bundle_id, r.code, r.ready, r.reject
     having r.ready <> count(p.id) filter (where p.grade = 'baik')
         or r.reject <> count(p.id) filter (where p.grade = 'reject')`);
@@ -160,7 +160,7 @@ export async function checkInvariants(db) {
 
   const ledger = await all(db, `
     select pv.sku, coalesce((select sum(qty) from public.stock_ledger sl where sl.variant_id = pv.id), 0)::int as ledger,
-           (select count(*) from public.piece p where p.variant_id = pv.id and p.status = 'aktif' and p.grade = 'baik')::int as baik
+           (select count(*) from public.piece p where p.variant_id = pv.id and p.status in ('aktif', 'keluar') and p.grade = 'baik')::int as baik
     from public.product_variant pv`);
   for (const r of ledger) if (r.ledger !== r.baik) problems.push(`ledger vs pieces ${r.sku}: ${r.ledger} vs ${r.baik}`);
 
@@ -169,7 +169,7 @@ export async function checkInvariants(db) {
     from public.piece p
     left join lateral (
       select e.type, e.to_location_id from public.piece_event e
-      where e.piece_id = p.id and e.type in ('masuk_rak', 'pindah_rak', 'keluar_rak', 'batal')
+      where e.piece_id = p.id and e.type in ('masuk_rak', 'pindah_rak', 'keluar_rak', 'batal', 'keluar', 'retur')
       order by e.seq desc limit 1
     ) last on true
     where p.location_id is distinct from (case when last.type in ('masuk_rak', 'pindah_rak') then last.to_location_id end)`);
@@ -177,8 +177,29 @@ export async function checkInvariants(db) {
 
   const wrongKind = await all(db, `
     select p.code from public.piece p join public.location l on l.id = p.location_id
-    where (p.grade = 'baik') <> (l.kind = 'stok')`);
+    where (p.grade = 'baik' and p.condition = 'baik') <> (l.kind = 'stok')`);
   for (const r of wrongKind) problems.push(`piece on wrong rack kind ${r.code}`);
+
+  // Fase 2b: outbound documents
+  const odrift = await all(db, `
+    select p.code, p.status, p.outbound_id, i.outbound_id as item_doc, o.status as doc_status
+    from public.piece p
+    left join public.outbound_item i on i.piece_id = p.id and i.returned_at is null
+    left join public.outbound o on o.id = i.outbound_id
+    where p.outbound_id is distinct from i.outbound_id
+       or (p.status = 'keluar') <> (o.status is not distinct from 'dikirim')
+       or (o.status = 'draft' and p.status <> 'aktif')`);
+  for (const r of odrift) problems.push(`outbound drift ${r.code}: ${JSON.stringify(r)}`);
+
+  const shippedOnRack = await all(db, `select code from public.piece where status = 'keluar' and location_id is not null`);
+  for (const r of shippedOnRack) problems.push(`shipped piece on a rack ${r.code}`);
+
+  const stockView = await all(db, `
+    select pv.sku,
+           coalesce((select sum(qty) from public.stock_location s where s.variant_id = pv.id), 0)::int as view_qty,
+           (select count(*) from public.piece p where p.variant_id = pv.id and p.status = 'aktif')::int as aktif
+    from public.product_variant pv`);
+  for (const r of stockView) if (r.view_qty !== r.aktif) problems.push(`stock view vs active pieces ${r.sku}: ${r.view_qty} vs ${r.aktif}`);
 
   return problems;
 }

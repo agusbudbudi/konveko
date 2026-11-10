@@ -1,0 +1,161 @@
+/* Surat jalan: A5 portrait on an office printer, black on white. */
+@page {
+  size: A5 portrait;
+  margin: 10mm;
+}
+
+.print-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.sj-sheet {
+  display: flex;
+  justify-content: center;
+  padding: 0 16px 32px;
+}
+
+.sj {
+  box-sizing: border-box;
+  width: 148mm;
+  min-height: 210mm;
+  padding: 10mm;
+  background: #fff;
+  color: #000;
+  font-family: var(--font-sans);
+  font-size: 9pt;
+  line-height: 1.35;
+  outline: 1px solid var(--border); /* screen only */
+}
+
+.sj p {
+  margin: 0;
+}
+
+.sj-head {
+  display: flex;
+  gap: 4mm;
+  align-items: flex-start;
+  padding-bottom: 3mm;
+  border-bottom: 0.5mm solid #000;
+}
+.sj-logo {
+  width: 16mm;
+  height: 16mm;
+  object-fit: contain;
+  filter: grayscale(1);
+  flex: none;
+}
+.sj-company {
+  min-width: 0;
+}
+.sj-company-name {
+  font-size: 12pt;
+  font-weight: 700;
+}
+.sj-company-line {
+  white-space: pre-line;
+}
+.sj-title {
+  margin-left: auto;
+  text-align: right;
+  flex: none;
+}
+.sj-title-text {
+  font-size: 13pt;
+  font-weight: 700;
+}
+.sj-mono {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.sj-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2mm 6mm;
+  margin: 4mm 0;
+}
+.sj-label {
+  font-size: 7.5pt;
+  text-transform: none;
+}
+
+.sj-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.sj-table th,
+.sj-table td {
+  border: 0.25mm solid #000;
+  padding: 1.5mm 2mm;
+  text-align: left;
+  vertical-align: top;
+}
+.sj-table th {
+  font-size: 8pt;
+}
+.sj-table .num-col {
+  text-align: right;
+  width: 18mm;
+}
+.sj-table tfoot td {
+  font-weight: 700;
+}
+
+.sj .sj-note {
+  margin-top: 3mm;
+}
+
+.sj-sign {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10mm;
+  margin-top: 10mm;
+  text-align: center;
+}
+/* .sj prefix: beats `.sj p { margin: 0 }` so the signature space stays */
+.sj .sj-sign-line {
+  margin-top: 16mm;
+  border-top: 0.25mm solid #000;
+  padding-top: 1mm;
+}
+
+.sj-serials {
+  margin-top: 6mm;
+  font-size: 7.5pt;
+  column-count: 3;
+  column-gap: 4mm;
+}
+
+.sj .sj-foot {
+  margin-top: 4mm;
+  font-size: 7pt;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    margin: 0;
+    padding: 0;
+  }
+  .print-bar {
+    display: none;
+  }
+  .sj-sheet {
+    display: block;
+    padding: 0;
+  }
+  .sj {
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    outline: none;
+  }
+}

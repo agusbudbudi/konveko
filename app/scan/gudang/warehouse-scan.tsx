@@ -208,9 +208,11 @@ function ItemView({
     action = `Masukkan ${count} pcs ke rak ${rack.code}`;
   } else {
     count = 1;
+    const kind = item.grade === 'reject' ? 'reject' : item.condition === 'rusak' ? 'rusak' : 'baik';
     if (item.status === 'batal') blocked = 'Pcs ini sudah dibatalkan. Buang labelnya.';
-    else if ((item.grade === 'reject') !== forReject) {
-      blocked = `Pcs ini barang ${item.grade}. Scan rak ${item.grade === 'reject' ? 'reject' : 'stok'}.`;
+    else if (item.status === 'keluar') blocked = `Pcs ini sudah keluar di ${item.outbound_code}. Catat dulu lewat mode Retur.`;
+    else if (item.sellable === forReject) {
+      blocked = `Pcs ini barang ${kind}. Scan rak ${item.sellable ? 'stok' : 'reject'}.`;
     } else if (!item.printed) blocked = 'Label pcs ini belum ditandai tercetak.';
     else if (item.location_code === rack.code) blocked = `Pcs ini sudah di rak ${rack.code}.`;
     action = item.location_code ? `Pindahkan dari ${item.location_code} ke ${rack.code}` : `Masukkan ke rak ${rack.code}`;
@@ -246,7 +248,7 @@ function ItemView({
             </p>
           </div>
           {item.kind === 'piece' && (
-            <Badge tone={item.grade === 'reject' ? 'danger' : 'success'}>{item.grade === 'reject' ? 'Reject' : 'Baik'}</Badge>
+            <Badge tone={item.sellable ? 'success' : 'danger'}>{item.grade === 'reject' ? 'Reject' : item.condition === 'rusak' ? 'Rusak' : 'Baik'}</Badge>
           )}
         </div>
         <div className="mt-4 flex items-end justify-between border-t border-border pt-4">

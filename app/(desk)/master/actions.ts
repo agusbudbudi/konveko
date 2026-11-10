@@ -4,6 +4,7 @@ import { refresh } from 'next/cache';
 import { createClient, createServiceClient, getCurrentAppUser, type Role } from '@/lib/supabase/server';
 import { canonicalProductName, dbError, done, fail, str, UUID, type FormState } from '@/lib/master';
 import { normalizePhone, pinEmail } from '@/lib/phone';
+import { LOGO_MAX_BYTES, LOGO_TYPES } from '@/lib/business';
 
 // All master writes go through the signed-in user's client, so RLS
 // ("admin insert/update" policies) is the real gate. The UI only hides forms.
@@ -221,4 +222,41 @@ export async function setUserActive(id: string, active: boolean): Promise<FormSt
   // Block sign-in at the auth layer too (existing tokens already fail RLS: is_active = false).
   await createServiceClient().auth.admin.updateUserById(id, { ban_duration: active ? 'none' : '876000h' });
   return res;
+}
+
+// Fase 2b: business profile for document headers (one row, admin only).
+export async function saveBusinessProfile(_: FormState, fd: FormData): Promise<FormState> {
+  const me = await getCurrentAppUser();
+  if (!me?.roles.includes('admin')) return fail('Hanya admin yang bisa mengubah profil usaha.');
+  const supabase = await createClient();
+
+  const email = str(fd, 'email', 120);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Format email tidak valid.');
+  const values: Record<string, unknown> = {
+    name: str(fd, 'name', 120) || null,
+    address: str(fd, 'address', 300) || null,
+    phone: str(fd, 'phone', 40) || null,
+    email: email || null,
+    updated_by: me.id,
+    updated_at: new Date().toISOString(),
+  };
+
+  const file = fd.get('logo');
+  if (file instanceof File && file.size > 0) {
+    if (!(LOGO_TYPES as readonly string[]).includes(file.type)) return fail('Logo harus PNG, JPG, atau WEBP.');
+    if (file.size > LOGO_MAX_BYTES) return fail('Ukuran logo maksimal 1 MB.');
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `logo/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from('business-assets').upload(path, file, { contentType: file.type });
+    if (error) return fail('Logo gagal diunggah. Coba lagi.');
+    values.logo_path = path;
+  } else if (fd.get('remove_logo') === '1') {
+    values.logo_path = null;
+  }
+
+  const { data, error } = await supabase.from('business_profile').update(values).eq('id', 1).select('id');
+  if (error) return fail(dbError(error));
+  if (!data || data.length === 0) return fail('Hanya admin yang bisa mengubah profil usaha.');
+  refresh();
+  return done();
 }

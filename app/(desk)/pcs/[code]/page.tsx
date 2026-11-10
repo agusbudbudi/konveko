@@ -14,7 +14,9 @@ type Piece = {
   id: string;
   code: string;
   grade: 'baik' | 'reject';
-  status: 'aktif' | 'batal';
+  status: 'aktif' | 'batal' | 'keluar';
+  condition: 'baik' | 'rusak';
+  outbound: { id: string; code: string; destination: string } | null;
   printed_at: string | null;
   print_count: number;
   created_at: string;
@@ -28,7 +30,8 @@ type Piece = {
 
 type Event = {
   id: string;
-  type: 'dibuat' | 'cetak' | 'masuk_rak' | 'pindah_rak' | 'keluar_rak' | 'batal';
+  type: 'dibuat' | 'cetak' | 'masuk_rak' | 'pindah_rak' | 'keluar_rak' | 'batal' | 'dipesan' | 'lepas_pesan' | 'keluar' | 'retur';
+  doc: { id: string; code: string } | null;
   note: string | null;
   created_by: string;
   created_at: string;
@@ -43,6 +46,10 @@ const EVENT_LABEL: Record<Event['type'], string> = {
   pindah_rak: 'Pindah rak',
   keluar_rak: 'Keluar dari rak',
   batal: 'Dibatalkan',
+  dipesan: 'Masuk dokumen',
+  lepas_pesan: 'Dilepas dari dokumen',
+  keluar: 'Keluar gudang',
+  retur: 'Retur',
 };
 
 const when = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
@@ -51,7 +58,8 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
   const raw = decodeURIComponent((await params).code).trim().slice(0, 64);
   const supabase = await createClient();
   const select =
-    'id, code, grade, status, printed_at, print_count, created_at, bundle_id, finish_movement_id, ' +
+    'id, code, grade, status, condition, printed_at, print_count, created_at, bundle_id, finish_movement_id, ' +
+    'outbound:outbound!piece_outbound_id_fkey(id, code, destination), ' +
     'variant:product_variant(sku, product_name, size, color), bundle:bundle(code), ' +
     'batch:production_batch(id, code, roll:fabric_roll(code, material, color)), location:location(code)';
   const byToken = /^[0-9a-f]{32}$/.test(raw);
@@ -71,7 +79,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
       .in('type', ['receive_sew', 'receive_finishing', 'finish_sew', 'finish_finishing']),
     supabase
       .from('piece_event')
-      .select('id, type, note, created_by, created_at, from:location!piece_event_from_location_id_fkey(code), to:location!piece_event_to_location_id_fkey(code)')
+      .select('id, type, note, created_by, created_at, from:location!piece_event_from_location_id_fkey(code), to:location!piece_event_to_location_id_fkey(code), doc:outbound(id, code)')
       .eq('piece_id', p.id)
       .order('seq', { ascending: false }),
   ]);
@@ -107,7 +115,9 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
           <h1 className="flex flex-wrap items-center gap-3 text-h1">
             <span className="num">{p.code}</span>
             <Badge tone={p.grade === 'reject' ? 'danger' : 'success'}>{p.grade === 'reject' ? 'Reject' : 'Baik'}</Badge>
+            {p.condition === 'rusak' && <Badge tone="danger">Rusak (retur)</Badge>}
             {p.status === 'batal' && <Badge tone="neutral">Dibatalkan</Badge>}
+            {p.status === 'keluar' && <Badge tone="info">Keluar</Badge>}
           </h1>
           <p className="mt-1 text-text-muted">
             {v?.product_name} {v?.size} · {v?.color} · <span className="num">{v?.sku}</span>
@@ -132,6 +142,14 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
                 <Link href={`/stok/rak/${p.location.code}`} className="num link-code">
                   Rak {p.location.code}
                 </Link>
+              ) : p.status === 'keluar' && p.outbound ? (
+                <>
+                  Keluar di{' '}
+                  <Link href={`/barang-keluar/${p.outbound.id}`} className="num link-code">
+                    {p.outbound.code}
+                  </Link>{' '}
+                  · {p.outbound.destination}
+                </>
               ) : p.status === 'batal' ? (
                 '-'
               ) : (
@@ -193,6 +211,14 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
                       </span>
                     )}
                     {e.type === 'keluar_rak' && e.from && <span className="num"> {e.from.code}</span>}
+                    {e.doc && ['dipesan', 'lepas_pesan', 'keluar', 'retur'].includes(e.type) && (
+                      <>
+                        {' '}
+                        <Link href={`/barang-keluar/${e.doc.id}`} className="num link-code">
+                          {e.doc.code}
+                        </Link>
+                      </>
+                    )}
                   </p>
                   <p className="text-small text-text-muted">
                     {when.format(new Date(e.created_at))} · {staffName.get(e.created_by) ?? '-'}

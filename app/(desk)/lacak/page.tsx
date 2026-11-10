@@ -40,11 +40,27 @@ export default async function LacakPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <h1 className="text-h1">Lacak</h1>
-      <p className="mt-1 text-text-muted">Cari apa saja di produksi dan stok. Ketik kode, SKU, atau nama produk, atau scan label.</p>
-
-      <div className="mt-6">
-        <LacakBox />
+      {/* Hero with a soft brand-teal wash (the one gradient in the app, DESIGN §11): bleeds to the
+          content edges and fades into the page background before the results start. */}
+      <div className="relative isolate -mx-4 -mt-4 px-4 pt-8 pb-10 lg:-mx-6 lg:-mt-6 lg:px-6 lg:pt-12 lg:pb-14">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{
+            background:
+              'radial-gradient(55% 100% at 10% 0%, color-mix(in srgb, var(--primary) 26%, transparent) 0%, transparent 70%),' +
+              'radial-gradient(45% 90% at 90% 0%, color-mix(in srgb, var(--info) 22%, transparent) 0%, transparent 70%),' +
+              'radial-gradient(40% 60% at 55% 10%, color-mix(in srgb, var(--highlight) 8%, transparent) 0%, transparent 70%),' +
+              'linear-gradient(to bottom, var(--primary-soft) 0%, var(--background) 100%)',
+          }}
+        />
+        <div className="mx-auto max-w-3xl text-center">
+          <h1 className="text-[28px] leading-9 font-semibold tracking-[-0.01em]">Lacak apa saja</h1>
+          <p className="mt-2 text-text-muted">Batch, bundle, pcs, rak, produk, penjahit, rol kain, atau alasan. Ketik sebagian kode atau scan label.</p>
+          <div className="mt-6 text-left">
+            <LacakBox />
+          </div>
+        </div>
       </div>
 
       {q.length < MIN_LENGTH ? (
@@ -515,7 +531,7 @@ function Hints({ short }: { short: boolean }) {
     { q: 'belum di rak', what: 'jalan pintas' },
   ];
   return (
-    <div className="mt-6 rounded-lg border border-border bg-surface p-5">
+    <div className="mx-auto max-w-3xl rounded-lg border border-border bg-surface p-5">
       <p className="text-text-muted">{short ? `Ketik minimal ${MIN_LENGTH} karakter.` : 'Contoh yang bisa dicari:'}</p>
       <ul className="mt-3 flex flex-wrap gap-2">
         {examples.map((e) => (

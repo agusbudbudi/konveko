@@ -1,3 +1,6 @@
+/** A uuid that matches no row: filters by an id that has no matches must return an empty list. */
+export const NONE = '00000000-0000-0000-0000-000000000000';
+
 /** Page sizes offered on every paginated table, and the default. */
 export const PAGE_SIZES = [10, 50, 100] as const;
 export const DEFAULT_PAGE_SIZE = 10;

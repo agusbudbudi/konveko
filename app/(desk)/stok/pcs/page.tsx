@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { FilterChip } from '@/components/ui/filter-chip';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Pagination } from '@/components/ui/pagination';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/lib/paging';
 import { Badge } from '@/components/ui/status-badge';
 import { TabLink, TabList } from '@/components/ui/tab-link';
+import { UUID } from '@/lib/master';
 import { createClient } from '@/lib/supabase/server';
 import { PcsFilters } from './pcs-filters';
 
@@ -24,7 +26,7 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
 
-type Params = { tab?: string; q?: string; produk?: string; rak?: string; page?: string; per?: string };
+type Params = { tab?: string; q?: string; produk?: string; rak?: string; alasan?: string; page?: string; per?: string };
 
 type Row = {
   id: string;
@@ -49,14 +51,19 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
   const q = (sp.q ?? '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 40);
   const produk = (sp.produk ?? '').slice(0, 120);
   const rak = (sp.rak ?? '').slice(0, 40);
+  // ?alasan=<reason id>: pieces whose finish scan used that reject reason (linked from Lacak)
+  const alasan = UUID.test(sp.alasan ?? '') ? sp.alasan! : '';
   const page = Math.max(1, Math.floor(Number(sp.page) || 1));
   const per = (PAGE_SIZES as readonly number[]).includes(Number(sp.per)) ? Number(sp.per) : DEFAULT_SIZE;
 
   const supabase = await createClient();
-  const [{ data: vData }, { data: lData }] = await Promise.all([
+  const [{ data: vData }, { data: lData }, { data: reason }, { data: reasonMoves }] = await Promise.all([
     supabase.from('product_variant').select('id, product_name'),
     supabase.from('location').select('id, code').order('code'),
+    alasan ? supabase.from('reason').select('label').eq('id', alasan).maybeSingle() : Promise.resolve({ data: null }),
+    alasan ? supabase.from('movement').select('id').eq('reason_id', alasan) : Promise.resolve({ data: null }),
   ]);
+  const reasonMoveIds = alasan ? ((reasonMoves ?? []) as { id: string }[]).map((m) => m.id) : null;
   const variants = (vData ?? []) as { id: string; product_name: string }[];
   const racks = (lData ?? []) as { id: string; code: string }[];
   const products = [...new Set(variants.map((v) => v.product_name))].sort((a, b) => a.localeCompare(b, 'id'));
@@ -70,6 +77,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
     if (q) x = x.ilike('code', `%${q}%`);
     if (productVariantIds) x = x.in('variant_id', productVariantIds.length ? productVariantIds : [NONE]);
     if (rak) x = x.eq('location_id', rackId ?? NONE);
+    if (reasonMoveIds) x = x.in('finish_movement_id', reasonMoveIds.length ? reasonMoveIds : [NONE]);
     if (t === 'batal') return x.eq('status', 'batal');
     x = x.eq('status', 'aktif');
     if (t === 'rak') x = x.not('location_id', 'is', null);
@@ -101,11 +109,12 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
 
   const href = (over: Partial<Params>) => {
     const p = new URLSearchParams();
-    const m = { tab, q, produk, rak, page: String(page), per: String(per), ...over };
+    const m = { tab, q, produk, rak, alasan, page: String(page), per: String(per), ...over };
     if (m.tab && m.tab !== 'semua') p.set('tab', m.tab);
     if (m.q) p.set('q', m.q);
     if (m.produk) p.set('produk', m.produk);
     if (m.rak) p.set('rak', m.rak);
+    if (m.alasan) p.set('alasan', m.alasan);
     if (m.page && m.page !== '1') p.set('page', m.page);
     if (m.per && m.per !== String(DEFAULT_SIZE)) p.set('per', m.per);
     const s = p.toString();
@@ -113,7 +122,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
   };
   // past the last page (bookmark, or the list shrank): go to the last page instead of an error
   if (page > pages) redirect(href({ page: String(pages) }));
-  const filtered = Boolean(q || produk || rak);
+  const filtered = Boolean(q || produk || rak || alasan);
 
   return (
     <>
@@ -121,6 +130,11 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
       <p className="mt-1 text-text-muted">Setiap pcs barang jadi, satu baris per label.</p>
 
       <PcsFilters products={products} racks={racks.map((r) => r.code)} />
+      {alasan && (
+        <div className="mt-3">
+          <FilterChip label="Alasan reject" value={(reason as { label: string } | null)?.label ?? '-'} removeHref={href({ alasan: '', page: '1' })} />
+        </div>
+      )}
 
       <TabList label="Status pcs" className="mt-4">
         {TABS.map((t) => (

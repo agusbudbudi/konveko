@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Boxes, ChevronRight, Layers, Package, Shirt, Tag, Warehouse, type LucideIcon } from 'lucide-react';
+import { Boxes, ChevronRight, CircleAlert, Layers, Package, Scroll, Shirt, Tag, Users, Warehouse, Zap, type LucideIcon } from 'lucide-react';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
 import { productHref } from '@/lib/stock';
@@ -23,16 +23,20 @@ type Hit = { key: string; href: string; title: string; sub?: string; meta?: Reac
 type Group = { key: string; label: string; icon: LucideIcon; hits: Hit[]; total: number; more?: string };
 
 /**
- * One search over production and stock: pcs, bundles, batches, racks, products and variants.
- * Master data (rolls, users, holders, reasons) is not searched here. A 32-character QR token
- * (handheld scanner) jumps to the exact bundle, pcs or rack.
+ * One search over production and stock: pcs, bundles, batches, racks, products and variants,
+ * plus what a tailor holds, what a fabric roll became, reject/selisih reasons, and shortcuts
+ * for status words. Master data itself (users, settings) is not searched. A 32-character QR
+ * token (handheld scanner) jumps to the exact bundle, pcs or rack.
  */
 export default async function LacakPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const raw = ((await searchParams).q ?? '').trim().slice(0, 64);
   // ilike wildcards and filter syntax are stripped; codes only use letters, digits and '-'
   const q = raw.replace(/[%_\\,()"']/g, '').replace(/\s+/g, ' ');
-  const groups = q.length >= MIN_LENGTH ? await search(q) : [];
-  const found = groups.reduce((n, g) => n + g.total, 0);
+  const ready = q.length >= MIN_LENGTH;
+  const [codeGroups, extra] = ready ? await Promise.all([search(q), searchMore(q)]) : [[], { shortcuts: [], groups: [] }];
+  const groups = [...codeGroups, ...extra.groups];
+  const shortcuts = extra.shortcuts;
+  const found = groups.reduce((n, g) => n + g.total, 0) + shortcuts.length;
 
   return (
     <>
@@ -55,6 +59,7 @@ export default async function LacakPage({ searchParams }: { searchParams: Promis
           <p className="mt-4 text-small text-text-muted">
             <span className="num text-text">{found}</span> hasil untuk <span className="num font-medium text-text">{q}</span>
           </p>
+          {shortcuts.length > 0 && <Shortcuts items={shortcuts} />}
           <div className="mt-3 grid gap-4 lg:grid-cols-2">
             {groups
               .filter((g) => g.total > 0)
@@ -244,6 +249,189 @@ function best<T extends { code: string }>(rows: T[], q: string): T[] {
     .map((x) => x.r);
 }
 
+/* ---------- shortcuts, holders, rolls, reasons ---------- */
+
+type Shortcut = { label: string; href: string; words: string[] };
+
+/** Status words people type, mapped to the list that already filters for them. */
+const SHORTCUTS: Shortcut[] = [
+  { label: 'Flag selisih terbuka', href: '/selisih', words: ['selisih', 'kurang', 'hilang'] },
+  { label: 'Pcs belum masuk rak', href: '/stok/pcs?tab=belum', words: ['belum di rak', 'belum rak', 'belum masuk rak'] },
+  { label: 'Pcs reject', href: '/stok/pcs?tab=reject', words: ['reject', 'rusak', 'cacat'] },
+  { label: 'Pcs dibatalkan', href: '/stok/pcs?tab=batal', words: ['dibatalkan', 'batal'] },
+  { label: 'Label belum dicetak', href: '/label', words: ['belum dicetak', 'label', 'cetak'] },
+  { label: 'WIP siap jahit', href: '/wip?status=siap_jahit', words: ['siap jahit'] },
+  { label: 'WIP proses jahit', href: '/wip?status=proses_jahit', words: ['proses jahit', 'sedang jahit'] },
+  { label: 'WIP siap finishing', href: '/wip?status=siap_finishing', words: ['siap finishing'] },
+  { label: 'WIP proses finishing', href: '/wip?status=proses_finishing', words: ['proses finishing', 'sedang finishing', 'qc'] },
+  { label: 'Semua WIP', href: '/wip', words: ['wip', 'dalam proses', 'belum jadi'] },
+  { label: 'Stok barang jadi', href: '/stok', words: ['stok', 'ready stock', 'gudang'] },
+];
+
+/** A shortcut fits when every query word starts a word of one of its phrases ("jahit" -> siap/proses jahit). */
+function shortcutFits(sc: Shortcut, words: string[]) {
+  if (words.join(' ').length < 3) return false;
+  return sc.words.some((phrase) => {
+    const tokens = phrase.split(' ');
+    return words.every((w) => tokens.some((t) => t.startsWith(w)));
+  });
+}
+
+const HOLDER_TYPE: Record<string, string> = { penjahit: 'Penjahit', finishing: 'Finishing', produksi: 'Produksi', gudang: 'Gudang' };
+
+async function searchMore(q: string): Promise<{ shortcuts: Shortcut[]; groups: Group[] }> {
+  const words = q.toLowerCase().split(' ').filter(Boolean);
+  const shortcuts = SHORTCUTS.filter((sc) => shortcutFits(sc, words));
+  if (QR_TOKEN.test(q.toLowerCase())) return { shortcuts: [], groups: [] };
+
+  const supabase = await createClient();
+  // holders, rolls and reasons are short lists: match words in memory like variants
+  const [holdersRes, rollsRes, reasonsRes] = await Promise.all([
+    supabase.from('holder').select('id, name, type').eq('is_active', true),
+    supabase.from('fabric_roll').select('id, code, material, color, supplier').order('created_at', { ascending: false }).limit(1000),
+    supabase.from('reason').select('id, type, code, label'),
+  ]);
+  const holders = ((holdersRes.data ?? []) as { id: string; name: string; type: string }[]).filter((h) => matches(h.name, words));
+  const rolls = ((rollsRes.data ?? []) as { id: string; code: string; material: string; color: string; supplier: string | null }[]).filter((r) =>
+    matches(`${r.code} ${r.material} ${r.color} ${r.supplier ?? ''}`, words),
+  );
+  const reasons = ((reasonsRes.data ?? []) as { id: string; type: 'reject' | 'selisih'; code: string; label: string }[]).filter((r) =>
+    matches(`${r.label} ${r.code.replace(/_/g, ' ')}`, words),
+  );
+
+  const [held, rollBatches, reasonMoves] = await Promise.all([
+    holders.length
+      ? supabase.from('wip_list').select('current_holder_id, current_qty').in('current_holder_id', holders.map((h) => h.id))
+      : Promise.resolve({ data: [] }),
+    rolls.length
+      ? supabase.from('production_batch').select('id, fabric_roll_id').in('fabric_roll_id', rolls.map((r) => r.id))
+      : Promise.resolve({ data: [] }),
+    reasons.length
+      ? supabase.from('movement').select('id, reason_id').in('reason_id', reasons.map((r) => r.id))
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  // reason impact: reject pieces made by those scans, open selisih flags raised by them
+  const moves = (reasonMoves.data ?? []) as { id: string; reason_id: string }[];
+  const reasonOf = new Map(moves.map((m) => [m.id, m.reason_id]));
+  const moveIds = moves.map((m) => m.id);
+  const [rejects, flags] = await Promise.all([
+    moveIds.length
+      ? supabase.from('piece').select('finish_movement_id').eq('grade', 'reject').eq('status', 'aktif').in('finish_movement_id', moveIds)
+      : Promise.resolve({ data: [] }),
+    moveIds.length
+      ? supabase.from('discrepancy').select('movement_id, qty').eq('status', 'terbuka').in('movement_id', moveIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const rejectCount = new Map<string, number>();
+  for (const p of (rejects.data ?? []) as { finish_movement_id: string }[]) {
+    const rid = reasonOf.get(p.finish_movement_id)!;
+    rejectCount.set(rid, (rejectCount.get(rid) ?? 0) + 1);
+  }
+  const flagStat = new Map<string, { n: number; qty: number }>();
+  for (const f of (flags.data ?? []) as { movement_id: string; qty: number }[]) {
+    const rid = reasonOf.get(f.movement_id)!;
+    const e = flagStat.get(rid) ?? { n: 0, qty: 0 };
+    flagStat.set(rid, { n: e.n + 1, qty: e.qty + f.qty });
+  }
+
+  const heldRows = (held.data ?? []) as { current_holder_id: string; current_qty: number }[];
+  const batchesOf = new Map<string, string[]>();
+  for (const b of (rollBatches.data ?? []) as { id: string; fabric_roll_id: string }[]) {
+    batchesOf.set(b.fabric_roll_id, [...(batchesOf.get(b.fabric_roll_id) ?? []), b.id]);
+  }
+
+  const groups: Group[] = [
+    {
+      key: 'pemegang',
+      label: 'Penjahit / tim',
+      icon: Users,
+      total: holders.length,
+      hits: holders.slice(0, LIMIT).map((h) => {
+        const mine = heldRows.filter((x) => x.current_holder_id === h.id);
+        const pcs = mine.reduce((n, x) => n + x.current_qty, 0);
+        return {
+          key: h.id,
+          href: `/wip?pemegang=${h.id}`,
+          title: h.name,
+          sub: HOLDER_TYPE[h.type] ?? h.type,
+          meta: (
+            <span className="num text-small text-text-muted">
+              {mine.length === 0 ? 'Tidak memegang bundle' : `${mine.length} bundle · ${pcs} pcs dipegang`}
+            </span>
+          ),
+        };
+      }),
+    },
+    {
+      key: 'rol',
+      label: 'Rol kain',
+      icon: Scroll,
+      total: rolls.length,
+      hits: rolls.slice(0, LIMIT).map((r) => {
+        const ids = batchesOf.get(r.id) ?? [];
+        return {
+          key: r.id,
+          // one batch: open it; several: the batch list filtered to this roll
+          href: ids.length === 1 ? `/batch/${ids[0]}` : `/batch?rol=${r.id}`,
+          title: r.code,
+          sub: `${r.material} ${r.color}${r.supplier ? ` · ${r.supplier}` : ''}`,
+          meta: <span className="num text-small text-text-muted">{ids.length === 0 ? 'Belum dipotong' : `${ids.length} batch`}</span>,
+        };
+      }),
+    },
+    {
+      key: 'alasan',
+      label: 'Alasan',
+      icon: CircleAlert,
+      total: reasons.length,
+      hits: reasons.slice(0, LIMIT).map((r) => {
+        const flag = flagStat.get(r.id);
+        const rej = rejectCount.get(r.id) ?? 0;
+        return {
+          key: r.id,
+          href: r.type === 'reject' ? `/stok/pcs?tab=reject&alasan=${r.id}` : `/selisih?alasan=${r.id}`,
+          title: r.label,
+          sub: r.type === 'reject' ? 'Alasan reject' : 'Alasan selisih',
+          meta: (
+            <span className="num text-small text-text-muted">
+              {r.type === 'reject'
+                ? `${rej} pcs reject`
+                : flag
+                  ? `${flag.n} flag terbuka · ${flag.qty} pcs`
+                  : 'Tidak ada flag terbuka'}
+            </span>
+          ),
+        };
+      }),
+    },
+  ];
+  return { shortcuts, groups };
+}
+
+function Shortcuts({ items }: { items: Shortcut[] }) {
+  return (
+    <section className="mt-3 rounded-lg border border-border bg-surface px-5 py-4">
+      <h2 className="flex items-center gap-2 text-h3">
+        <Zap size={20} strokeWidth={1.5} aria-hidden className="text-text-muted" /> Jalan pintas
+      </h2>
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {items.map((s) => (
+          <li key={s.href}>
+            <Link
+              href={s.href}
+              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-small font-medium text-primary hover:border-primary hover:bg-primary-soft"
+            >
+              {s.label}
+              <ChevronRight size={14} strokeWidth={1.5} aria-hidden />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 const PIECE = 'code, grade, status, location:location(code), variant:product_variant(product_name, size, color)';
 const BUNDLE = 'id, code, current_status, current_qty, variant:product_variant(product_name, size, color), batch:production_batch(code)';
 
@@ -321,6 +509,10 @@ function Hints({ short }: { short: boolean }) {
     { q: 'A1', what: 'rak' },
     { q: 'Kemeja', what: 'produk' },
     { q: 'KMJ-PTH-M', what: 'variant (SKU)' },
+    { q: 'Ani', what: 'yang dipegang penjahit' },
+    { q: 'R-DEV-001', what: 'rol kain' },
+    { q: 'jahitan', what: 'alasan reject' },
+    { q: 'belum di rak', what: 'jalan pintas' },
   ];
   return (
     <div className="mt-6 rounded-lg border border-border bg-surface p-5">
@@ -338,7 +530,7 @@ function Hints({ short }: { short: boolean }) {
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-small text-text-muted">Master data (rol kain, user, penjahit, alasan) diatur di menu Master data.</p>
+      <p className="mt-4 text-small text-text-muted">Untuk mengubah data master (user, rak, variant, alasan), buka menu Master data.</p>
     </div>
   );
 }

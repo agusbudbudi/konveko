@@ -3,10 +3,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/status-badge';
+import { FilterChip } from '@/components/ui/filter-chip';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { UrlPagination } from '@/components/ui/pagination';
 import { ReconciliationBar, type Recon } from '@/components/recon/reconciliation-bar';
-import { pageCount, readPaging, withQuery, type PageQuery } from '@/lib/paging';
+import { UUID } from '@/lib/master';
+import { NONE, pageCount, readPaging, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
 import { BATCH_STATUS } from '@/lib/types';
 
@@ -20,10 +22,21 @@ export default async function BatchListPage({ searchParams }: { searchParams: Pr
   const query = await searchParams;
   const { from, to, per, page } = readPaging(query);
   const supabase = await createClient();
-  const [{ data, error }, { count }] = await Promise.all([
-    supabase.from('batch_reconciliation').select('*').order('created_at', { ascending: false }).range(from, to),
-    supabase.from('production_batch').select('id', { count: 'exact', head: true }),
-  ]);
+  // ?rol=<fabric roll id>: batches cut from one roll (linked from Lacak)
+  const rollId = UUID.test(query.rol ?? '') ? query.rol! : null;
+  const roll = rollId
+    ? ((await supabase.from('fabric_roll').select('code').eq('id', rollId).maybeSingle()).data as { code: string } | null)
+    : null;
+  const rollBatchIds = rollId
+    ? ((await supabase.from('production_batch').select('id').eq('fabric_roll_id', rollId)).data ?? []).map((b) => b.id as string)
+    : null;
+  let list = supabase.from('batch_reconciliation').select('*').order('created_at', { ascending: false }).range(from, to);
+  let counter = supabase.from('production_batch').select('id', { count: 'exact', head: true });
+  if (rollId) {
+    list = list.in('batch_id', rollBatchIds!.length ? rollBatchIds! : [NONE]);
+    counter = counter.eq('fabric_roll_id', rollId);
+  }
+  const [{ data, error }, { count }] = await Promise.all([list, counter]);
   const total = count ?? 0;
   if (page > pageCount(total, per)) redirect(withQuery('/batch', query, { page: String(pageCount(total, per)) }));
   const rows = (data ?? []) as Row[];
@@ -37,11 +50,17 @@ export default async function BatchListPage({ searchParams }: { searchParams: Pr
         </Link>
       </div>
 
+      {rollId && (
+        <div className="mt-4">
+          <FilterChip label="Dari rol" value={roll?.code ?? '-'} removeHref={withQuery('/batch', query, { rol: '', page: '' })} />
+        </div>
+      )}
+
       {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
 
       <div className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
-          <p className="p-5 text-text-muted">Belum ada batch.</p>
+          <p className="p-5 text-text-muted">{rollId ? 'Belum ada batch dari rol ini.' : 'Belum ada batch.'}</p>
         ) : (
           <table className="w-full">
             <thead className="bg-surface-muted text-left text-caption tracking-[0.02em] text-text-muted max-md:hidden">

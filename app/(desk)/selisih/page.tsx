@@ -2,8 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { TriangleAlert } from 'lucide-react';
+import { FilterChip } from '@/components/ui/filter-chip';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { UrlPagination } from '@/components/ui/pagination';
+import { UUID } from '@/lib/master';
 import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
 
@@ -31,7 +33,9 @@ export default async function SelisihPage({ searchParams }: { searchParams: Prom
     .eq('status', 'terbuka')
     .order('created_at', { ascending: false })
     .limit(1000); // all open flags, so the summary counts every one; the table shows one page
-  const all = (data ?? []) as unknown as Row[];
+  // ?alasan=<reason id>: only flags scanned with that reason (linked from Lacak)
+  const reasonId = UUID.test(query.alasan ?? '') ? query.alasan! : null;
+  const all = ((data ?? []) as unknown as Row[]).filter((r) => !reasonId || r.movement?.reason_id === reasonId);
   const paged = slicePage(all, query);
   if (paged.outOfRange) redirect(withQuery('/selisih', query, { page: String(paged.pages) }));
   const rows = paged.rows;
@@ -51,6 +55,12 @@ export default async function SelisihPage({ searchParams }: { searchParams: Prom
       </p>
 
       {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
+
+      {reasonId && (
+        <div className="mt-4">
+          <FilterChip label="Alasan" value={reasonLabel.get(reasonId) ?? '-'} removeHref={withQuery('/selisih', query, { alasan: '', page: '' })} />
+        </div>
+      )}
 
       <div className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (

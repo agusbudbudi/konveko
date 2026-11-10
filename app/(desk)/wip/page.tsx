@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { FilterChip } from '@/components/ui/filter-chip';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { UrlPagination } from '@/components/ui/pagination';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { TabLink, TabList } from '@/components/ui/tab-link';
 import { cn } from '@/lib/cn';
+import { UUID } from '@/lib/master';
 import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { calendarDaysAgo, daysAgoLabel } from '@/lib/date';
 import { createClient } from '@/lib/supabase/server';
@@ -36,8 +38,19 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
   // All open bundles are loaded (active WIP is bounded) so the summary line counts every row, not one page.
   let q = supabase.from('wip_list').select('*').order('last_movement_at', { ascending: true }).limit(1000);
   if (status !== 'semua') q = q.eq('current_status', status);
+  // ?pemegang=<holder id>: bundles one tailor or team holds right now (linked from Lacak)
+  const holderId = UUID.test(query.pemegang ?? '') ? query.pemegang! : null;
+  let countQ = supabase.from('wip_list').select('current_status');
+  if (holderId) {
+    q = q.eq('current_holder_id', holderId);
+    countQ = countQ.eq('current_holder_id', holderId);
+  }
   // counts per status for the tabs (status column only, cheap)
-  const [{ data, error }, { data: all }] = await Promise.all([q, supabase.from('wip_list').select('current_status')]);
+  const [{ data, error }, { data: all }, { data: holder }] = await Promise.all([
+    q,
+    countQ,
+    holderId ? supabase.from('holder').select('name').eq('id', holderId).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
   const countOf = (f: BundleStatus | 'semua') =>
     f === 'semua' ? (all ?? []).length : (all ?? []).filter((r) => r.current_status === f).length;
   // Calendar days in Jakarta, not the view's elapsed/24h (which shows yesterday evening as "hari ini").
@@ -66,6 +79,12 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
           </>
         )}
       </p>
+
+      {holderId && (
+        <div className="mt-4">
+          <FilterChip label="Dipegang" value={holder?.name ?? '-'} removeHref={withQuery('/wip', query, { pemegang: '', page: '' })} />
+        </div>
+      )}
 
       <TabList label="Filter status" className="mt-6">
         {FILTERS.map((f) => (

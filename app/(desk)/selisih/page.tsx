@@ -17,6 +17,7 @@ type Row = {
   from_step: string;
   to_step: string;
   created_at: string;
+  movement_id: string;
   bundle: { id: string; code: string; batch: { code: string } | null } | null;
   movement: { reason_id: string | null; scanned_by: string } | null;
 };
@@ -29,13 +30,22 @@ export default async function SelisihPage({ searchParams }: { searchParams: Prom
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('discrepancy')
-    .select('id, qty, from_step, to_step, created_at, bundle:bundle(id, code, batch:production_batch(code)), movement:movement(reason_id, scanned_by)')
+    .select('id, qty, from_step, to_step, created_at, movement_id, bundle:bundle(id, code, batch:production_batch(code)), movement:movement(reason_id, scanned_by)')
     .eq('status', 'terbuka')
     .order('created_at', { ascending: false })
     .limit(1000); // all open flags, so the summary counts every one; the table shows one page
-  // ?alasan=<reason id>: only flags scanned with that reason (linked from Lacak)
+  // The reason shown and filtered on is the one after any supervisor correction
+  // (effective_movement is keyed by the original scan id, which the flag points at).
+  const raw = (data ?? []) as unknown as Row[];
+  const moveIds = [...new Set(raw.map((r) => r.movement_id))];
+  const { data: eff } = moveIds.length
+    ? await supabase.from('effective_movement').select('id, reason_id').in('id', moveIds)
+    : { data: [] };
+  const reasonOf = new Map(((eff ?? []) as { id: string; reason_id: string | null }[]).map((m) => [m.id, m.reason_id]));
+  const effReason = (r: Row) => reasonOf.get(r.movement_id) ?? r.movement?.reason_id ?? null;
+  // ?alasan=<reason id>: only flags with that reason
   const reasonId = UUID.test(query.alasan ?? '') ? query.alasan! : null;
-  const all = ((data ?? []) as unknown as Row[]).filter((r) => !reasonId || r.movement?.reason_id === reasonId);
+  const all = raw.filter((r) => !reasonId || effReason(r) === reasonId);
   const paged = slicePage(all, query);
   if (paged.outOfRange) redirect(withQuery('/selisih', query, { page: String(paged.pages) }));
   const rows = paged.rows;
@@ -100,7 +110,7 @@ export default async function SelisihPage({ searchParams }: { searchParams: Prom
                     {r.from_step} → {r.to_step}
                   </td>
                   <td className="px-5 py-3 text-text-muted max-md:p-0 max-md:text-small">
-                    {(r.movement?.reason_id && reasonLabel.get(r.movement.reason_id)) ?? '-'}
+                    {(effReason(r) && reasonLabel.get(effReason(r)!)) ?? '-'}
                   </td>
                   <td className="px-5 py-3 max-md:p-0 max-md:text-right max-md:text-small max-md:text-text-muted">
                     {(r.movement?.scanned_by && nameOf.get(r.movement.scanned_by)) ?? '-'}

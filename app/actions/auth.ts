@@ -2,12 +2,27 @@
 
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { isAuthRetryableFetchError, type AuthError } from '@supabase/supabase-js';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { normalizePhone, pinEmail } from '@/lib/phone';
 
 export type LoginState = { error: string | null };
 
 const FLOOR_ROLES = ['penjahit', 'finishing', 'gudang'];
+
+const UNREACHABLE = 'Server tidak bisa dihubungi. Periksa koneksi, lalu coba lagi.';
+const FAILED = 'Login sedang bermasalah. Coba lagi sebentar.';
+
+/**
+ * Only a real credentials check says "salah". A network failure (server down, no connection)
+ * or another server error gets its own message, so nobody retypes a correct password.
+ */
+function wrongCredentials(error: AuthError) {
+  return error.code === 'invalid_credentials' || (error.status === 400 && !error.code);
+}
+function loginProblem(error: AuthError) {
+  return isAuthRetryableFetchError(error) ? UNREACHABLE : FAILED;
+}
 
 function safeNext(value: FormDataEntryValue | null): string | null {
   const v = typeof value === 'string' ? value : '';
@@ -34,7 +49,7 @@ export async function loginWithEmail(_: LoginState, formData: FormData): Promise
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: 'Email atau password salah.' };
+  if (error) return { error: wrongCredentials(error) ? 'Email atau password salah.' : loginProblem(error) };
   redirect(await landingPath(safeNext(formData.get('next'))));
 }
 
@@ -51,11 +66,13 @@ export async function loginWithPin(_: LoginState, formData: FormData): Promise<L
 
   const service = createServiceClient();
   const { data: lockedUntil, error: checkError } = await service.rpc('pin_login_check', { p_keys: keys });
-  if (checkError) return { error: 'Login sedang bermasalah. Coba lagi sebentar.' };
+  if (checkError) return { error: checkError.message.includes('fetch failed') ? UNREACHABLE : FAILED };
   if (lockedUntil) return { error: lockedMessage(lockedUntil as string) };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email: pinEmail(phone), password: pin });
+  // a failed attempt only counts toward the lock when the PIN was actually checked and wrong
+  if (error && !wrongCredentials(error)) return { error: loginProblem(error) };
   const { data: lockedAfter } = await service.rpc('pin_login_record', { p_keys: keys, p_success: !error });
 
   if (error) {

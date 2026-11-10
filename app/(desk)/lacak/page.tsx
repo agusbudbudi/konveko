@@ -323,7 +323,8 @@ async function searchMore(q: string): Promise<{ shortcuts: Shortcut[]; groups: G
       ? supabase.from('production_batch').select('id, fabric_roll_id').in('fabric_roll_id', rolls.map((r) => r.id))
       : Promise.resolve({ data: [] }),
     reasons.length
-      ? supabase.from('movement').select('id, reason_id').in('reason_id', reasons.map((r) => r.id))
+      ? // effective_movement: the reason after any supervisor correction, keyed by the original scan id
+        supabase.from('effective_movement').select('id, reason_id').in('reason_id', reasons.map((r) => r.id))
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -493,8 +494,10 @@ function ResultGroup({ group: g }: { group: Group }) {
               <div className="min-w-0 flex-1">
                 <p className="num link-code inline">{h.title}</p>
                 {h.sub && <p className="truncate text-small text-text-muted">{h.sub}</p>}
+                {/* phones: status and numbers go under the text so the text is not cut off */}
+                {h.meta && <div className="mt-1 flex flex-wrap items-center gap-2 sm:hidden">{h.meta}</div>}
               </div>
-              <div className="flex shrink-0 items-center gap-2">{h.meta}</div>
+              {h.meta && <div className="flex shrink-0 items-center gap-2 max-sm:hidden">{h.meta}</div>}
               <ChevronRight size={16} strokeWidth={1.5} aria-hidden className="shrink-0 text-text-subtle group-hover:text-text-muted" />
             </Link>
           </li>

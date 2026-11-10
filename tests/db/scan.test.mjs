@@ -483,3 +483,25 @@ describe('staff_names (FR-23)', () => {
     }
   });
 });
+
+describe('day counts follow the Jakarta calendar', () => {
+  // midnight today in Jakarta, plus an offset in minutes, as timestamptz
+  const jakarta = (minutes) =>
+    `((date_trunc('day', now() at time zone 'Asia/Jakarta') + interval '${minutes} minutes') at time zone 'Asia/Jakarta')`;
+
+  it('wip_list: yesterday 23:59 is 1 day ago, today 00:01 is 0', async () => {
+    const res = await newBatch([['kemejaM', 10], ['kemejaL', 10]]);
+    await actAs(db, null);
+    const [late, early] = await all(db, `select id from public.bundle where batch_id = $1 order by code`, [res.batch_id]);
+    await db.query(`update public.bundle set last_movement_at = ${jakarta(-1)} where id = $1`, [late.id]);
+    await db.query(`update public.bundle set last_movement_at = ${jakarta(1)} where id = $1`, [early.id]);
+    const days = Object.fromEntries(
+      (await all(db, `select bundle_id, days_since_last_scan from public.wip_list where batch_id = $1`, [res.batch_id])).map((r) => [
+        r.bundle_id,
+        r.days_since_last_scan,
+      ]),
+    );
+    assert.equal(days[late.id], 1);
+    assert.equal(days[early.id], 0);
+  });
+});

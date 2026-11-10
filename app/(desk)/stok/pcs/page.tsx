@@ -60,7 +60,8 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
     supabase.from('product_variant').select('id, product_name'),
     supabase.from('location').select('id, code').order('code'),
     supabase.from('reason').select('id, label').eq('type', 'reject').order('label'),
-    alasan ? supabase.from('movement').select('id').eq('reason_id', alasan) : Promise.resolve({ data: null }),
+    // effective_movement: the reason after any supervisor correction (pieces point at the original scan id)
+    alasan ? supabase.from('effective_movement').select('id').eq('reason_id', alasan) : Promise.resolve({ data: null }),
   ]);
   const reasonMoveIds = alasan ? ((reasonMoves ?? []) as { id: string }[]).map((m) => m.id) : null;
   const variants = (vData ?? []) as { id: string; product_name: string }[];

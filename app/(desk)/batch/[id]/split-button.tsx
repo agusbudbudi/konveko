@@ -53,39 +53,42 @@ function SplitForm({ code, qty, onClose }: { code: string; qty: number; onClose:
       <p className="text-small text-text-muted">
         Bagi <span className="num">{qty}</span> pcs menjadi beberapa bundle. Label <span className="num">{code}</span> tidak berlaku lagi; cetak label bundle baru setelahnya.
       </p>
-      <div className="flex flex-wrap items-center gap-2">
+      {/* one part per line: label, qty, remove */}
+      <div className="flex flex-col gap-3">
         {parts.map((p, i) => (
-          <span key={i} className="inline-flex items-center gap-2">
-            {i > 0 && <span className="text-text-muted">+</span>}
-            <span className="w-20 shrink-0">
-              <Input
-                aria-label={`Qty pecahan ${i + 1}`}
-                inputMode="numeric"
-                value={p}
-                onChange={(e) => setParts((ps) => ps.map((x, j) => (j === i ? e.target.value.replace(/\D/g, '') : x)))}
-                className="num text-right"
-              />
-            </span>
-            {parts.length > 2 && (
+          <div key={i} className="flex items-center gap-3">
+            <label htmlFor={`split-${i}`} className="w-24 shrink-0 font-medium text-text">
+              Bundle {i + 1}
+            </label>
+            <Input
+              id={`split-${i}`}
+              inputMode="numeric"
+              value={p}
+              onChange={(e) => setParts((ps) => ps.map((x, j) => (j === i ? e.target.value.replace(/\D/g, '') : x)))}
+              className="num min-w-0 flex-1 text-right"
+            />
+            <span className="text-small text-text-muted">pcs</span>
+            {parts.length > 2 ? (
               <button
                 type="button"
                 onClick={() => setParts((ps) => ps.filter((_, j) => j !== i))}
-                className="flex size-8 items-center justify-center rounded-md text-text-muted hover:bg-surface-muted"
-                aria-label={`Hapus pecahan ${i + 1}`}
+                className="flex size-10 shrink-0 items-center justify-center rounded-md text-text-muted hover:bg-surface-muted hover:text-text"
+                aria-label={`Hapus bundle ${i + 1}`}
               >
-                <X size={14} strokeWidth={1.5} aria-hidden />
+                <X size={16} strokeWidth={1.5} aria-hidden />
               </button>
+            ) : (
+              <span aria-hidden className="size-10 shrink-0" />
             )}
-          </span>
+          </div>
         ))}
         <button
           type="button"
           onClick={() => setParts((ps) => [...ps, '0'])}
           disabled={parts.length >= qty}
-          className="flex size-10 items-center justify-center rounded-md text-text-muted hover:bg-surface-muted disabled:opacity-40"
-          aria-label="Tambah pecahan"
+          className="inline-flex h-10 items-center gap-1.5 self-start rounded-md px-3 text-small text-text-muted hover:bg-surface-muted hover:text-text disabled:opacity-40"
         >
-          <Plus size={16} strokeWidth={1.5} aria-hidden />
+          <Plus size={16} strokeWidth={1.5} aria-hidden /> Tambah pecahan
         </button>
       </div>
       <p className={`num text-small ${valid ? 'text-text-muted' : 'text-danger'}`} aria-live="polite">

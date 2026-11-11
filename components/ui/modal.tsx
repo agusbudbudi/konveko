@@ -58,7 +58,9 @@ export function Modal({
         if (closeOnBackdrop && e.target === e.currentTarget) onCloseRef.current();
       }}
       style={{ width: `min(92vw, ${width}px)` }}
-      className="m-auto max-h-[90dvh] overflow-hidden rounded-lg border border-border-strong bg-surface p-0 text-text backdrop:bg-[rgba(20,20,19,0.40)] open:flex open:flex-col open:motion-safe:animate-[fade-in_150ms_cubic-bezier(0.2,0,0,1)]"
+      // text-left: the dialog is a DOM child of wherever it is opened (e.g. a right-aligned table cell)
+      // and would inherit that alignment
+      className="m-auto max-h-[90dvh] overflow-hidden rounded-lg text-left border border-border-strong bg-surface p-0 text-text backdrop:bg-[rgba(20,20,19,0.40)] open:flex open:flex-col open:motion-safe:animate-[fade-in_150ms_cubic-bezier(0.2,0,0,1)]"
     >
       {open && (
         <>

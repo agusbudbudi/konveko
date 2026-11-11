@@ -1,4 +1,5 @@
-/* Rack labels: 100 × 70 mm on A4 (office printer), black only. */
+/* Rack labels: 95 × 66 mm on A4 (office printer), black only.
+   194 × 281 mm printable (8 mm margins) = 2 columns × 4 rows with 4 mm gaps, 8 per sheet. */
 @page {
   size: A4;
   margin: 8mm;
@@ -16,7 +17,7 @@
 
 .rack-sheet {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 100mm);
+  grid-template-columns: repeat(auto-fill, 95mm);
   gap: 4mm;
   justify-content: center;
   padding: 0 16px 32px;
@@ -24,12 +25,12 @@
 
 .rack-label {
   box-sizing: border-box;
-  width: 100mm;
-  height: 70mm;
+  width: 95mm;
+  height: 66mm;
   padding: 5mm;
   display: grid;
-  grid-template-columns: 44mm 1fr;
-  gap: 5mm;
+  grid-template-columns: 40mm 1fr;
+  gap: 4mm;
   align-items: center;
   background: #fff;
   color: #000;
@@ -39,8 +40,8 @@
 }
 
 .rack-qr svg {
-  width: 44mm;
-  height: 44mm;
+  width: 40mm;
+  height: 40mm;
   display: block;
 }
 
@@ -62,7 +63,7 @@
 }
 .rack-code {
   margin: 0;
-  font-size: 44pt;
+  font-size: 40pt;
   line-height: 1;
   font-weight: 700;
   letter-spacing: -0.02em;

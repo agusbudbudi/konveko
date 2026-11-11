@@ -137,16 +137,16 @@ function Delta({ delta, unit = '%', higherIsWorse = false }: { delta: number | n
 }
 
 function Stat({
-  label, value, unit, context, delta, deltaUnit, higherIsWorse, warn, width = '16.666%',
+  label, value, unit, context, delta, deltaUnit, higherIsWorse, warn, width = '33.333%',
 }: {
   label: string; value: string | number; unit?: string; context?: string;
   delta: number | null; deltaUnit?: '%' | 'poin'; higherIsWorse?: boolean; warn?: boolean;
-  /** share of the row: 6 tiles (production) or 4 (barang keluar) side by side in landscape */
+  /** share of the row: 3 per row (production), 4 (barang keluar) */
   width?: string;
 }) {
   return (
     <View style={{ width, padding: 4 }}>
-      <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 6, padding: 10, height: 78 }}>
+      <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 6, padding: 10, minHeight: 78, flexGrow: 1 }}>
         <Text style={s.caption}>{label}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3, marginTop: 3 }}>
           <Text style={{ fontSize: 17, fontWeight: 700, color: warn ? C.warning : C.text, lineHeight: 1.15 }}>{value}</Text>
@@ -234,7 +234,7 @@ function SectionTitle({ title, sub }: { title: string; sub?: string }) {
 /** Stacked columns: lolos QC + reject per day (or week), like the page chart. */
 function TrendChart({ r }: { r: Report }) {
   const data = buckets(r);
-  const W = 736; // card inner width: A4 landscape 842 - 2 x 40 margin - 2 x 12 padding - 2 x 1 border
+  const W = 489; // card inner width: A4 595 - 2 x 40 margin - 2 x 12 padding - 2 x 1 border
   const H = 150;
   const left = 28;
   const bottom = 18;
@@ -362,7 +362,7 @@ function ReportDocument({ period, r, prev, out, outPrev, business, appUrl, now =
 
   return (
     <Document title={`Laporan produksi ${period.label}`} author="konveko" creator="konveko" producer="konveko" language="id">
-      <Page size="A4" orientation="landscape" style={s.page}>
+      <Page size="A4" style={s.page}>
         <Header business={business} />
 
         <Text style={s.h1}>Laporan produksi</Text>

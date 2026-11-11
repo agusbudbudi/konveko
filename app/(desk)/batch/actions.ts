@@ -40,3 +40,33 @@ export async function splitBundle(code: string, qtys: number[]): Promise<ActionR
   if (res.ok) refresh();
   return res;
 }
+
+type BundleChange = { bundle_id: string; code: string; qty: number; message: string };
+
+/** FR-10: change the qty and/or variant of a bundle while the batch is draft. */
+export async function editBundle(input: { code: string; qty: number; variantId: string }): Promise<ActionResult<BundleChange>> {
+  if (!okQty(input.qty)) return { ok: false, message: 'Qty hasil potong harus angka lebih dari 0.', code: 'qty_invalid' };
+  if (!UUID.test(input.variantId)) return { ok: false, message: 'Pilih variant.', code: 'qty_invalid' };
+  const res = await callRpc<BundleChange>('edit_bundle', {
+    p_code: input.code.slice(0, 64),
+    p_qty: input.qty,
+    p_variant_id: input.variantId,
+    p_note: null,
+  });
+  if (res.ok) refresh();
+  return res;
+}
+
+/** FR-10: add a variant that was forgotten at cutting, while the batch is draft. */
+export async function addBundleToBatch(input: { batchId: string; variantId: string; qty: number }): Promise<ActionResult<BundleChange>> {
+  if (!UUID.test(input.batchId)) return { ok: false, message: 'Batch tidak ditemukan.', code: 'not_found' };
+  if (!UUID.test(input.variantId)) return { ok: false, message: 'Pilih variant.', code: 'qty_invalid' };
+  if (!okQty(input.qty)) return { ok: false, message: 'Qty hasil potong harus angka lebih dari 0.', code: 'qty_invalid' };
+  const res = await callRpc<BundleChange>('add_bundle_to_batch', {
+    p_batch_id: input.batchId,
+    p_variant_id: input.variantId,
+    p_qty: input.qty,
+  });
+  if (res.ok) refresh();
+  return res;
+}

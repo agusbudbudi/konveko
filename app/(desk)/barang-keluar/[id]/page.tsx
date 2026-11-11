@@ -8,6 +8,8 @@ import { UUID } from '@/lib/master';
 import { OUTBOUND_STATUS, OUTBOUND_TYPE, type OutboundProgress, type OutboundStatus, type OutboundType } from '@/lib/outbound';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import { AddByCode, DocumentActions, ItemAction } from './outbound-detail';
+import { buildHistory, type HistoryEvent } from '@/lib/outbound-history';
+import { OutboundHistory } from './history';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 
@@ -26,6 +28,7 @@ type Doc = {
   shipped_by: string | null;
   shipped_at: string | null;
   cancelled_at: string | null;
+  cancelled_by: string | null;
 };
 type Item = {
   id: string;
@@ -51,7 +54,7 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
   if (!data) notFound();
   const doc = data as Doc;
 
-  const [me, { data: progressData }, { data: itemData }, { data: names }] = await Promise.all([
+  const [me, { data: progressData }, { data: itemData }, { data: eventData }] = await Promise.all([
     getCurrentAppUser(),
     supabase.rpc('outbound_progress', { p_outbound_id: id }),
     supabase
@@ -59,8 +62,16 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
       .select('id, added_at, returned_at, piece:piece(code, grade, condition, status, location:location(code), variant:product_variant(sku, product_name, size, color))')
       .eq('outbound_id', id)
       .order('added_at', { ascending: false }),
-    supabase.rpc('staff_names', { p_ids: [doc.created_by, doc.shipped_by].filter(Boolean) }),
+    supabase
+      .from('piece_event')
+      .select('seq, type, note, created_at, created_by, piece:piece(code)')
+      .eq('outbound_id', id)
+      .order('seq'),
   ]);
+  const events = (eventData ?? []) as unknown as HistoryEvent[];
+  const history = buildHistory(doc, events);
+  const userIds = [...new Set([doc.created_by, doc.shipped_by, doc.cancelled_by, ...events.map((e) => e.created_by)].filter((x): x is string => !!x))];
+  const { data: names } = await supabase.rpc('staff_names', { p_ids: userIds });
   const progress = (progressData ?? []) as OutboundProgress;
   const items = (itemData ?? []) as unknown as Item[];
   const live = items.filter((i) => !i.returned_at);
@@ -191,6 +202,8 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
               </ul>
             </div>
           )}
+
+          <OutboundHistory entries={history} nameOf={nameOf} />
         </div>
 
         <aside className="flex flex-col gap-3 self-start rounded-lg border border-border bg-surface p-5 text-small">
@@ -200,7 +213,7 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
           {doc.note && <Meta label={doc.type === 'penyesuaian' ? 'Alasan' : 'Catatan'} value={doc.note} />}
           <Meta label="Dibuat" value={`${when.format(new Date(doc.created_at))} · ${nameOf.get(doc.created_by) ?? '-'}`} />
           {doc.shipped_at && <Meta label="Dikirim" value={`${when.format(new Date(doc.shipped_at))} · ${nameOf.get(doc.shipped_by ?? '') ?? '-'}`} />}
-          {doc.cancelled_at && <Meta label="Dibatalkan" value={when.format(new Date(doc.cancelled_at))} />}
+          {doc.cancelled_at && <Meta label="Dibatalkan" value={`${when.format(new Date(doc.cancelled_at))} · ${nameOf.get(doc.cancelled_by ?? '') ?? '-'}`} />}
           {returned.length > 0 && <Meta label="Retur" value={`${returned.length} pcs`} />}
         </aside>
       </section>

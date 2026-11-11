@@ -3,15 +3,16 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import { UrlPagination } from '@/components/ui/pagination';
-import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
 import { ReconciliationBar, ReconciliationLegend, type Recon } from '@/components/recon/reconciliation-bar';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import { BATCH_STATUS, type BundleStatus } from '@/lib/types';
 import { SplitButton } from './split-button';
+import { AddBundleButton, EditBundleButton, type VariantOption } from './edit-bundle';
 import { SetCrumb } from '@/components/nav/sidebar-nav';
 import { PageHeader } from '@/components/ui/page-header';
+import { UrlPagination } from '@/components/ui/pagination';
+import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 
 export const metadata: Metadata = { title: 'Detail batch' };
 
@@ -38,8 +39,8 @@ export default async function BatchDetailPage({
   searchParams: Promise<PageQuery>;
 }) {
   const { id } = await params;
-  const query = await searchParams;
-  const { baru } = query;
+  // ?baru=1 is a one-off notice after creating the batch; page links must not carry it
+  const { baru, ...query } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const supabase = await createClient();
@@ -70,10 +71,17 @@ export default async function BatchDetailPage({
   const codeById = new Map(bundles.map((b) => [b.bundle_id, b.code]));
   const canProduce = user?.roles.includes('produksi') ?? false;
   const active = bundles.filter((b) => b.is_active);
-  // the table shows one page; label count, parent codes and totals above use every bundle
+  // all bundles stay loaded (parent codes, label count); only the table is paged
   const path = `/batch/${id}`;
   const paged = slicePage(bundles, query);
   if (paged.outOfRange) redirect(withQuery(path, query, { page: String(paged.pages) }));
+  // FR-10: the cut can be fixed until the first bundle is received
+  const canEdit = canProduce && batch.status === 'draft';
+  const activeVariants: VariantOption[] = canEdit
+    ? ((await supabase.from('product_variant').select('id, sku, product_name, size, color').eq('is_active', true).order('sku')).data ?? [])
+    : [];
+  // keep the batch's own variants selectable even if one was deactivated since
+  const allVariants = [...activeVariants, ...[...variants.values()].filter((v) => !activeVariants.some((a) => a.id === v.id))];
 
   return (
     <>
@@ -104,7 +112,7 @@ export default async function BatchDetailPage({
 
       {baru && (
         <InlineAlert tone="success" className="mt-6">
-          Batch dibuat. Pecah bundle dulu jika perlu, lalu cetak label.
+          Batch dibuat. Pecah bundle dulu jika perlu, lalu cetak label. Salah qty atau variant? Ubah selama batch masih draft.
         </InlineAlert>
       )}
 
@@ -117,7 +125,15 @@ export default async function BatchDetailPage({
       </section>
 
       <section className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
-        <h2 className="px-5 py-4 text-h2">Bundle</h2>
+        <div className="flex flex-wrap items-start justify-between gap-2 px-5 py-4">
+          <div>
+            <h2 className="text-h2">Bundle</h2>
+            {canEdit && (
+              <p className="text-small text-text-muted">Qty dan variant masih bisa diubah sampai ada bundle yang diterima jahit.</p>
+            )}
+          </div>
+          {canEdit && <AddBundleButton batchId={id} variants={allVariants} />}
+        </div>
         <table className="w-full border-t border-border">
           <thead className="bg-surface-muted text-left text-caption tracking-[0.02em] text-text-muted max-md:hidden">
             <tr className="h-10">
@@ -157,6 +173,9 @@ export default async function BatchDetailPage({
                   <td className="px-5 py-3 text-right max-md:col-span-2 max-md:p-0 max-md:pt-2 max-md:text-left">
                     {b.is_active && (
                       <div className="flex flex-wrap items-center justify-end gap-1 max-md:justify-start">
+                        {canEdit && b.status === 'siap_jahit' && !extra?.parent_bundle_id && (
+                          <EditBundleButton code={b.code} qty={b.target_qty} variantId={b.variant_id} variants={allVariants} />
+                        )}
                         {canProduce && b.status === 'siap_jahit' && b.target_qty >= 2 && (
                           <SplitButton code={b.code} qty={b.target_qty} />
                         )}

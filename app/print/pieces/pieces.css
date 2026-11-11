@@ -104,14 +104,33 @@
 }
 
 .pl-reject {
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
   background: #000;
   color: #fff;
+  padding: 1mm 1.5mm;
+  min-height: 7mm;
+  overflow: hidden;
+}
+.pl-reject-tag {
+  flex: none;
   font-weight: 700;
   font-size: 8pt;
   line-height: 1;
-  padding: 1.2mm 1.5mm;
-  white-space: nowrap;
+}
+.pl-reject-why {
+  min-width: 0;
+  font-weight: 600;
+  font-size: 6pt;
+  line-height: 1.15;
+  /* up to two lines, then an ellipsis */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 @media print {

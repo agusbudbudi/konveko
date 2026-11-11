@@ -115,7 +115,12 @@ export default async function PrintPiecesPage({
                 <p className="pl-sku">{l.variant?.sku}</p>
               </div>
             ) : (
-              <p className="pl-reject">REJECT · {reasonOf.get(l.finish_movement_id) ?? '-'}</p>
+              // the reason can be long ("Jahit · Jahitan rusak atau longgar"): it gets its own
+              // column and may wrap to two lines instead of being cut off
+              <div className="pl-reject">
+                <span className="pl-reject-tag">REJECT</span>
+                <span className="pl-reject-why">{reasonOf.get(l.finish_movement_id) ?? '-'}</span>
+              </div>
             )}
           </article>
         ))}

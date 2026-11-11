@@ -74,7 +74,8 @@ export function ImportPanel() {
     });
 
   const current = preview?.sheets.find((s) => s.table === tab);
-  const canSave = !!preview && preview.errorCount === 0 && preview.changeCount > 0 && !saving;
+  // errors and unchanged rows are skipped; one new or changed row is enough to save
+  const canSave = !!preview && preview.changeCount > 0 && !saving;
 
   return (
     <section className="rounded-lg border border-border bg-surface">
@@ -110,10 +111,11 @@ export function ImportPanel() {
         {saved && (
           <InlineAlert tone="success">
             Tersimpan.{' '}
-            {(Object.entries(saved) as [Table, { added: number; changed: number }][])
+            {(Object.entries(saved.tables) as [Table, { added: number; changed: number }][])
               .filter(([, c]) => c.added + c.changed > 0)
               .map(([t, c]) => `${SHEET_OF[t]}: ${c.added} baru, ${c.changed} diubah`)
               .join(' · ') || 'Tidak ada perubahan.'}
+            {saved.skippedErrors > 0 && ` ${saved.skippedErrors} baris error dilewati; perbaiki di file lalu import lagi.`}
           </InlineAlert>
         )}
 
@@ -145,10 +147,22 @@ export function ImportPanel() {
             {current && <SheetView s={current} />}
 
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
-              {preview.errorCount > 0 && <p className="text-small text-danger">Perbaiki {preview.errorCount} baris error di file, lalu pilih file lagi.</p>}
-              {preview.errorCount === 0 && preview.changeCount === 0 && <p className="text-small text-text-muted">Semua data sama dengan sistem.</p>}
+              {preview.errorCount > 0 && preview.changeCount > 0 && (
+                <p className="flex items-center gap-1.5 text-small text-warning">
+                  <AlertTriangle size={16} strokeWidth={1.5} aria-hidden /> {preview.errorCount} baris error tidak ikut disimpan.
+                </p>
+              )}
+              {preview.changeCount === 0 && (
+                <p className="text-small text-text-muted">
+                  {preview.errorCount > 0 ? 'Tidak ada data yang bisa disimpan. Perbaiki baris error di file, lalu pilih file lagi.' : 'Semua data sama dengan sistem.'}
+                </p>
+              )}
               <Button onClick={save} disabled={!canSave}>
-                {saving ? 'Menyimpan...' : `Simpan ${preview.changeCount} perubahan`}
+                {saving
+                  ? 'Menyimpan...'
+                  : preview.errorCount > 0
+                    ? `Simpan ${preview.changeCount} data, lewati ${preview.errorCount} error`
+                    : `Simpan ${preview.changeCount} perubahan`}
               </Button>
             </div>
           </>
@@ -248,6 +262,7 @@ function SheetView({ s }: { s: PreviewSheet }) {
             ))}
           </PreviewTable>
           <More shown={s.errors.length} total={s.counts.errors} />
+          <p className="mt-2 text-small text-text-muted">Baris error dilewati saat disimpan. Baris lain tetap bisa disimpan.</p>
         </div>
       )}
 

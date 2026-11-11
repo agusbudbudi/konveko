@@ -15,7 +15,7 @@ const SHOW_ROWS = 200;
 /** A sheet preview with its lists cut to SHOW_ROWS; `counts` are the full numbers. */
 export type PreviewSheet = SheetPreview & { counts: { added: number; changed: number; same: number; errors: number } };
 export type Preview = { file: string; hash: string; sheets: PreviewSheet[]; errorCount: number; changeCount: number };
-export type Applied = Record<Table, { added: number; changed: number }>;
+export type Applied = { tables: Partial<Record<Table, { added: number; changed: number }>>; skippedErrors: number };
 
 const bad = (message: string, code = 'import_invalid'): { ok: false; message: string; code: string } => ({ ok: false, message, code });
 
@@ -66,16 +66,20 @@ export async function previewImport(fd: FormData): Promise<ActionResult<Preview>
   };
 }
 
+/**
+ * Saves the new and changed rows. Error rows and rows equal to the system are skipped and never
+ * block the rest (owner, 2026-11-11): the preview already lists them.
+ */
 export async function applyImport(fd: FormData): Promise<ActionResult<Applied>> {
   const res = await plan(fd);
   if (!res.ok) return res;
   const { file, plan: p, hash } = res.data;
-  if (p.errorCount > 0) return bad('Masih ada baris error. Perbaiki file lalu upload ulang.');
-  if (p.changeCount === 0) return bad('Tidak ada perubahan untuk disimpan.', 'no_change');
+  if (p.changeCount === 0) return bad('Tidak ada data baru atau berubah untuk disimpan.', 'no_change');
   if (hash !== String(fd.get('hash') ?? '')) {
     return bad('Data di sistem atau file berubah sejak preview. Periksa ulang sebelum menyimpan.', 'import_stale');
   }
-  const saved = await callRpc<Applied>('import_master', { p_payload: { file, tables: p.payload } });
-  if (saved.ok) refresh();
-  return saved;
+  const saved = await callRpc<Applied['tables']>('import_master', { p_payload: { file, tables: p.payload } });
+  if (!saved.ok) return saved;
+  refresh();
+  return { ok: true, data: { tables: saved.data, skippedErrors: p.errorCount } };
 }

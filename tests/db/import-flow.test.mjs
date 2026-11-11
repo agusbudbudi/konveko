@@ -61,4 +61,21 @@ describe('export -> edit -> import', () => {
     const again = planImport(await readWorkbook(await buildWorkbook(await existing())), await existing());
     assert.equal(again.changeCount + again.errorCount, 0);
   });
+
+  it('error rows are skipped; the valid rows of the same file are saved', async () => {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await buildWorkbook(null));
+    const rak = wb.getWorksheet('Rak');
+    rak.addRow(['D1', 'stok', null, 'Ya']); // valid
+    rak.addRow(['A-5', 'stok', null, 'Ya']); // error
+    rak.addRow(['D2', 'gudang', null, 'Ya']); // error
+    const plan = planImport(await readWorkbook(await wb.xlsx.writeBuffer()), await existing());
+    assert.equal(plan.errorCount, 2);
+    assert.equal(plan.changeCount, 1);
+
+    const res = await rpc(db, ids.admin, 'import_master', { p_payload: JSON.stringify({ file: 'x.xlsx', tables: plan.payload }) });
+    assert.deepEqual(res, { location: { added: 1, changed: 0 } });
+    await actAs(db, null);
+    assert.deepEqual((await all(db, `select code from public.location where code in ('D1', 'A-5', 'D2')`)).map((r) => r.code), ['D1']);
+  });
 });

@@ -15,7 +15,12 @@ const SHOW_ROWS = 200;
 /** A sheet preview with its lists cut to SHOW_ROWS; `counts` are the full numbers. */
 export type PreviewSheet = SheetPreview & { counts: { added: number; changed: number; same: number; errors: number } };
 export type Preview = { file: string; hash: string; sheets: PreviewSheet[]; errorCount: number; changeCount: number };
-export type Applied = { tables: Partial<Record<Table, { added: number; changed: number }>>; skippedErrors: number };
+export type Applied = {
+  file: string;
+  tables: Partial<Record<Table, { added: number; changed: number }>>;
+  skippedErrors: number;
+  skippedSame: number;
+};
 
 const bad = (message: string, code = 'import_invalid'): { ok: false; message: string; code: string } => ({ ok: false, message, code });
 
@@ -81,5 +86,6 @@ export async function applyImport(fd: FormData): Promise<ActionResult<Applied>> 
   const saved = await callRpc<Applied['tables']>('import_master', { p_payload: { file, tables: p.payload } });
   if (!saved.ok) return saved;
   refresh();
-  return { ok: true, data: { tables: saved.data, skippedErrors: p.errorCount } };
+  const skippedSame = p.sheets.reduce((n, s) => n + s.same, 0);
+  return { ok: true, data: { file, tables: saved.data, skippedErrors: p.errorCount, skippedSame } };
 }

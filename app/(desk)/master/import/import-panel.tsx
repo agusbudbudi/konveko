@@ -2,7 +2,9 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { AlertTriangle, CircleCheck, FileSpreadsheet, Upload } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import { TabButton, TabList } from '@/components/ui/tab-link';
@@ -10,12 +12,13 @@ import { cn } from '@/lib/cn';
 import type { Table } from '@/lib/master-import';
 import { applyImport, previewImport, type Applied, type Preview, type PreviewSheet } from './actions';
 
-const SHEET_OF: Record<Table, string> = {
-  product_variant: 'Variant',
-  fabric_roll: 'Rol kain',
-  location: 'Rak',
-  holder: 'Penjahit dan tim',
-  reason: 'Alasan',
+/** What a saved row is called in the summary, and where that master lives. */
+const RESULT_OF: Record<Table, { noun: string; href: string }> = {
+  product_variant: { noun: 'variant', href: '/master/variant' },
+  fabric_roll: { noun: 'rol kain', href: '/master/rol' },
+  location: { noun: 'rak', href: '/master/rak' },
+  holder: { noun: 'penjahit dan tim', href: '/master/pemegang' },
+  reason: { noun: 'alasan', href: '/master/alasan' },
 };
 
 function show(v: unknown) {
@@ -79,6 +82,9 @@ export function ImportPanel() {
 
   return (
     <section className="rounded-lg border border-border bg-surface">
+      <Modal open={!!saved} onClose={() => setSaved(null)} title="Import berhasil" width={480} closeOnBackdrop>
+        {saved && <ImportResult saved={saved} onClose={() => setSaved(null)} />}
+      </Modal>
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
         <div>
           <h2 className="text-h2">Import</h2>
@@ -108,16 +114,6 @@ export function ImportPanel() {
         )}
         {checking && <p className="text-small text-text-muted" aria-live="polite">Memeriksa {file?.name}...</p>}
         {error && <InlineAlert tone="danger">{error}</InlineAlert>}
-        {saved && (
-          <InlineAlert tone="success">
-            Tersimpan.{' '}
-            {(Object.entries(saved.tables) as [Table, { added: number; changed: number }][])
-              .filter(([, c]) => c.added + c.changed > 0)
-              .map(([t, c]) => `${SHEET_OF[t]}: ${c.added} baru, ${c.changed} diubah`)
-              .join(' · ') || 'Tidak ada perubahan.'}
-            {saved.skippedErrors > 0 && ` ${saved.skippedErrors} baris error dilewati; perbaiki di file lalu import lagi.`}
-          </InlineAlert>
-        )}
 
         {preview && (
           <>
@@ -175,6 +171,51 @@ export function ImportPanel() {
 function More({ shown, total }: { shown: number; total: number }) {
   if (total <= shown) return null;
   return <p className="mt-2 text-small text-text-muted">Menampilkan {shown} dari {total}. Semuanya tetap diproses.</p>;
+}
+
+/** Summary after a save: per master how many rows were saved, and what was skipped. */
+function ImportResult({ saved, onClose }: { saved: Applied; onClose: () => void }) {
+  const rows = (Object.entries(saved.tables) as [Table, { added: number; changed: number }][]).filter(([, c]) => c.added + c.changed > 0);
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="flex items-start gap-2 text-small text-text-muted">
+        <CircleCheck size={18} strokeWidth={1.5} aria-hidden className="mt-0.5 shrink-0 text-success" />
+        <span>
+          Data dari <span className="font-medium text-text">{saved.file}</span> sudah tersimpan.
+        </span>
+      </p>
+      <ul className="divide-y divide-border rounded-md border border-border">
+        {rows.map(([t, c]) => (
+          <li key={t} className="flex items-center justify-between gap-3 px-4 py-3">
+            <div>
+              <p>
+                <span className="num font-medium">{c.added + c.changed}</span> {RESULT_OF[t].noun} berhasil di-import
+              </p>
+              <p className="num text-small text-text-muted">
+                {c.added} baru · {c.changed} diubah
+              </p>
+            </div>
+            <Link href={RESULT_OF[t].href} className="shrink-0 text-small font-medium text-primary hover:underline">
+              Lihat
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {(saved.skippedErrors > 0 || saved.skippedSame > 0) && (
+        <div className="flex flex-col gap-1 text-small">
+          {saved.skippedErrors > 0 && (
+            <p className="flex items-center gap-1.5 text-warning">
+              <AlertTriangle size={16} strokeWidth={1.5} aria-hidden /> {saved.skippedErrors} baris error dilewati. Perbaiki di file, lalu import lagi.
+            </p>
+          )}
+          {saved.skippedSame > 0 && <p className="text-text-muted">{saved.skippedSame} baris sama dengan sistem, dilewati.</p>}
+        </div>
+      )}
+      <div className="sticky bottom-0 -mx-5 mt-1 flex justify-end gap-2 border-t border-border bg-surface px-5 py-3">
+        <Button onClick={onClose}>Tutup</Button>
+      </div>
+    </div>
+  );
 }
 
 /** A raw cell as typed in the file (error rows). */

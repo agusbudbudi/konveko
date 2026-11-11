@@ -10,7 +10,6 @@ import path from 'node:path';
 import { Document, Font, G, Image, Line, Link, Page, Rect, StyleSheet, Svg, Text, View, renderToBuffer } from '@react-pdf/renderer';
 import {
   buckets,
-  buildInsights,
   change,
   deltaChip,
   duration,
@@ -20,7 +19,6 @@ import {
   niceMax,
   pct,
   rejectRate,
-  type Insight,
   type OutboundReport,
   type Period,
   type Report,
@@ -139,13 +137,15 @@ function Delta({ delta, unit = '%', higherIsWorse = false }: { delta: number | n
 }
 
 function Stat({
-  label, value, unit, context, delta, deltaUnit, higherIsWorse, warn,
+  label, value, unit, context, delta, deltaUnit, higherIsWorse, warn, width = '16.666%',
 }: {
   label: string; value: string | number; unit?: string; context?: string;
   delta: number | null; deltaUnit?: '%' | 'poin'; higherIsWorse?: boolean; warn?: boolean;
+  /** share of the row: 6 tiles (production) or 4 (barang keluar) side by side in landscape */
+  width?: string;
 }) {
   return (
-    <View style={{ width: '33.333%', padding: 4 }}>
+    <View style={{ width, padding: 4 }}>
       <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 6, padding: 10, height: 78 }}>
         <Text style={s.caption}>{label}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3, marginTop: 3 }}>
@@ -163,8 +163,30 @@ type Col = { label: string; flex?: number; width?: number; align?: 'left' | 'rig
 /** A cell is a value, or a main line with a small muted second line (e.g. variant + SKU). */
 type Cell = string | number | { text: string; sub: string };
 
-/** Table whose header row repeats when it breaks over a page. */
-function Table({ cols, rows, empty }: { cols: Col[]; rows: { cells: Cell[]; tones?: (string | undefined)[] }[]; empty: string }) {
+/** Short tables (and their title) move to the next page whole instead of splitting off one row. */
+const KEEP_TOGETHER = 15;
+
+/** Section title + table. A long table breaks over pages with its header row repeated. */
+function Table({
+  title,
+  cols,
+  rows,
+  empty,
+}: {
+  title?: string;
+  cols: Col[];
+  rows: { cells: Cell[]; tones?: (string | undefined)[] }[];
+  empty: string;
+}) {
+  return (
+    <View wrap={rows.length > KEEP_TOGETHER}>
+      {title && <SectionTitle title={title} />}
+      <TableBody cols={cols} rows={rows} empty={empty} />
+    </View>
+  );
+}
+
+function TableBody({ cols, rows, empty }: { cols: Col[]; rows: { cells: Cell[]; tones?: (string | undefined)[] }[]; empty: string }) {
   const cellStyle = (c: Col) => ({
     ...(c.width ? { width: c.width } : { flex: c.flex ?? 1 }),
     textAlign: c.align ?? ('left' as const),
@@ -209,24 +231,10 @@ function SectionTitle({ title, sub }: { title: string; sub?: string }) {
   );
 }
 
-function Insights({ items }: { items: Insight[] }) {
-  return (
-    <View style={[s.card, { backgroundColor: '#FBFAF8' }]}>
-      <Text style={s.h3}>Ringkasan</Text>
-      {items.map((i) => (
-        <View key={i.text} style={{ flexDirection: 'row', gap: 7, marginTop: 5 }} wrap={false}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: TONE[i.tone], marginTop: 3.5 }} />
-          <Text style={{ flex: 1 }}>{i.text}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 /** Stacked columns: lolos QC + reject per day (or week), like the page chart. */
 function TrendChart({ r }: { r: Report }) {
   const data = buckets(r);
-  const W = 489; // card inner width: 515 - 2 x 12 padding - 2 x 1 border
+  const W = 736; // card inner width: A4 landscape 842 - 2 x 40 margin - 2 x 12 padding - 2 x 1 border
   const H = 150;
   const left = 28;
   const bottom = 18;
@@ -354,14 +362,12 @@ function ReportDocument({ period, r, prev, out, outPrev, business, appUrl, now =
 
   return (
     <Document title={`Laporan produksi ${period.label}`} author="konveko" creator="konveko" producer="konveko" language="id">
-      <Page size="A4" style={s.page}>
+      <Page size="A4" orientation="landscape" style={s.page}>
         <Header business={business} />
 
         <Text style={s.h1}>Laporan produksi</Text>
         <Text style={{ fontSize: 11, marginTop: 4, fontWeight: 500 }}>{period.label}</Text>
         <Text style={[s.muted, { marginTop: 1 }]}>Dibanding {period.prevLabel}</Text>
-
-        <Insights items={buildInsights(r, prev)} />
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginHorizontal: -4 }} wrap={false}>
           <Stat label="DIPOTONG" value={t.cut} unit="pcs" context={`${t.batches} batch baru`} delta={change(t.cut, p.cut)} />
@@ -400,8 +406,8 @@ function ReportDocument({ period, r, prev, out, outPrev, business, appUrl, now =
 
         <TrendChart r={r} />
 
-        <SectionTitle title="Per penjahit" />
         <Table
+          title="Per penjahit"
           cols={[
             { label: 'Penjahit', flex: 2.2 },
             { label: 'Bundle', align: 'right' },
@@ -420,6 +426,7 @@ function ReportDocument({ period, r, prev, out, outPrev, business, appUrl, now =
           empty="Belum ada scan selesai jahit."
         />
 
+        <View wrap={false}>
         <SectionTitle title="Alasan" />
         <View style={[s.card, { flexDirection: 'row', gap: 20 }]}>
           <ReasonBars
@@ -437,9 +444,10 @@ function ReportDocument({ period, r, prev, out, outPrev, business, appUrl, now =
             empty="Tidak ada selisih."
           />
         </View>
+        </View>
 
-        <SectionTitle title="Per variant" />
         <Table
+          title="Per variant"
           cols={[
             { label: 'Variant', flex: 3 },
             { label: 'Dipotong', align: 'right' },
@@ -486,9 +494,10 @@ function Outbound({
           <View wrap={false}>
           <SectionTitle title="Barang keluar" sub="Barang yang meninggalkan gudang lewat surat jalan, dihitung dari tanggal kirim." />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, marginHorizontal: -4 }}>
-            <Stat label="DIKIRIM" value={t.pcs} unit="pcs" context={`${t.docs} surat jalan`} delta={p ? change(t.pcs, p.pcs) : null} />
-            <Stat label="JUAL BS" value={t.bs} unit="pcs" context="reject atau rusak yang dijual" delta={p ? change(t.bs, p.bs) : null} />
+            <Stat width="25%" label="DIKIRIM" value={t.pcs} unit="pcs" context={`${t.docs} surat jalan`} delta={p ? change(t.pcs, p.pcs) : null} />
+            <Stat width="25%" label="JUAL BS" value={t.bs} unit="pcs" context="reject atau rusak yang dijual" delta={p ? change(t.bs, p.bs) : null} />
             <Stat
+              width="25%"
               label="RETUR"
               value={t.returned}
               unit="pcs"
@@ -498,6 +507,7 @@ function Outbound({
               higherIsWorse
             />
             <Stat
+              width="25%"
               label="PENYESUAIAN"
               value={t.adjusted}
               unit="pcs"
@@ -509,8 +519,8 @@ function Outbound({
           </View>
           </View>
 
-          <SectionTitle title="Barang keluar per tujuan" />
           <Table
+            title="Barang keluar per tujuan"
             cols={[
               { label: 'Tujuan', flex: 3 },
               { label: 'Surat jalan', align: 'right' },
@@ -524,8 +534,8 @@ function Outbound({
             empty="Belum ada pengiriman."
           />
 
-          <SectionTitle title="Barang keluar per variant" />
           <Table
+            title="Barang keluar per variant"
             cols={[
               { label: 'Variant', flex: 3 },
               { label: 'Dikirim', align: 'right' },

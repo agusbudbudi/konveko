@@ -287,7 +287,7 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
       if (spec.hasActive) {
         const active = index.has(norm(ACTIVE.header)) ? parseActive(rawRow.is_active) : true;
         if (active === null) {
-          fail('Kolom Aktif isi Ya atau Tidak.');
+          fail(`Aktif "${String(rawRow.is_active).trim()}" tidak dikenal. Isi Ya atau Tidak.`);
           continue;
         }
         values.is_active = active;

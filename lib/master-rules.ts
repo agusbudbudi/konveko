@@ -16,6 +16,23 @@ const err = (error: string): RuleResult<never> => ({ ok: false, error });
 /** String, trimmed, inner runs of spaces collapsed; '' for empty. */
 const clean = (v: unknown) => (v === null || v === undefined ? '' : String(v).replace(/\s+/g, ' ').trim());
 
+/**
+ * A value outside a fixed list. Names the valid options, and the rejected value when one was
+ * typed (import), e.g. 'Jenis rak "gudang" tidak dikenal. Isi stok atau reject.'
+ */
+function choice(what: string, value: string, options: readonly string[]) {
+  const list = options.length === 2 ? options.join(' atau ') : `${options.slice(0, -1).join(', ')}, atau ${options.at(-1)}`;
+  return value ? `${what} "${value}" tidak dikenal. Isi ${list}.` : `Pilih ${what.toLocaleLowerCase('id')} (${list}).`;
+}
+
+/** Names exactly the required fields that are empty: "Isi warna." / "Isi nama produk dan warna." */
+function missing(fields: [label: string, value: string][]) {
+  const empty = fields.filter(([, v]) => !v).map(([l]) => l);
+  if (empty.length === 0) return null;
+  const list = empty.length === 1 ? empty[0] : `${empty.slice(0, -1).join(', ')} dan ${empty.at(-1)}`;
+  return `Isi ${list}.`;
+}
+
 function tooLong(label: string, s: string, max: number) {
   return s.length > max ? `${label} maksimal ${max} karakter.` : null;
 }
@@ -36,7 +53,8 @@ export function variantRule(input: VariantInput, existingNames: string[]): RuleR
   const rawName = clean(input.product_name);
   const size = clean(input.size);
   const color = clean(input.color);
-  if (!sku || !rawName || !size || !color) return err('Isi SKU, nama produk, ukuran, dan warna.');
+  const empty = missing([['SKU', sku], ['nama produk', rawName], ['ukuran', size], ['warna', color]]);
+  if (empty) return err(empty);
   const long = tooLong('SKU', sku, 40) ?? tooLong('Nama produk', rawName, 120) ?? tooLong('Ukuran', size, 20) ?? tooLong('Warna', color, 40);
   if (long) return err(long);
   if (!/^[A-Z0-9][A-Z0-9-]*$/.test(sku)) return err('SKU hanya huruf, angka, dan tanda minus.');
@@ -69,12 +87,13 @@ export function rollRule(input: RollInput): RuleResult<RollValues> {
   const unit = clean(input.unit).toLowerCase();
   const amountRaw = typeof input.length_or_weight === 'number' ? String(input.length_or_weight) : clean(input.length_or_weight).replace(',', '.');
   const supplier = clean(input.supplier) || null;
-  if (!code || !material || !color) return err('Isi kode rol, bahan, dan warna.');
+  const empty = missing([['kode rol', code], ['bahan', material], ['warna', color]]);
+  if (empty) return err(empty);
   const long = tooLong('Kode rol', code, 40) ?? tooLong('Bahan', material, 120) ?? tooLong('Warna', color, 40) ?? tooLong('Supplier', supplier ?? '', 120);
   if (long) return err(long);
   const amount = amountRaw === '' ? null : Number(amountRaw);
   if (amount !== null && !(amount > 0 && amount < 100000)) return err('Panjang atau berat harus angka lebih dari 0.');
-  if (amount !== null && !(ROLL_UNITS as readonly string[]).includes(unit)) return err('Pilih satuan m atau kg.');
+  if (amount !== null && !(ROLL_UNITS as readonly string[]).includes(unit)) return err(choice('Satuan', unit, ROLL_UNITS));
   return ok({
     code,
     material,
@@ -94,12 +113,12 @@ export function holderRule(input: HolderInput): RuleResult<HolderValues> {
   const type = clean(input.type).toLowerCase();
   const name = clean(input.name);
   const phoneRaw = clean(input.phone);
-  if (!(HOLDER_TYPES as readonly string[]).includes(type)) return err('Pilih jenis.');
+  if (!(HOLDER_TYPES as readonly string[]).includes(type)) return err(choice('Jenis', type, HOLDER_TYPES));
   if (!name) return err('Isi nama.');
   const long = tooLong('Nama', name, 120) ?? tooLong('Nomor HP', phoneRaw, 20);
   if (long) return err(long);
   const phone = phoneRaw ? normalizePhone(phoneRaw) : null;
-  if (phoneRaw && !phone) return err('Nomor HP tidak valid.');
+  if (phoneRaw && !phone) return err(`Nomor HP "${phoneRaw}" tidak valid. Contoh yang benar: 081234567890 atau 6281234567890.`);
   return ok({ type: type as HolderValues['type'], name, phone });
 }
 
@@ -115,8 +134,9 @@ export function reasonRule(input: ReasonInput): RuleResult<ReasonValues> {
   const type = clean(input.type).toLowerCase();
   const code = clean(input.code).toUpperCase().replace(/\s+/g, '_');
   const label = clean(input.label);
-  if (!(REASON_TYPES as readonly string[]).includes(type)) return err('Pilih jenis alasan.');
-  if (!code || !label) return err('Isi kode dan label.');
+  if (!(REASON_TYPES as readonly string[]).includes(type)) return err(choice('Jenis alasan', type, REASON_TYPES));
+  const empty = missing([['kode', code], ['label', label]]);
+  if (empty) return err(empty);
   const long = tooLong('Kode', code, 30) ?? tooLong('Label', label, 120);
   if (long) return err(long);
   return ok({ type: type as ReasonValues['type'], code, label });
@@ -133,7 +153,7 @@ export function locationRule(input: LocationInput): RuleResult<LocationValues> {
   const note = clean(input.note) || null;
   if (!code) return err('Isi kode rak.');
   if (!/^[A-Z0-9]{1,8}$/.test(code)) return err('Kode rak hanya huruf dan angka, maksimal 8, tanpa spasi atau tanda minus. Contoh: A1.');
-  if (!(LOCATION_KINDS as readonly string[]).includes(kind)) return err('Pilih jenis rak.');
+  if (!(LOCATION_KINDS as readonly string[]).includes(kind)) return err(choice('Jenis rak', kind, LOCATION_KINDS));
   const long = tooLong('Catatan', note ?? '', 120);
   if (long) return err(long);
   return ok({ code, kind: kind as LocationValues['kind'], note });

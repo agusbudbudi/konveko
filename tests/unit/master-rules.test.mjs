@@ -14,7 +14,8 @@ test('variant: cleans, upper-cases SKU, reuses an existing product name', () => 
   });
   assert.equal(value(variantRule({ sku: 'X1', product_name: 'kaos polo', size: 'L', color: 'Hitam' }, [])).product_name, 'Kaos polo');
   assert.equal(error(variantRule({ sku: 'KMJ PTH', product_name: 'a', size: 'M', color: 'b' }, [])), 'SKU hanya huruf, angka, dan tanda minus.');
-  assert.equal(error(variantRule({ sku: 'X', product_name: '', size: 'M', color: 'b' }, [])), 'Isi SKU, nama produk, ukuran, dan warna.');
+  assert.equal(error(variantRule({ sku: 'X', product_name: '', size: 'M', color: 'b' }, [])), 'Isi nama produk.');
+  assert.equal(error(variantRule({ sku: 'X', product_name: 'a', size: '', color: '' }, [])), 'Isi ukuran dan warna.');
   assert.equal(error(variantRule({ sku: 'X'.repeat(41), product_name: 'a', size: 'M', color: 'b' }, [])), 'SKU maksimal 40 karakter.');
 });
 
@@ -29,21 +30,25 @@ test('roll: amount with comma, unit required with amount, numbers from Excel', (
   });
   assert.equal(value(rollRule({ code: 'R2', material: 'a', color: 'b', length_or_weight: 12.345, unit: 'kg' })).length_or_weight, 12.35);
   assert.deepEqual(value(rollRule({ code: 'R3', material: 'a', color: 'b', length_or_weight: '', unit: 'kg' })).unit, null);
-  assert.equal(error(rollRule({ code: 'R4', material: 'a', color: 'b', length_or_weight: '10', unit: '' })), 'Pilih satuan m atau kg.');
+  assert.equal(error(rollRule({ code: 'R4', material: 'a', color: 'b', length_or_weight: '10', unit: '' })), 'Pilih satuan (m atau kg).');
+  assert.equal(error(rollRule({ code: 'R6', material: 'a', color: 'b', length_or_weight: '10', unit: 'meter' })), 'Satuan "meter" tidak dikenal. Isi m atau kg.');
   assert.equal(error(rollRule({ code: 'R5', material: 'a', color: 'b', length_or_weight: '-1', unit: 'm' })), 'Panjang atau berat harus angka lebih dari 0.');
 });
 
 test('holder: type, phone normalised, key ignores case and spaces', () => {
   assert.deepEqual(value(holderRule({ type: 'Penjahit', name: ' Ani ', phone: '0811-1000-001' })), { type: 'penjahit', name: 'Ani', phone: '628111000001' });
-  assert.equal(error(holderRule({ type: 'tukang', name: 'Ani' })), 'Pilih jenis.');
-  assert.equal(error(holderRule({ type: 'penjahit', name: 'Ani', phone: '123' })), 'Nomor HP tidak valid.');
+  assert.equal(error(holderRule({ type: 'tukang', name: 'Ani' })), 'Jenis "tukang" tidak dikenal. Isi produksi, penjahit, finishing, atau gudang.');
+  assert.equal(error(holderRule({ type: '', name: 'Ani' })), 'Pilih jenis (produksi, penjahit, finishing, atau gudang).');
+  assert.equal(error(holderRule({ type: 'penjahit', name: 'Ani', phone: '123' })), 'Nomor HP "123" tidak valid. Contoh yang benar: 081234567890 atau 6281234567890.');
   assert.equal(holderKey('penjahit', '  ANI  '), holderKey('penjahit', 'ani'));
 });
 
 test('reason and location', () => {
   assert.deepEqual(value(reasonRule({ type: 'reject', code: 'jahitan rusak', label: 'Jahitan rusak' })), { type: 'reject', code: 'JAHITAN_RUSAK', label: 'Jahitan rusak' });
-  assert.equal(error(reasonRule({ type: 'lain', code: 'A', label: 'b' })), 'Pilih jenis alasan.');
+  assert.equal(error(reasonRule({ type: 'lain', code: 'A', label: 'b' })), 'Jenis alasan "lain" tidak dikenal. Isi selisih atau reject.');
+  assert.equal(error(reasonRule({ type: 'reject', code: 'A', label: '' })), 'Isi label.');
   assert.deepEqual(value(locationRule({ code: ' a 1 ', kind: 'Stok', note: '' })), { code: 'A1', kind: 'stok', note: null });
   assert.match(error(locationRule({ code: 'A-1', kind: 'stok' })), /tanpa spasi atau tanda minus/);
-  assert.equal(error(locationRule({ code: 'A1', kind: 'gudang' })), 'Pilih jenis rak.');
+  assert.equal(error(locationRule({ code: 'A1', kind: 'gudang' })), 'Jenis rak "gudang" tidak dikenal. Isi stok atau reject.');
+  assert.equal(error(locationRule({ code: 'A1', kind: '' })), 'Pilih jenis rak (stok atau reject).');
 });

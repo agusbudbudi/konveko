@@ -36,7 +36,7 @@ test('new, changed, same and error rows per sheet; payload holds only new and ch
   assert.deepEqual(v.errors.map(({ row, message }) => ({ row, message })), [
     { row: 5, message: 'SKU KOS-HTM-S sudah ada di baris 4. Satu data hanya boleh sekali.' },
     { row: 6, message: 'SKU hanya huruf, angka, dan tanda minus.' },
-    { row: 8, message: 'Kolom Aktif isi Ya atau Tidak.' },
+    { row: 8, message: 'Aktif "mungkin" tidak dikenal. Isi Ya atau Tidak.' },
   ]);
   // the error row keeps what was typed, for the preview table
   assert.deepEqual(v.errors[1].values, { sku: 'KOS HTM', product_name: 'Kaos', size: 'M', color: 'Hitam', is_active: 'Ya' });

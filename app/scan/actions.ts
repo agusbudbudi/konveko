@@ -50,11 +50,13 @@ export async function finishBundle(input: {
   if (!isInt(input.qtyGood) || !isInt(input.qtyReject)) {
     return { ok: false, message: 'Qty tidak valid.', code: 'qty_invalid' };
   }
-  return callRpc<ScanResult>('scan_finish', {
+  const res = await callRpc<ScanResult>('scan_finish', {
     p_code: cleanCode(input.code),
     p_qty_good: input.qtyGood,
     p_qty_reject: input.qtyReject,
     p_reason_id: input.reasonId,
     p_expected_version: input.version,
   });
+  if (res.ok && input.qtyReject > 0) scheduleDispatch(); // reject may have queued emails
+  return res;
 }

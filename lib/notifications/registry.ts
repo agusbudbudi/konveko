@@ -29,7 +29,7 @@ export interface Rendered {
   body: string;
   /** In-app path to open, or null when there is nothing to open. */
   href: string | null;
-  tone: 'warning' | 'info';
+  tone: 'danger' | 'warning' | 'info';
 }
 
 export interface EmailMessage {
@@ -69,6 +69,20 @@ const DEFINITIONS: Record<string, Definition> = {
         body: `Terima ${step} oleh ${str(data.receiver)}: ${num(data.qty_received)} dari ${num(data.qty_sent)} pcs.${reason}`,
         href: typeof data.bundle_id === 'string' ? `/bundle/${data.bundle_id}` : '/selisih',
         tone: 'warning',
+      };
+    },
+  },
+  'reject.baru': {
+    render({ data }) {
+      const finishing = data.step === 'finishing';
+      const reason = typeof data.reason === 'string' && data.reason ? ` Alasan: ${data.reason}.` : '';
+      return {
+        title: `Reject ${num(data.qty_reject)} pcs di ${str(data.bundle_code)}`,
+        body:
+          `Selesai ${finishing ? 'finishing' : 'jahit'} oleh ${str(data.worker)}: ` +
+          `${num(data.qty_good)} ${finishing ? 'lolos QC' : 'jadi'}, ${num(data.qty_reject)} reject dari ${num(data.qty_in)} pcs.${reason}`,
+        href: typeof data.bundle_id === 'string' ? `/bundle/${data.bundle_id}` : null,
+        tone: 'danger',
       };
     },
   },

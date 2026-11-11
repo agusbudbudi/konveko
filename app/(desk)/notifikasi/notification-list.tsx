@@ -78,7 +78,8 @@ export function NotificationList({ rows, canMarkAll }: { rows: NotificationRow[]
                 onClick={() => open(row, r.href)}
                 className={cn(
                   'flex w-full items-start gap-3 px-5 py-3 text-left hover:bg-surface-muted disabled:cursor-wait',
-                  unread && r.tone === 'warning' && 'border-l-[3px] border-l-warning pl-[17px]',
+                  unread && r.tone !== 'info' && 'border-l-[3px] pl-[17px]',
+                  unread && (r.tone === 'danger' ? 'border-l-danger' : 'border-l-warning'),
                 )}
               >
                 <span className="min-w-0 flex-1">

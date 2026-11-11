@@ -19,6 +19,7 @@ type Item = {
 };
 
 const LATEST = 10;
+const TONE_DOT = { danger: 'bg-danger', warning: 'bg-warning', info: 'bg-info' } as const;
 
 /**
  * Top-bar bell: unread count, the latest notifications, mark read.
@@ -162,7 +163,7 @@ export function NotificationBell({ userId }: { userId: string }) {
                       aria-hidden
                       className={cn(
                         'mt-1.5 size-2 shrink-0 rounded-full',
-                        isUnread ? (r.tone === 'warning' ? 'bg-warning' : 'bg-info') : 'bg-transparent',
+                        isUnread ? TONE_DOT[r.tone] : 'bg-transparent',
                       )}
                     />
                     <span className="min-w-0 flex-1">

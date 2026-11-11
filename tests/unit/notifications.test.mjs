@@ -36,6 +36,23 @@ test('selisih without reason or bundle id still reads', () => {
   assert.equal(r.href, '/selisih');
 });
 
+test('reject renders per step', () => {
+  const base = {
+    type: 'reject.baru',
+    entity_type: 'movement',
+    entity_id: 'm1',
+    data: { bundle_id: 'b1', bundle_code: 'B-00012', step: 'jahit', qty_in: 20, qty_good: 18, qty_reject: 2, reason: 'Jahitan', worker: 'Ani' },
+  };
+  let r = renderNotification(base);
+  assert.equal(r.title, 'Reject 2 pcs di B-00012');
+  assert.equal(r.body, 'Selesai jahit oleh Ani: 18 jadi, 2 reject dari 20 pcs. Alasan: Jahitan.');
+  assert.equal(r.href, '/bundle/b1');
+  assert.equal(r.tone, 'danger');
+
+  r = renderNotification({ ...base, data: { ...base.data, step: 'finishing', worker: 'Finishing A', reason: null } });
+  assert.equal(r.body, 'Selesai finishing oleh Finishing A: 18 lolos QC, 2 reject dari 20 pcs.');
+});
+
 test('unknown type falls back instead of throwing', () => {
   const r = renderNotification({ type: 'stok.minim', entity_type: 'x', entity_id: '1', data: {} });
   assert.equal(r.title, 'Notifikasi');

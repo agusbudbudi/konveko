@@ -101,6 +101,80 @@ describe('selisih notification', () => {
   });
 });
 
+describe('reject notification', () => {
+  async function toFinish(code, qty) {
+    await rpc(db, ids.ani, 'scan_receive', { p_code: code, p_qty_received: qty });
+  }
+  const rejects = async () => (await notifications()).filter((n) => n.type === 'reject.baru');
+
+  it('notifies admins and supervisors on reject at jahit and finishing', async () => {
+    const code = await newBundle(20);
+    await toFinish(code, 20);
+    await rpc(db, ids.ani, 'scan_finish', { p_code: code, p_qty_good: 18, p_qty_reject: 2, p_reason_id: ids.rReject });
+
+    let rows = await rejects();
+    assert.deepEqual(rows.map((r) => r.user_id).sort(), [ids.admin, ids.spv].sort());
+    const n = rows[0];
+    assert.equal(n.entity_type, 'movement');
+    assert.deepEqual(
+      { code: n.data.bundle_code, step: n.data.step, in: n.data.qty_in, good: n.data.qty_good, reject: n.data.qty_reject, worker: n.data.worker },
+      { code, step: 'jahit', in: 20, good: 18, reject: 2, worker: 'Ani' },
+    );
+    assert.ok(n.data.reason);
+
+    await rpc(db, ids.finishing, 'scan_receive', { p_code: code, p_qty_received: 18 });
+    await rpc(db, ids.finishing, 'scan_finish', { p_code: code, p_qty_good: 17, p_qty_reject: 1, p_reason_id: ids.rReject });
+    rows = await rejects();
+    assert.equal(rows.length, 4);
+    assert.ok(rows.some((r) => r.data.step === 'finishing' && r.data.qty_reject === 1 && r.data.worker === 'Finishing A'));
+  });
+
+  it('does nothing without reject', async () => {
+    const code = await newBundle(20);
+    await toFinish(code, 20);
+    await rpc(db, ids.ani, 'scan_finish', { p_code: code, p_qty_good: 20, p_qty_reject: 0 });
+    assert.equal((await rejects()).length, 0);
+  });
+
+  it('follows corrections: new numbers, added reject, settled at 0 or void', async () => {
+    const code = await newBundle(20);
+    await toFinish(code, 20);
+    const fin = await rpc(db, ids.ani, 'scan_finish', { p_code: code, p_qty_good: 18, p_qty_reject: 2, p_reason_id: ids.rReject });
+
+    await rpc(db, ids.spv, 'correct_movement', { p_movement_id: fin.movement_id, p_note: 'Hitung ulang', p_qty_good: 17, p_qty_reject: 3 });
+    let rows = await rejects();
+    assert.equal(rows.length, 2);
+    assert.ok(rows.every((r) => r.data.qty_reject === 3 && r.data.qty_good === 17 && r.read_at === null));
+
+    await rpc(db, ids.spv, 'correct_movement', { p_movement_id: fin.movement_id, p_note: 'Ternyata bagus', p_qty_good: 20, p_qty_reject: 0 });
+    rows = await rejects();
+    assert.ok(rows.every((r) => r.read_at !== null));
+
+    // A finish scan without reject that a correction turns into reject.
+    const code2 = await newBundle(10);
+    await toFinish(code2, 10);
+    const fin2 = await rpc(db, ids.ani, 'scan_finish', { p_code: code2, p_qty_good: 10, p_qty_reject: 0 });
+    await rpc(db, ids.spv, 'correct_movement', { p_movement_id: fin2.movement_id, p_note: 'Ada yang cacat', p_qty_good: 9, p_qty_reject: 1, p_reason_id: ids.rReject });
+    rows = (await rejects()).filter((r) => r.data.bundle_code === code2);
+    assert.equal(rows.length, 2);
+    assert.ok(rows.every((r) => r.data.qty_reject === 1 && r.read_at === null));
+
+    await rpc(db, ids.spv, 'correct_movement', { p_movement_id: fin2.movement_id, p_note: 'Batal', p_void: true });
+    rows = (await rejects()).filter((r) => r.data.bundle_code === code2);
+    assert.ok(rows.every((r) => r.read_at !== null));
+  });
+
+  it('queues email only when reject.baru × email is switched on', async () => {
+    await db.query(`update public.notification_channel_setting set is_enabled = true where type = 'reject.baru'`);
+    const code = await newBundle(20);
+    await receiveShort(code, 18); // selisih: switch off, no queue
+    await rpc(db, ids.ani, 'scan_finish', { p_code: code, p_qty_good: 17, p_qty_reject: 1, p_reason_id: ids.rReject });
+    await actAs(db, null);
+    const q = await all(db, `select n.type from public.notification_delivery d join public.notification n on n.id = d.notification_id`);
+    assert.deepEqual(q.map((r) => r.type), ['reject.baru', 'reject.baru']);
+  });
+});
+
 describe('inbox access', () => {
   it('users see and mark only their own notifications', async () => {
     const code = await newBundle(20);
@@ -131,7 +205,7 @@ describe('inbox access', () => {
   });
 
   it('only admins see channel settings', async () => {
-    assert.equal((await asUser(ids.admin, `select * from public.notification_channel_setting`)).length, 1);
+    assert.equal((await asUser(ids.admin, `select * from public.notification_channel_setting`)).length, 2);
     assert.equal((await asUser(ids.ani, `select * from public.notification_channel_setting`)).length, 0);
   });
 });

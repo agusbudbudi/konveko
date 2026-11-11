@@ -14,7 +14,9 @@ export default async function ScanLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
-      <header className="flex h-14 items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
+      {/* sticky like the desk header; z-10 keeps it above the camera's corner overlay.
+          Height = 56px + the notch, so the notch padding does not squeeze the row. */}
+      <header className="sticky top-0 z-10 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)]">
         <Wordmark />
         <form action={logout} className="flex items-center gap-1">
           <span className="mr-2 text-small text-text-muted">{user.name}</span>

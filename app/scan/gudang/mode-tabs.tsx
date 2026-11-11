@@ -10,7 +10,7 @@ const MODES = [
 /** Warehouse scan modes: putaway, outbound picking, returns. */
 export function ModeTabs({ active }: { active: (typeof MODES)[number]['key'] }) {
   return (
-    <nav aria-label="Mode scan gudang" className="mx-4 mt-1 flex gap-1 rounded-md bg-surface-muted p-1">
+    <nav aria-label="Mode scan gudang" className="mx-4 mt-3 flex gap-1 rounded-md bg-surface-muted p-1">
       {MODES.map((m) => (
         <Link
           key={m.key}

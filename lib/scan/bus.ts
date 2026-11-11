@@ -64,10 +64,12 @@ function onKeyDown(e: KeyboardEvent) {
   const now = performance.now();
   const gap = lastKeyAt === null ? null : Math.round(now - lastKeyAt);
   lastKeyAt = now;
-  const inField = isField(e.target);
-
-  // A focused field takes the keys itself (desk with a scanner gun typing into the
-  // code box, or a person typing a note). Its own Enter handling submits the code.
+  // A focused field takes the keys itself (a person typing a note or a qty), except a
+  // field marked `data-scan-field` (a code box): there a scan is still detected and
+  // delivered clean, and the handler replaces whatever the field held, so a scan never
+  // gets glued to the previous search text.
+  const scanField = e.target instanceof HTMLElement && e.target.hasAttribute('data-scan-field');
+  const inField = isField(e.target) && !scanField;
   let result = 'field';
   if (!inField && detector) {
     const r = detector.feed({ key: e.key, time: now, ctrlKey: e.ctrlKey, altKey: e.altKey, metaKey: e.metaKey });

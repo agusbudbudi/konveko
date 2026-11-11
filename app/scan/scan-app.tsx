@@ -125,7 +125,10 @@ export function ScannerView({
   useEffect(() => setFinePointer(window.matchMedia('(pointer: fine)').matches), []);
 
   // Hardware scanners (SUNMI, wedge guns, native bridge) work with no field focused.
-  useScanner(onCode, !loading);
+  useScanner((code) => {
+    setManual(''); // a scan into the focused code box replaces what was typed
+    onCode(code);
+  }, !loading);
 
   return (
     <div className="mt-2 flex flex-col gap-4">
@@ -164,6 +167,7 @@ export function ScannerView({
         <div className="flex gap-2">
           <Input
             id="manual-code"
+            data-scan-field
             value={manual}
             onChange={(e) => setManual(e.target.value)}
             placeholder={placeholder}

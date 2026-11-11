@@ -72,6 +72,7 @@ export function LacakBox() {
           ref={inputRef}
           id="lacak-q"
           type="search"
+          data-scan-field
           autoFocus
           autoComplete="off"
           spellCheck={false}

@@ -31,8 +31,8 @@ export default async function PrintRacksPage({ searchParams }: { searchParams: P
     <div className="print-root">
       <PrintBar
         count={labels.length}
-        size="100 × 70 mm"
-        hint="Cetak di printer biasa, kertas A4, skala 100%. Gunting di garis putus-putus lalu tempel di tiang rak."
+        size="95 × 66 mm"
+        hint="Cetak di printer biasa, kertas A4, skala 100%: 8 label per lembar (2 kolom). Gunting di garis putus-putus lalu tempel di tiang rak."
       />
       <div className="rack-sheet">
         {labels.map((l) => (

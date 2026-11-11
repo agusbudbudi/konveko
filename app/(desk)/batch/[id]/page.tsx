@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
@@ -11,6 +11,8 @@ import { SplitButton } from './split-button';
 import { AddBundleButton, EditBundleButton, type VariantOption } from './edit-bundle';
 import { SetCrumb } from '@/components/nav/sidebar-nav';
 import { PageHeader } from '@/components/ui/page-header';
+import { UrlPagination } from '@/components/ui/pagination';
+import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 
 export const metadata: Metadata = { title: 'Detail batch' };
 
@@ -34,10 +36,11 @@ export default async function BatchDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ baru?: string }>;
+  searchParams: Promise<PageQuery>;
 }) {
   const { id } = await params;
-  const { baru } = await searchParams;
+  // ?baru=1 is a one-off notice after creating the batch; page links must not carry it
+  const { baru, ...query } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const supabase = await createClient();
@@ -68,6 +71,10 @@ export default async function BatchDetailPage({
   const codeById = new Map(bundles.map((b) => [b.bundle_id, b.code]));
   const canProduce = user?.roles.includes('produksi') ?? false;
   const active = bundles.filter((b) => b.is_active);
+  // all bundles stay loaded (parent codes, label count); only the table is paged
+  const path = `/batch/${id}`;
+  const paged = slicePage(bundles, query);
+  if (paged.outOfRange) redirect(withQuery(path, query, { page: String(paged.pages) }));
   // FR-10: the cut can be fixed until the first bundle is received
   const canEdit = canProduce && batch.status === 'draft';
   const activeVariants: VariantOption[] = canEdit
@@ -140,7 +147,7 @@ export default async function BatchDetailPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {bundles.map((b) => {
+            {paged.rows.map((b) => {
               const v = variants.get(b.variant_id);
               const extra = extras.get(b.bundle_id);
               const parentCode = extra?.parent_bundle_id ? codeById.get(extra.parent_bundle_id) : null;
@@ -186,6 +193,7 @@ export default async function BatchDetailPage({
             })}
           </tbody>
         </table>
+        <UrlPagination path={path} query={query} total={bundles.length} unit="bundle" className="border-t border-border px-5 pb-4" />
       </section>
     </>
   );

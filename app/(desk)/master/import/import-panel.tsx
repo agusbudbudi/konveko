@@ -1,9 +1,10 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { FileSpreadsheet, Upload } from 'lucide-react';
+import { AlertTriangle, CircleCheck, FileSpreadsheet, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { Badge } from '@/components/ui/status-badge';
 import { TabButton, TabList } from '@/components/ui/tab-link';
 import { cn } from '@/lib/cn';
 import type { Table } from '@/lib/master-import';
@@ -159,77 +160,126 @@ export function ImportPanel() {
 
 function More({ shown, total }: { shown: number; total: number }) {
   if (total <= shown) return null;
-  return <p className="text-small text-text-muted">Menampilkan {shown} dari {total}. Semuanya tetap diproses.</p>;
+  return <p className="mt-2 text-small text-text-muted">Menampilkan {shown} dari {total}. Semuanya tetap diproses.</p>;
+}
+
+/** A raw cell as typed in the file (error rows). */
+function raw(v: unknown) {
+  return v === null || v === undefined || String(v).trim() === '' ? <span className="text-text-subtle">—</span> : String(v);
+}
+
+type Col = PreviewSheet['columns'][number];
+
+/** The sheet's own columns, a row number first and one extra column last. */
+function PreviewTable({ columns, tail, children }: { columns: Col[]; tail: string; children: React.ReactNode }) {
+  return (
+    <div className="overflow-x-auto rounded-md border border-border">
+      <table className="w-full text-small">
+        <thead className="bg-surface-muted text-left text-caption tracking-[0.02em] text-text-muted">
+          <tr className="h-9">
+            <th className="w-16 px-3 font-medium">Baris</th>
+            {columns.map((c) => (
+              <th key={c.field} className="px-3 font-medium whitespace-nowrap">
+                {c.header}
+              </th>
+            ))}
+            <th className="px-3 font-medium">{tail}</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">{children}</tbody>
+      </table>
+    </div>
+  );
 }
 
 function SheetView({ s }: { s: PreviewSheet }) {
+  // a sheet-level problem (missing column, too many rows) has no row values
+  const sheetErrors = s.errors.filter((e) => !e.values);
+  const rowErrors = s.errors.filter((e) => e.values);
+  const changedBy = new Map(s.changed.map((c) => [c.row, c]));
+  const valid = [
+    ...s.added.map((a) => ({ row: a.row, values: a.values, kind: 'baru' as const })),
+    ...s.changed.map((c) => ({ row: c.row, values: c.values, kind: 'berubah' as const })),
+  ].sort((a, b) => a.row - b.row);
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <p className="num text-small text-text-muted">
         {s.counts.added} baru · {s.counts.changed} berubah · {s.same} sama · <span className={cn(s.counts.errors > 0 && 'text-danger')}>{s.counts.errors} error</span>
         {s.samples > 0 && <> · {s.samples} baris contoh dilewati</>}
       </p>
 
-      {s.errors.length > 0 && (
+      {sheetErrors.map((e, i) => (
+        <InlineAlert key={i} tone="danger">
+          {e.message}
+        </InlineAlert>
+      ))}
+
+      {rowErrors.length > 0 && (
         <div>
-          <h3 className="text-h3 text-danger">Error</h3>
-          <ul className="mt-2 divide-y divide-border rounded-md border border-danger/40">
-            {s.errors.map((e, i) => (
-              <li key={i} className="flex gap-3 px-3 py-2 text-small">
-                <span className="num w-20 shrink-0 text-text-muted">Baris {e.row}</span>
-                <span>{e.message}</span>
-              </li>
+          <h3 className="mb-2 flex items-center gap-2 text-h3 text-danger">
+            <AlertTriangle size={18} strokeWidth={1.5} aria-hidden /> Error <span className="num font-normal">({s.counts.errors})</span>
+          </h3>
+          <PreviewTable columns={s.columns} tail="Alasan">
+            {rowErrors.map((e) => (
+              <tr key={e.row} className="align-top">
+                <td className="num px-3 py-2 text-text-muted">{e.row}</td>
+                {s.columns.map((c) => (
+                  <td key={c.field} className="px-3 py-2 whitespace-nowrap">
+                    {raw(e.values?.[c.field])}
+                  </td>
+                ))}
+                <td className="min-w-64 px-3 py-2 text-danger">
+                  <span className="flex items-start gap-1.5">
+                    <AlertTriangle size={16} strokeWidth={1.5} aria-label="Error" className="mt-0.5 shrink-0" />
+                    {e.message}
+                  </span>
+                </td>
+              </tr>
             ))}
-          </ul>
+          </PreviewTable>
           <More shown={s.errors.length} total={s.counts.errors} />
         </div>
       )}
 
-      {s.changed.length > 0 && (
+      {valid.length > 0 && (
         <div>
-          <h3 className="text-h3">Berubah</h3>
-          <ul className="mt-2 divide-y divide-border rounded-md border border-border">
-            {s.changed.map((c) => (
-              <li key={c.id} className="flex flex-wrap gap-x-3 gap-y-1 px-3 py-2 text-small">
-                <span className="num w-20 shrink-0 text-text-muted">Baris {c.row}</span>
-                <span className="num font-medium">{c.label}</span>
-                <span className="min-w-0 basis-full sm:basis-auto">
-                  {c.changes.map((x, i) => (
-                    <span key={x.field}>
-                      {i > 0 && ' · '}
-                      {x.header}: <span className="text-text-muted line-through">{show(x.from)}</span> → <span className="font-medium">{show(x.to)}</span>
-                    </span>
-                  ))}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <More shown={s.changed.length} total={s.counts.changed} />
+          <h3 className="mb-2 flex items-center gap-2 text-h3">
+            <CircleCheck size={18} strokeWidth={1.5} aria-hidden className="text-success" /> Tervalidasi{' '}
+            <span className="num font-normal text-text-muted">({s.counts.added + s.counts.changed})</span>
+          </h3>
+          <PreviewTable columns={s.columns} tail="Status">
+            {valid.map((r) => {
+              const changes = new Map((changedBy.get(r.row)?.changes ?? []).map((x) => [x.field, x]));
+              return (
+                <tr key={r.row} className="align-top">
+                  <td className="num px-3 py-2 text-text-muted">{r.row}</td>
+                  {s.columns.map((c) => {
+                    const x = changes.get(c.field);
+                    return (
+                      <td key={c.field} className="px-3 py-2 whitespace-nowrap">
+                        {x ? (
+                          <>
+                            <span className="text-text-muted line-through">{show(x.from)}</span> → <span className="font-medium text-primary">{show(x.to)}</span>
+                          </>
+                        ) : (
+                          show(r.values[c.field])
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="px-3 py-2">
+                    <Badge tone={r.kind === 'baru' ? 'success' : 'info'}>{r.kind === 'baru' ? 'Baru' : 'Berubah'}</Badge>
+                  </td>
+                </tr>
+              );
+            })}
+          </PreviewTable>
+          <More shown={valid.length} total={s.counts.added + s.counts.changed} />
         </div>
       )}
 
-      {s.added.length > 0 && (
-        <div>
-          <h3 className="text-h3">Baru</h3>
-          <ul className="mt-2 divide-y divide-border rounded-md border border-border">
-            {s.added.map((a) => (
-              <li key={a.row} className="flex flex-wrap gap-x-3 px-3 py-2 text-small">
-                <span className="num w-20 shrink-0 text-text-muted">Baris {a.row}</span>
-                <span className="num font-medium">{a.label}</span>
-                <span className="text-text-muted">
-                  {Object.entries(a.values)
-                    .filter(([k]) => !['sku', 'code', 'is_active'].includes(k))
-                    .map(([, v]) => show(v))
-                    .join(' · ')}
-                  {a.values.is_active === false && ' · nonaktif'}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <More shown={s.added.length} total={s.counts.added} />
-        </div>
-      )}
-
+      {s.same > 0 && <p className="text-small text-text-muted">{s.same} baris sama dengan data di sistem, tidak ditampilkan.</p>}
       {s.counts.added + s.counts.changed + s.counts.errors === 0 && <p className="text-small text-text-muted">Tidak ada perubahan di sheet ini.</p>}
     </div>
   );

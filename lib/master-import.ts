@@ -190,14 +190,17 @@ export function parseActive(v: Cell): boolean | null {
 
 export type ExistingRow = { id: string } & Record<string, unknown>;
 export type Change = { field: string; header: string; from: unknown; to: unknown };
-export type RowError = { row: number; message: string };
+/** `values`: the row as typed in the file (by field), so the preview can show it; absent for sheet-level errors. */
+export type RowError = { row: number; message: string; values?: Record<string, Cell> };
 
 export type SheetPreview = {
   table: Table;
   sheet: string;
   found: boolean;
+  /** the sheet's columns, for showing rows as a table */
+  columns: { field: string; header: string }[];
   added: { row: number; label: string; values: Record<string, unknown> }[];
-  changed: { row: number; label: string; id: string; changes: Change[] }[];
+  changed: { row: number; label: string; id: string; values: Record<string, unknown>; changes: Change[] }[];
   same: number;
   /** template example rows (key starts with CONTOH) that were skipped */
   samples: number;
@@ -227,7 +230,17 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
   const names = [...new Set(existing.product_variant.map((v) => String(v.product_name)))];
 
   for (const spec of SHEETS) {
-    const preview: SheetPreview = { table: spec.table, sheet: spec.sheet, found: false, added: [], changed: [], same: 0, samples: 0, errors: [] };
+    const preview: SheetPreview = {
+      table: spec.table,
+      sheet: spec.sheet,
+      found: false,
+      columns: spec.columns.map((c) => ({ field: c.field, header: c.header })),
+      added: [],
+      changed: [],
+      same: 0,
+      samples: 0,
+      errors: [],
+    };
     plan.sheets.push(preview);
     const sheet = byName.get(norm(spec.sheet));
     if (!sheet) continue;
@@ -264,7 +277,7 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
         continue;
       }
 
-      const fail = (message: string) => preview.errors.push({ row, message });
+      const fail = (message: string) => preview.errors.push({ row, message, values: rawRow });
       const r = spec.rule(rawRow, { names });
       if (!r.ok) {
         fail(r.error);
@@ -314,7 +327,7 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
         preview.same++;
         continue;
       }
-      preview.changed.push({ row, label: spec.keyLabel(values), id: old.id, changes });
+      preview.changed.push({ row, label: spec.keyLabel(values), id: old.id, values, changes });
       (plan.payload[spec.table] ??= []).push(payloadRow(old.id));
     }
   }

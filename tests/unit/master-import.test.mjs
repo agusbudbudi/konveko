@@ -33,11 +33,13 @@ test('new, changed, same and error rows per sheet; payload holds only new and ch
   assert.equal(v.same, 1);
   assert.deepEqual(v.changed.map((c) => [c.id, c.changes.map((x) => [x.header, x.from, x.to])]), [['v2', [['Aktif', true, false]]]]);
   assert.deepEqual(v.added.map((a) => [a.label, a.values.product_name, a.values.is_active]), [['SKU KOS-HTM-S', 'Kaos', true]]);
-  assert.deepEqual(v.errors, [
+  assert.deepEqual(v.errors.map(({ row, message }) => ({ row, message })), [
     { row: 5, message: 'SKU KOS-HTM-S sudah ada di baris 4. Satu data hanya boleh sekali.' },
     { row: 6, message: 'SKU hanya huruf, angka, dan tanda minus.' },
     { row: 8, message: 'Kolom Aktif isi Ya atau Tidak.' },
   ]);
+  // the error row keeps what was typed, for the preview table
+  assert.deepEqual(v.errors[1].values, { sku: 'KOS HTM', product_name: 'Kaos', size: 'M', color: 'Hitam', is_active: 'Ya' });
   assert.equal(plan.errorCount, 3);
   assert.equal(plan.changeCount, 2);
   assert.deepEqual(plan.payload.product_variant, [
@@ -77,7 +79,7 @@ test('numbers compare by value, empty equals null, phone from a number cell', ()
   const h = plan.sheets.find((s) => s.table === 'holder');
   // name casing from the file is a change; the phone is not
   assert.deepEqual(h.changed.map((c) => c.changes.map((x) => x.field)), [['name']]);
-  assert.deepEqual(h.errors, [{ row: 3, message: 'Ada 2 data Budi (penjahit) di sistem. Ubah lewat form.' }]);
+  assert.deepEqual(h.errors.map(({ row, message }) => ({ row, message })), [{ row: 3, message: 'Ada 2 data Budi (penjahit) di sistem. Ubah lewat form.' }]);
 });
 
 test('parseActive and exportRow', () => {

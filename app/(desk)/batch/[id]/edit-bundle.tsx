@@ -2,27 +2,28 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Pencil, Plus, Printer, X } from 'lucide-react';
+import { Pencil, Plus, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Input, Label } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
+import type { ActionResult } from '@/lib/types';
 import { addBundleToBatch, editBundle } from '../actions';
 
 export type VariantOption = { id: string; sku: string; product_name: string; size: string; color: string };
 
-const variantOptions = (variants: VariantOption[]) =>
-  variants.map((v) => ({ value: v.id, label: `${v.product_name} ${v.size} · ${v.color}`, hint: v.sku }));
+type Saved = { message: string; bundle_id: string };
 
 const ghost =
   'inline-flex h-10 items-center gap-1.5 rounded-md px-3 text-small text-text-muted hover:bg-surface-muted hover:text-text';
 
 /** After a change the label is out of date (it prints variant and qty). */
-function Reprint({ message, bundleId, onClose }: { message: string; bundleId: string; onClose: () => void }) {
+function Reprint({ saved, onClose }: { saved: Saved; onClose: () => void }) {
   return (
     <InlineAlert tone="success" className="mt-2 text-left">
-      <span>{message} </span>
-      <Link href={`/print/labels?bundle=${bundleId}`} className="inline-flex items-center gap-1 font-medium underline">
+      <span>{saved.message} </span>
+      <Link href={`/print/labels?bundle=${saved.bundle_id}`} className="inline-flex items-center gap-1 font-medium underline">
         <Printer size={14} strokeWidth={1.5} aria-hidden /> Cetak label
       </Link>
       <button type="button" onClick={onClose} className="ml-2 underline">
@@ -32,17 +33,79 @@ function Reprint({ message, bundleId, onClose }: { message: string; bundleId: st
   );
 }
 
-function Panel({ title, onClose, children }: { title: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
+/**
+ * Variant + qty form in a modal (DESIGN §5.10: add/edit forms open in a modal, never inline in a list).
+ * Mounted only while the modal is open, so it starts from `initial` every time.
+ */
+function BundleForm({
+  initial,
+  variants,
+  submitLabel,
+  note,
+  onSubmit,
+  onCancel,
+}: {
+  initial: { variantId: string; qty: string };
+  variants: VariantOption[];
+  submitLabel: string;
+  note?: string;
+  onSubmit: (v: { variantId: string; qty: number }) => Promise<ActionResult<Saved>>;
+  onCancel: () => void;
+}) {
+  const [variantId, setVariantId] = useState(initial.variantId);
+  const [qty, setQty] = useState(initial.qty);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const n = Number(qty) || 0;
+  const changed = variantId !== initial.variantId || qty !== initial.qty;
+  const valid = variantId !== '' && n > 0 && changed;
+
   return (
-    <div className="mt-2 w-full min-w-[260px] rounded-md border border-border-strong bg-surface p-3 text-left md:ml-auto md:w-96">
-      <div className="flex items-center justify-between">
-        <p className="font-medium">{title}</p>
-        <button type="button" onClick={onClose} className="flex size-8 items-center justify-center rounded-md text-text-muted hover:bg-surface-muted" aria-label="Tutup">
-          <X size={16} strokeWidth={1.5} aria-hidden />
-        </button>
+    <form
+      className="flex flex-col gap-5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!valid) return;
+        start(async () => {
+          setError(null);
+          const res = await onSubmit({ variantId, qty: n });
+          if (!res.ok) setError(res.message);
+        });
+      }}
+    >
+      <div>
+        <Label htmlFor="bundle-variant">Variant</Label>
+        <Combobox
+          id="bundle-variant"
+          value={variantId}
+          onChange={setVariantId}
+          searchable
+          required
+          placeholder="Pilih variant"
+          options={variants.map((v) => ({ value: v.id, label: `${v.product_name} ${v.size} · ${v.color}`, hint: v.sku }))}
+        />
       </div>
-      {children}
-    </div>
+      <div className="w-40">
+        <Label htmlFor="bundle-qty">Qty potong</Label>
+        <Input
+          id="bundle-qty"
+          inputMode="numeric"
+          value={qty}
+          onChange={(e) => setQty(e.target.value.replace(/\D/g, ''))}
+          className="num text-right"
+        />
+      </div>
+      {note && <p className="text-small text-text-muted">{note}</p>}
+      {error && <InlineAlert tone="danger">{error}</InlineAlert>}
+      <div className="sticky bottom-0 -mx-5 mt-1 flex justify-end gap-2 border-t border-border bg-surface px-5 py-3">
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={pending}>
+          Batal
+        </Button>
+        <Button type="submit" disabled={!valid || pending}>
+          {pending ? 'Menyimpan...' : submitLabel}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -59,122 +122,69 @@ export function EditBundleButton({
   variants: VariantOption[];
 }) {
   const [open, setOpen] = useState(false);
-  const [newQty, setNewQty] = useState(String(qty));
-  const [newVariant, setNewVariant] = useState(variantId);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ message: string; bundleId: string } | null>(null);
-  const [pending, start] = useTransition();
-
-  const n = Number(newQty) || 0;
-  const changed = n !== qty || newVariant !== variantId;
-  const valid = n > 0 && newVariant !== '' && changed;
-
-  if (done) return <Reprint {...done} onClose={() => setDone(null)} />;
-  if (!open) {
-    return (
-      <button type="button" onClick={() => setOpen(true)} className={ghost}>
-        <Pencil size={16} strokeWidth={1.5} aria-hidden /> Ubah
-      </button>
-    );
-  }
-
-  const close = () => {
-    setOpen(false);
-    setError(null);
-    setNewQty(String(qty));
-    setNewVariant(variantId);
-  };
+  const [saved, setSaved] = useState<Saved | null>(null);
 
   return (
-    <Panel title={<>Ubah <span className="num">{code}</span></>} onClose={close}>
-      <div className="mt-3 flex flex-col gap-3">
-        <div>
-          <Label htmlFor={`v-${code}`}>Variant</Label>
-          <Combobox id={`v-${code}`} value={newVariant} onChange={setNewVariant} searchable placeholder="Pilih variant" options={variantOptions(variants)} />
-        </div>
-        <div className="w-32">
-          <Label htmlFor={`q-${code}`}>Qty potong</Label>
-          <Input
-            id={`q-${code}`}
-            inputMode="numeric"
-            value={newQty}
-            onChange={(e) => setNewQty(e.target.value.replace(/\D/g, ''))}
-            className="num h-10 text-right"
-          />
-        </div>
-        <p className="text-small text-text-muted">Label lama tidak berlaku lagi untuk qty atau variant baru. Cetak ulang setelah disimpan.</p>
-        {error && <InlineAlert tone="danger">{error}</InlineAlert>}
-        <div className="flex justify-end">
-          <Button
-            disabled={!valid || pending}
-            onClick={() =>
-              start(async () => {
-                setError(null);
-                const res = await editBundle({ code, qty: n, variantId: newVariant });
-                if (!res.ok) return setError(res.message);
+    <>
+      {saved ? (
+        <Reprint saved={saved} onClose={() => setSaved(null)} />
+      ) : (
+        <button type="button" onClick={() => setOpen(true)} className={ghost}>
+          <Pencil size={16} strokeWidth={1.5} aria-hidden /> Ubah
+        </button>
+      )}
+      <Modal open={open} onClose={() => setOpen(false)} title={`Ubah bundle ${code}`} width={480}>
+        {open && (
+          <BundleForm
+            initial={{ variantId, qty: String(qty) }}
+            variants={variants}
+            submitLabel="Simpan perubahan"
+            note="Label lama tidak berlaku lagi untuk qty atau variant baru. Cetak ulang setelah disimpan."
+            onCancel={() => setOpen(false)}
+            onSubmit={async (v) => {
+              const res = await editBundle({ code, qty: v.qty, variantId: v.variantId });
+              if (res.ok) {
                 setOpen(false);
-                setDone({ message: res.data.message, bundleId: res.data.bundle_id });
-              })
-            }
-          >
-            {pending ? 'Menyimpan...' : 'Simpan'}
-          </Button>
-        </div>
-      </div>
-    </Panel>
+                setSaved(res.data);
+              }
+              return res;
+            }}
+          />
+        )}
+      </Modal>
+    </>
   );
 }
 
 /** FR-10: add a variant that was forgotten at cutting. */
 export function AddBundleButton({ batchId, variants }: { batchId: string; variants: VariantOption[] }) {
   const [open, setOpen] = useState(false);
-  const [variant, setVariant] = useState('');
-  const [qty, setQty] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ message: string; bundleId: string } | null>(null);
-  const [pending, start] = useTransition();
-  const n = Number(qty) || 0;
+  const [saved, setSaved] = useState<Saved | null>(null);
 
-  if (done) return <Reprint {...done} onClose={() => setDone(null)} />;
-  if (!open) {
-    return (
+  return (
+    <div className="flex flex-col items-end">
       <button type="button" onClick={() => setOpen(true)} className={ghost}>
         <Plus size={16} strokeWidth={1.5} aria-hidden /> Tambah variant
       </button>
-    );
-  }
-
-  return (
-    <Panel title="Tambah variant" onClose={() => { setOpen(false); setError(null); }}>
-      <div className="mt-3 flex flex-col gap-3">
-        <div>
-          <Label htmlFor="add-variant">Variant</Label>
-          <Combobox id="add-variant" value={variant} onChange={setVariant} searchable placeholder="Pilih variant" options={variantOptions(variants)} />
-        </div>
-        <div className="w-32">
-          <Label htmlFor="add-qty">Qty potong</Label>
-          <Input id="add-qty" inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value.replace(/\D/g, ''))} className="num h-10 text-right" />
-        </div>
-        {error && <InlineAlert tone="danger">{error}</InlineAlert>}
-        <div className="flex justify-end">
-          <Button
-            disabled={!variant || n <= 0 || pending}
-            onClick={() =>
-              start(async () => {
-                setError(null);
-                const res = await addBundleToBatch({ batchId, variantId: variant, qty: n });
-                if (!res.ok) return setError(res.message);
+      {saved && <Reprint saved={saved} onClose={() => setSaved(null)} />}
+      <Modal open={open} onClose={() => setOpen(false)} title="Tambah variant" width={480}>
+        {open && (
+          <BundleForm
+            initial={{ variantId: '', qty: '' }}
+            variants={variants}
+            submitLabel="Tambah bundle"
+            onCancel={() => setOpen(false)}
+            onSubmit={async (v) => {
+              const res = await addBundleToBatch({ batchId, variantId: v.variantId, qty: v.qty });
+              if (res.ok) {
                 setOpen(false);
-                setVariant('');
-                setQty('');
-                setDone({ message: res.data.message, bundleId: res.data.bundle_id });
-              })
-            }
-          >
-            {pending ? 'Menyimpan...' : 'Tambah bundle'}
-          </Button>
-        </div>
-      </div>
-    </Panel>
+                setSaved(res.data);
+              }
+              return res;
+            }}
+          />
+        )}
+      </Modal>
+    </div>
   );
 }

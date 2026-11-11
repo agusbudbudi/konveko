@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { AlertTriangle, ArrowDown, ArrowUp, CircleCheck, Download, Info, CircleX, Minus } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, CircleCheck, Download, FileDown, Info, CircleX, Minus } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { callRpc } from '@/lib/rpc';
 import {
@@ -53,7 +53,18 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
             {period.label} <span className="text-text-subtle">· dibanding {period.prevLabel}</span>
           </>
         }
-        actions={<PeriodPicker period={period} today={todayJakarta()} />}
+        actions={
+          <>
+            <PeriodPicker period={period} today={todayJakarta()} />
+            <a
+              href={pdfHref(period)}
+              download
+              className="inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
+            >
+              <FileDown size={16} strokeWidth={1.5} aria-hidden /> Download PDF
+            </a>
+          </>
+        }
       />
 
       {!cur.ok || !prev.ok ? (
@@ -73,7 +84,17 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
   );
 }
 
-// ---------------------------------------------------------------------------
+/** /laporan/pdf for exactly the period on screen (same params resolvePeriod reads). */
+function pdfHref(period: Period) {
+  const q = new URLSearchParams({ mode: period.mode });
+  if (period.mode === 'custom') {
+    q.set('from', period.from);
+    q.set('to', period.to);
+  } else {
+    q.set('date', period.mode === 'month' ? period.from.slice(0, 7) : period.from);
+  }
+  return `/laporan/pdf?${q}`;
+}
 
 // ---------------------------------------------------------------------------
 

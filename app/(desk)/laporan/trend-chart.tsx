@@ -1,17 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import type { Bucket } from '@/lib/report';
+import { niceMax, type Bucket } from '@/lib/report';
 
 const H = 168; // plot height in px
-
-/** Round up to a clean axis maximum: 1, 2, 2.5, 5 x 10^n. */
-function niceMax(v: number) {
-  if (v <= 4) return 4;
-  const p = 10 ** Math.floor(Math.log10(v));
-  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
-  return 10 * p;
-}
 
 /**
  * Stacked columns: lolos QC (bottom) + reject (top), one per day or week.

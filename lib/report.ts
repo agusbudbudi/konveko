@@ -182,6 +182,34 @@ export function change(now: number, before: number): number | null {
   return ((now - before) / before) * 100;
 }
 
+/** Round up to a clean axis maximum: 1, 2, 2.5, 5 x 10^n. */
+export function niceMax(v: number) {
+  if (v <= 4) return 4;
+  const p = 10 ** Math.floor(Math.log10(v));
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
+  return 10 * p;
+}
+
+/**
+ * How a change against the previous period reads: "naik 12%", "sama",
+ * "tanpa pembanding", and whether that is good. Same rules as the KPI tiles.
+ */
+export function deltaChip(
+  delta: number | null,
+  unit: '%' | 'poin' = '%',
+  higherIsWorse = false,
+): { text: string; tone: 'success' | 'danger' | 'neutral'; dir: 'up' | 'down' | 'flat' | null } {
+  if (delta === null) return { text: 'tanpa pembanding', tone: 'neutral', dir: null };
+  if (Math.abs(delta) < (unit === 'poin' ? 0.1 : 1)) return { text: 'sama', tone: 'neutral', dir: 'flat' };
+  const up = delta > 0;
+  const good = up !== higherIsWorse;
+  return {
+    text: `${n1(Math.abs(delta))}${unit === '%' ? '%' : ' poin'}`,
+    tone: good ? 'success' : 'danger',
+    dir: up ? 'up' : 'down',
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Insights: short Indonesian sentences, most important first
 // ---------------------------------------------------------------------------

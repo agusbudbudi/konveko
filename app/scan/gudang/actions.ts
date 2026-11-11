@@ -1,6 +1,7 @@
 'use server';
 
 import { callRpc } from '@/lib/rpc';
+import { withSkuHint } from '@/lib/scan/sku-hint';
 import type { ActionResult, PutawayResult, WarehouseLookup } from '@/lib/types';
 
 const clean = (s: string) => s.trim().slice(0, 64);
@@ -8,7 +9,7 @@ const clean = (s: string) => s.trim().slice(0, 64);
 export async function warehouseLookup(code: string): Promise<ActionResult<WarehouseLookup>> {
   const c = clean(code);
   if (!c) return { ok: false, message: 'Isi kode.', code: 'qty_invalid' };
-  return callRpc<WarehouseLookup>('warehouse_lookup', { p_code: c });
+  return withSkuHint(await callRpc<WarehouseLookup>('warehouse_lookup', { p_code: c }), c);
 }
 
 export async function putaway(location: string, code: string): Promise<ActionResult<PutawayResult>> {

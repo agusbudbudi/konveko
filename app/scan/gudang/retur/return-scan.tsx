@@ -10,6 +10,7 @@ import { cn } from '@/lib/cn';
 import { RETURN_REASONS } from '@/lib/outbound';
 import type { WarehouseLookup } from '@/lib/types';
 import { warehouseLookup } from '../actions';
+import { useScanner } from '@/lib/scan/use-scanner';
 import { BottomBar, ScannerView } from '../../scan-app';
 
 type Piece = Extract<WarehouseLookup, { kind: 'piece' }>;
@@ -36,6 +37,9 @@ export function ReturnScan({ canWork }: { canWork: boolean }) {
     }
     setPhase({ k: 'piece', piece: d });
   }, []);
+
+  // From the error screen, the next hardware scan starts over without tapping "Scan lagi".
+  useScanner(onCode, phase.k === 'error');
 
   useEffect(() => {
     if (phase.k !== 'done') return;

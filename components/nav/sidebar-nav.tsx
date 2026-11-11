@@ -15,6 +15,7 @@ import {
   Package,
   Tag,
   Truck,
+  ScanBarcode,
   ScanLine,
   Search,
   X,
@@ -81,6 +82,7 @@ const GROUPS: Group[] = [
           { href: '/master/profil', label: 'Profil usaha' },
         ],
       },
+      { href: '/pengaturan/perangkat', label: 'Perangkat scan', icon: ScanBarcode },
     ],
   },
 ];

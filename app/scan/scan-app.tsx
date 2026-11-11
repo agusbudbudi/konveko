@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { Camera, CircleCheck, ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
@@ -13,6 +14,9 @@ import { uploadSelisihPhoto } from '@/lib/photo';
 import { STATUS_LABEL, type ActionResult, type LookupResult, type Reason, type ScanResult } from '@/lib/types';
 import { finishBundle, lookupBundle, receiveBundle } from './actions';
 import { CameraScanner } from './camera-scanner';
+import { normalizeScan } from '@/lib/scan/normalize';
+import { setScanPrefs, usesCamera, useScanPrefs } from '@/lib/scan/prefs';
+import { useScanner } from '@/lib/scan/use-scanner';
 
 type Phase =
   | { k: 'scan' }
@@ -56,6 +60,12 @@ export function ScanApp({
     const res = await actions.lookup(raw);
     setPhase(res.ok ? { k: 'result', bundle: res.data } : { k: 'error', message: res.message });
   }, [actions]);
+
+  // From the error screen, the next hardware scan starts over without tapping "Scan lagi".
+  useScanner((code) => {
+    busy.current = false;
+    lookup(code);
+  }, phase.k === 'error');
 
   const onDone = useCallback((result: ScanResult) => {
     navigator.vibrate?.(60);
@@ -107,14 +117,43 @@ export function ScannerView({
 }) {
   const [manual, setManual] = useState('');
   const [fineP, setFinePointer] = useState(false);
+  const prefs = useScanPrefs();
+  const camera = prefs ? usesCamera(prefs) : null;
 
   // Desktop / handheld-scanner stations: keep the field focused so the
   // scanner's keystrokes + Enter land here. On phones, don't pop the keyboard.
   useEffect(() => setFinePointer(window.matchMedia('(pointer: fine)').matches), []);
 
+  // Hardware scanners (SUNMI, wedge guns, native bridge) work with no field focused.
+  useScanner((code) => {
+    setManual(''); // a scan into the focused code box replaces what was typed
+    onCode(code);
+  }, !loading);
+
   return (
     <div className="mt-2 flex flex-col gap-4">
-      <CameraScanner onDetected={onCode} paused={loading} />
+      {camera === null ? (
+        <div aria-hidden className="h-40 rounded-xl border border-border bg-surface-muted" />
+      ) : camera ? (
+        <CameraScanner onDetected={(c) => onCode(normalizeScan(c))} paused={loading} />
+      ) : (
+        <HardwareReady loading={loading} />
+      )}
+      {camera !== null && (
+        <div className="-mt-2 flex items-center justify-between text-small">
+          <button
+            type="button"
+            onClick={() => setScanPrefs({ input: camera ? 'scanner' : 'camera' })}
+            className="inline-flex h-10 items-center gap-1.5 text-text-muted hover:text-text"
+          >
+            {camera ? <ScanLine size={16} strokeWidth={1.5} aria-hidden /> : <Camera size={16} strokeWidth={1.5} aria-hidden />}
+            {camera ? 'Pakai tombol scan perangkat' : 'Pakai kamera'}
+          </button>
+          <Link href="/scan/perangkat" className="inline-flex h-10 items-center text-text-muted hover:text-text">
+            Atur perangkat
+          </Link>
+        </div>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -128,6 +167,7 @@ export function ScannerView({
         <div className="flex gap-2">
           <Input
             id="manual-code"
+            data-scan-field
             value={manual}
             onChange={(e) => setManual(e.target.value)}
             placeholder={placeholder}
@@ -143,6 +183,17 @@ export function ScannerView({
         </div>
       </form>
       {loading && <p className="text-small text-text-muted" aria-live="polite">{loadingText}</p>}
+    </div>
+  );
+}
+
+/** Shown instead of the camera on devices with a built-in or attached scanner. */
+function HardwareReady({ loading }: { loading: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border-strong bg-surface px-6 py-10 text-center">
+      <ScanLine size={32} strokeWidth={1.5} aria-hidden className={cn('text-primary', loading && 'motion-safe:animate-pulse')} />
+      <p className="text-h3">{loading ? 'Membaca...' : 'Siap scan'}</p>
+      <p className="text-small text-text-muted">Tekan tombol scan di perangkat, arahkan ke QR di label.</p>
     </div>
   );
 }

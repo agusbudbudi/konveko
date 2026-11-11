@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import { OUTBOUND_TYPE, SKIP_LABEL, type OutboundProgress, type OutboundType } from '@/lib/outbound';
+import { forgetLastScan } from '@/lib/scan/bus';
 import { BottomBar, ScannerView } from '../../scan-app';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -222,6 +223,7 @@ export function OutboundScan({
                     setTotal(res.data.total);
                     setLastPiece(null);
                     last.current = null;
+                    forgetLastScan(); // the same label can go in again right away
                     setResult({ tone: 'success', text: res.data.message });
                   })
                 }

@@ -192,6 +192,13 @@ function PreviewTable({ columns, tail, children }: { columns: Col[]; tail: strin
   );
 }
 
+/** Status of a valid row; only Baru and Berubah are saved. */
+const STATUS = {
+  baru: { label: 'Baru', tone: 'success' },
+  berubah: { label: 'Berubah', tone: 'info' },
+  sama: { label: 'Sama', tone: 'neutral' },
+} as const;
+
 function SheetView({ s }: { s: PreviewSheet }) {
   // a sheet-level problem (missing column, too many rows) has no row values
   const sheetErrors = s.errors.filter((e) => !e.values);
@@ -200,7 +207,9 @@ function SheetView({ s }: { s: PreviewSheet }) {
   const valid = [
     ...s.added.map((a) => ({ row: a.row, values: a.values, kind: 'baru' as const })),
     ...s.changed.map((c) => ({ row: c.row, values: c.values, kind: 'berubah' as const })),
+    ...s.unchanged.map((u) => ({ row: u.row, values: u.values, kind: 'sama' as const })),
   ].sort((a, b) => a.row - b.row);
+  const validTotal = s.counts.added + s.counts.changed + s.counts.same;
 
   return (
     <div className="flex flex-col gap-6">
@@ -246,13 +255,13 @@ function SheetView({ s }: { s: PreviewSheet }) {
         <div>
           <h3 className="mb-2 flex items-center gap-2 text-h3">
             <CircleCheck size={18} strokeWidth={1.5} aria-hidden className="text-success" /> Tervalidasi{' '}
-            <span className="num font-normal text-text-muted">({s.counts.added + s.counts.changed})</span>
+            <span className="num font-normal text-text-muted">({validTotal})</span>
           </h3>
           <PreviewTable columns={s.columns} tail="Status">
             {valid.map((r) => {
               const changes = new Map((changedBy.get(r.row)?.changes ?? []).map((x) => [x.field, x]));
               return (
-                <tr key={r.row} className="align-top">
+                <tr key={r.row} className={cn('align-top', r.kind === 'sama' && 'text-text-muted')}>
                   <td className="num px-3 py-2 text-text-muted">{r.row}</td>
                   {s.columns.map((c) => {
                     const x = changes.get(c.field);
@@ -269,18 +278,18 @@ function SheetView({ s }: { s: PreviewSheet }) {
                     );
                   })}
                   <td className="px-3 py-2">
-                    <Badge tone={r.kind === 'baru' ? 'success' : 'info'}>{r.kind === 'baru' ? 'Baru' : 'Berubah'}</Badge>
+                    <Badge tone={STATUS[r.kind].tone}>{STATUS[r.kind].label}</Badge>
                   </td>
                 </tr>
               );
             })}
           </PreviewTable>
-          <More shown={valid.length} total={s.counts.added + s.counts.changed} />
+          <More shown={valid.length} total={validTotal} />
+          {s.same > 0 && <p className="mt-2 text-small text-text-muted">Baris berstatus Sama sudah sama dengan data di sistem dan dilewati saat disimpan.</p>}
         </div>
       )}
 
-      {s.same > 0 && <p className="text-small text-text-muted">{s.same} baris sama dengan data di sistem, tidak ditampilkan.</p>}
-      {s.counts.added + s.counts.changed + s.counts.errors === 0 && <p className="text-small text-text-muted">Tidak ada perubahan di sheet ini.</p>}
+      {validTotal + s.counts.errors === 0 && <p className="text-small text-text-muted">Sheet ini tidak berisi data.</p>}
     </div>
   );
 }

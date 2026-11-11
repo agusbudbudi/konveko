@@ -201,6 +201,8 @@ export type SheetPreview = {
   columns: { field: string; header: string }[];
   added: { row: number; label: string; values: Record<string, unknown> }[];
   changed: { row: number; label: string; id: string; values: Record<string, unknown>; changes: Change[] }[];
+  /** rows equal to the system: shown so the user sees them, never sent to import_master */
+  unchanged: { row: number; label: string; values: Record<string, unknown> }[];
   same: number;
   /** template example rows (key starts with CONTOH) that were skipped */
   samples: number;
@@ -237,6 +239,7 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
       columns: spec.columns.map((c) => ({ field: c.field, header: c.header })),
       added: [],
       changed: [],
+      unchanged: [],
       same: 0,
       samples: 0,
       errors: [],
@@ -325,6 +328,7 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
         }));
       if (changes.length === 0) {
         preview.same++;
+        preview.unchanged.push({ row, label: spec.keyLabel(values), values });
         continue;
       }
       preview.changed.push({ row, label: spec.keyLabel(values), id: old.id, values, changes });

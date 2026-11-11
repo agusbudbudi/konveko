@@ -31,6 +31,8 @@ test('new, changed, same and error rows per sheet; payload holds only new and ch
   const v = plan.sheets.find((s) => s.table === 'product_variant');
   assert.equal(v.found, true);
   assert.equal(v.same, 1);
+  // listed for the preview (status Sama), but not in the payload
+  assert.deepEqual(v.unchanged.map((u) => [u.row, u.label]), [[2, 'SKU KMJ-PTH-M']]);
   assert.deepEqual(v.changed.map((c) => [c.id, c.changes.map((x) => [x.header, x.from, x.to])]), [['v2', [['Aktif', true, false]]]]);
   assert.deepEqual(v.added.map((a) => [a.label, a.values.product_name, a.values.is_active]), [['SKU KOS-HTM-S', 'Kaos', true]]);
   assert.deepEqual(v.errors.map(({ row, message }) => ({ row, message })), [

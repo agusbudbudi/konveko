@@ -13,7 +13,7 @@ import type { ActionResult } from '@/lib/types';
 const SHOW_ROWS = 200;
 
 /** A sheet preview with its lists cut to SHOW_ROWS; `counts` are the full numbers. */
-export type PreviewSheet = SheetPreview & { counts: { added: number; changed: number; errors: number } };
+export type PreviewSheet = SheetPreview & { counts: { added: number; changed: number; same: number; errors: number } };
 export type Preview = { file: string; hash: string; sheets: PreviewSheet[]; errorCount: number; changeCount: number };
 export type Applied = Record<Table, { added: number; changed: number }>;
 
@@ -58,8 +58,9 @@ export async function previewImport(fd: FormData): Promise<ActionResult<Preview>
         ...s,
         added: s.added.slice(0, SHOW_ROWS),
         changed: s.changed.slice(0, SHOW_ROWS),
+        unchanged: s.unchanged.slice(0, SHOW_ROWS),
         errors: s.errors.slice(0, SHOW_ROWS),
-        counts: { added: s.added.length, changed: s.changed.length, errors: s.errors.length },
+        counts: { added: s.added.length, changed: s.changed.length, same: s.same, errors: s.errors.length },
       })),
     },
   };

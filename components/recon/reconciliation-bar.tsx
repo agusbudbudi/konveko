@@ -11,7 +11,7 @@ export type Recon = {
 const segments = [
   { key: 'ready', label: 'Ready stock', className: 'bg-primary' },
   { key: 'reject', label: 'Reject', className: 'bg-danger' },
-  { key: 'wip_dikerjakan', label: 'Sedang dikerjakan', className: 'bg-neutral/40' },
+  { key: 'wip_dikerjakan', label: 'Sedang dikerjakan', className: 'bg-wip-active' },
   { key: 'wip_menunggu', label: 'Menunggu terima', className: 'bg-neutral/20' },
   { key: 'selisih', label: 'Selisih', className: 'bg-warning' },
 ] as const;

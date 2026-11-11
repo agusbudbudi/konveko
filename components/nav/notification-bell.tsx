@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck } from 'lucide-react';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { renderNotification, timeAgo, type NotificationData } from '@/lib/notifications/registry';
+import { NotificationIcon } from '@/components/notifications/notification-icon';
 import { cn } from '@/lib/cn';
 
 type Item = {
@@ -157,15 +158,9 @@ export function NotificationBell({ userId }: { userId: string }) {
                     type="button"
                     role="menuitem"
                     onClick={() => openItem(item, r.href)}
-                    className="flex w-full items-start gap-2.5 rounded-md px-3 py-2.5 text-left hover:bg-surface-muted"
+                    className="flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left hover:bg-surface-muted"
                   >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'mt-1.5 size-2 shrink-0 rounded-full',
-                        isUnread ? TONE_DOT[r.tone] : 'bg-transparent',
-                      )}
-                    />
+                    <NotificationIcon icon={r.icon} size="sm" />
                     <span className="min-w-0 flex-1">
                       <span className={cn('block text-small', isUnread ? 'font-medium text-text' : 'text-text-muted')}>
                         {r.title}
@@ -174,6 +169,10 @@ export function NotificationBell({ userId }: { userId: string }) {
                       <span className="mt-0.5 block text-caption text-text-muted">{r.body}</span>
                       <span className="mt-0.5 block text-caption text-text-subtle">{timeAgo(item.created_at)}</span>
                     </span>
+                    <span
+                      aria-hidden
+                      className={cn('mt-1.5 size-2 shrink-0 rounded-full', isUnread ? TONE_DOT[r.tone] : 'bg-transparent')}
+                    />
                   </button>
                 );
               })

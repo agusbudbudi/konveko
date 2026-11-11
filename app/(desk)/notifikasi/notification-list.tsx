@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { CheckCheck } from 'lucide-react';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { renderNotification, timeAgo, type NotificationData } from '@/lib/notifications/registry';
+import { NotificationIcon } from '@/components/notifications/notification-icon';
 import { cn } from '@/lib/cn';
 
 export type NotificationRow = {
@@ -82,6 +83,7 @@ export function NotificationList({ rows, canMarkAll }: { rows: NotificationRow[]
                   unread && (r.tone === 'danger' ? 'border-l-danger' : 'border-l-warning'),
                 )}
               >
+                <NotificationIcon icon={r.icon} />
                 <span className="min-w-0 flex-1">
                   <span className={cn('block', unread ? 'font-medium text-text' : 'text-text-muted')}>
                     {r.title}

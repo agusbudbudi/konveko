@@ -28,6 +28,7 @@ test('selisih renders title, body and bundle link', () => {
   assert.equal(r.body, 'Terima jahit oleh Siti: 47 dari 50 pcs. Alasan: Kurang hitung.');
   assert.equal(r.href, '/bundle/b1');
   assert.equal(r.tone, 'warning');
+  assert.equal(r.icon, 'selisih');
 });
 
 test('selisih without reason or bundle id still reads', () => {
@@ -48,6 +49,7 @@ test('reject renders per step', () => {
   assert.equal(r.body, 'Selesai jahit oleh Ani: 18 jadi, 2 reject dari 20 pcs. Alasan: Jahitan.');
   assert.equal(r.href, '/bundle/b1');
   assert.equal(r.tone, 'danger');
+  assert.equal(r.icon, 'reject');
 
   r = renderNotification({ ...base, data: { ...base.data, step: 'finishing', worker: 'Finishing A', reason: null } });
   assert.equal(r.body, 'Selesai finishing oleh Finishing A: 18 lolos QC, 2 reject dari 20 pcs.');

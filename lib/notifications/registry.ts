@@ -30,7 +30,11 @@ export interface Rendered {
   /** In-app path to open, or null when there is nothing to open. */
   href: string | null;
   tone: 'danger' | 'warning' | 'info';
+  /** Icon key, mapped to a glyph in components/notifications/notification-icon.tsx. */
+  icon: NotificationIconKey;
 }
+
+export type NotificationIconKey = 'selisih' | 'reject' | 'umum';
 
 export interface EmailMessage {
   subject: string;
@@ -69,6 +73,7 @@ const DEFINITIONS: Record<string, Definition> = {
         body: `Terima ${step} oleh ${str(data.receiver)}: ${num(data.qty_received)} dari ${num(data.qty_sent)} pcs.${reason}`,
         href: typeof data.bundle_id === 'string' ? `/bundle/${data.bundle_id}` : '/selisih',
         tone: 'warning',
+        icon: 'selisih',
       };
     },
   },
@@ -83,13 +88,14 @@ const DEFINITIONS: Record<string, Definition> = {
           `${num(data.qty_good)} ${finishing ? 'lolos QC' : 'jadi'}, ${num(data.qty_reject)} reject dari ${num(data.qty_in)} pcs.${reason}`,
         href: typeof data.bundle_id === 'string' ? `/bundle/${data.bundle_id}` : null,
         tone: 'danger',
+        icon: 'reject',
       };
     },
   },
 };
 
 const FALLBACK: Definition = {
-  render: (n) => ({ title: 'Notifikasi', body: n.type, href: null, tone: 'info' }),
+  render: (n) => ({ title: 'Notifikasi', body: n.type, href: null, tone: 'info', icon: 'umum' }),
 };
 
 export const NOTIFICATION_TYPES = Object.keys(DEFINITIONS);

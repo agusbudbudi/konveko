@@ -35,6 +35,8 @@ html {
   --success-soft: #E7F3EA;  --success: #1F6B3A;
   --info-soft: #E6EEF7;     --info: #1F4F82;
   --warning-soft: #FBF0DC;  --warning: #8A5A0B;
+  /* reconciliation bar: WIP being worked on. Light yellow, far lighter than --warning (selisih). */
+  --wip-active: #E8B931;
   --danger-soft: #FBE8E6;   --danger: #A1271C;  --danger-foreground: #FFFFFF;
   --neutral-soft: #F0EEEA;  --neutral: #4F4B45;
 
@@ -111,6 +113,7 @@ html {
   --color-success: var(--success);  --color-success-soft: var(--success-soft);
   --color-info: var(--info);        --color-info-soft: var(--info-soft);
   --color-warning: var(--warning);  --color-warning-soft: var(--warning-soft);
+  --color-wip-active: var(--wip-active);
   --color-danger: var(--danger);    --color-danger-soft: var(--danger-soft);
   --color-danger-foreground: var(--danger-foreground);
   --color-neutral: var(--neutral);  --color-neutral-soft: var(--neutral-soft);

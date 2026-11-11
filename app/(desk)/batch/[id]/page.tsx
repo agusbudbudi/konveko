@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { UrlPagination } from '@/components/ui/pagination';
+import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
 import { ReconciliationBar, ReconciliationLegend, type Recon } from '@/components/recon/reconciliation-bar';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
@@ -33,10 +35,11 @@ export default async function BatchDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ baru?: string }>;
+  searchParams: Promise<PageQuery>;
 }) {
   const { id } = await params;
-  const { baru } = await searchParams;
+  const query = await searchParams;
+  const { baru } = query;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const supabase = await createClient();
@@ -67,6 +70,10 @@ export default async function BatchDetailPage({
   const codeById = new Map(bundles.map((b) => [b.bundle_id, b.code]));
   const canProduce = user?.roles.includes('produksi') ?? false;
   const active = bundles.filter((b) => b.is_active);
+  // the table shows one page; label count, parent codes and totals above use every bundle
+  const path = `/batch/${id}`;
+  const paged = slicePage(bundles, query);
+  if (paged.outOfRange) redirect(withQuery(path, query, { page: String(paged.pages) }));
 
   return (
     <>
@@ -124,7 +131,7 @@ export default async function BatchDetailPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {bundles.map((b) => {
+            {paged.rows.map((b) => {
               const v = variants.get(b.variant_id);
               const extra = extras.get(b.bundle_id);
               const parentCode = extra?.parent_bundle_id ? codeById.get(extra.parent_bundle_id) : null;
@@ -167,6 +174,7 @@ export default async function BatchDetailPage({
             })}
           </tbody>
         </table>
+        <UrlPagination path={path} query={query} total={bundles.length} unit="bundle" className="border-t border-border px-5 pb-4" />
       </section>
     </>
   );

@@ -15,9 +15,9 @@ export function NotificationIcon({ icon, size = 'md' }: { icon: NotificationIcon
     <span
       role="img"
       aria-label={label}
-      className={cn('inline-flex shrink-0 items-center justify-center rounded-full', size === 'sm' ? 'size-8' : 'size-9', className)}
+      className={cn('mt-0.5 inline-flex shrink-0 items-center justify-center rounded-full', size === 'sm' ? 'size-6' : 'size-7', className)}
     >
-      <Icon size={size === 'sm' ? 16 : 18} strokeWidth={1.75} aria-hidden />
+      <Icon size={size === 'sm' ? 13 : 15} strokeWidth={2} aria-hidden />
     </span>
   );
 }

@@ -278,6 +278,12 @@ body {
   to   { opacity: 1; transform: none; }
 }
 
+/* Laser line sweeping over the QR in the "Siap scan" illustration. */
+@keyframes scan-sweep {
+  0%, 100% { transform: translateY(-13px); }
+  50%      { transform: translateY(13px); }
+}
+
 /* Clickable codes in tables and lists (bundle, batch, rak, pcs): always underlined so they read as links. */
 @utility link-code {
   color: var(--primary);

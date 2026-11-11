@@ -32,6 +32,9 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
   const [rack, setRack] = useState<Rack | null>(null);
   const [phase, setPhase] = useState<Phase>({ k: 'scan' });
   const [notice, setNotice] = useState<string | null>(null);
+  // Code of the bundle/pcs that was open when "Ganti rak" was tapped: reopened
+  // once the new rack is scanned, so it does not have to be scanned again.
+  const [pending, setPending] = useState<string | null>(null);
   const busy = useRef(false);
 
   // Restore the rack code, then re-read it so qty and kind are current.
@@ -69,14 +72,30 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
       if (!res.ok) return setPhase({ k: 'error', message: res.message });
       if (res.data.kind === 'location') {
         chooseRack(res.data);
+        if (pending) {
+          setPending(null);
+          const again = await warehouseLookup(pending);
+          if (again.ok && again.data.kind !== 'location') return setPhase({ k: 'item', item: again.data });
+        }
         busy.current = false;
         return setPhase({ k: 'scan' });
       }
+      setPending(null);
       if (!rack) return setPhase({ k: 'error', message: 'Scan QR rak dulu, baru bundle atau pcs.' });
       setPhase({ k: 'item', item: res.data });
     },
-    [rack],
+    [rack, pending],
   );
+
+  const clearRack = () => {
+    if (phase.k === 'item') setPending(phase.item.code);
+    setRack(null);
+    setNotice(null);
+    try {
+      localStorage.removeItem(RACK_KEY);
+    } catch {}
+    reset();
+  };
 
   // From the error screen, the next hardware scan starts over without tapping "Scan lagi".
   useScanner((code) => {
@@ -92,7 +111,7 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
 
   return (
     <main className="flex flex-1 flex-col px-4 pb-32">
-      <RackCard rack={rack} onClear={() => { setRack(null); try { localStorage.removeItem(RACK_KEY); } catch {} }} />
+      <RackCard rack={rack} onClear={clearRack} />
 
       {!canShelve && (
         <InlineAlert tone="info" className="mt-3">Hanya akun gudang atau supervisor yang bisa memasukkan barang ke rak.</InlineAlert>
@@ -103,6 +122,11 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
           {notice && (
             <InlineAlert tone="success" className="mt-3">
               {notice}
+            </InlineAlert>
+          )}
+          {pending && !rack && (
+            <InlineAlert tone="info" className="mt-3">
+              Scan QR rak baru. <span className="num">{pending}</span> akan dibuka lagi setelah rak dipilih.
             </InlineAlert>
           )}
           <ScannerView

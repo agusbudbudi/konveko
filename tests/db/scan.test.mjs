@@ -165,9 +165,20 @@ describe('scan validation (FR-13, FR-14, FR-17)', () => {
     const look = await rpc(db, ids.finishing, 'scan_lookup', { p_code: code });
     assert.equal(look.allowed, false);
     assert.equal(look.next_action, null);
-    assert.match(look.message, /sudah masuk stok/);
+    assert.equal(look.message, `Bundle ${code} sudah selesai finishing (Ready stock), belum masuk rak. Langkah berikutnya: gudang cetak label pcs lalu simpan ke rak.`);
     await rejects(rpc(db, ids.finishing, 'scan_receive', { p_code: code, p_qty_received: 20 }), 'wrong_status');
     assert.equal((await one(db, `select count(*)::int as n from public.movement`)).n, before);
+
+    // Labels printed, 5 pcs shelved: 15 still waiting for the rack.
+    await db.query(`update public.piece set printed_at = now() where bundle_id = (select id from public.bundle where code = $1)`, [code]);
+    await db.query(`update public.piece set location_id = $2
+                    where id in (select id from public.piece where bundle_id = (select id from public.bundle where code = $1) limit 5)`, [code, ids.rakA1]);
+    let msg = (await rpc(db, ids.finishing, 'scan_lookup', { p_code: code })).message;
+    assert.equal(msg, `Bundle ${code} sudah selesai finishing (Ready stock), 15 pcs belum masuk rak. Langkah berikutnya: gudang simpan ke rak.`);
+
+    await db.query(`update public.piece set location_id = $2 where bundle_id = (select id from public.bundle where code = $1)`, [code, ids.rakA1]);
+    msg = (await rpc(db, ids.finishing, 'scan_lookup', { p_code: code })).message;
+    assert.equal(msg, `Bundle ${code} sudah selesai dan semua pcs sudah masuk gudang.`);
   });
 
   it('rejects unknown codes', async () => {

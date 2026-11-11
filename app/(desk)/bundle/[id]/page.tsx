@@ -178,7 +178,7 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
                 </div>
               </div>
               {open ? (
-                isSupervisor ? <ResolveFlag id={d.id} /> : <Badge tone="warning">Terbuka</Badge>
+                isSupervisor ? <ResolveFlag id={d.id} qty={d.qty} /> : <Badge tone="warning">Terbuka</Badge>
               ) : (
                 <Badge tone="success">Selesai</Badge>
               )}

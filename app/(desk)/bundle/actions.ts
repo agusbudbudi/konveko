@@ -1,6 +1,7 @@
 'use server';
 
 import { refresh } from 'next/cache';
+import { scheduleDispatch } from '@/lib/notifications/server';
 import { callRpc } from '@/lib/rpc';
 import type { ActionResult } from '@/lib/types';
 
@@ -32,7 +33,10 @@ export async function correctMovement(input: {
     p_qty_reject: input.isVoid ? null : nums[2],
     p_reason_id: input.isVoid ? null : input.reasonId,
   });
-  if (res.ok) refresh();
+  if (res.ok) {
+    scheduleDispatch(); // a correction can open a new selisih
+    refresh();
+  }
   return res;
 }
 

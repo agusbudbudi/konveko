@@ -605,7 +605,6 @@ function Hints({ short }: { short: boolean }) {
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-small text-text-muted">Untuk mengubah data master (user, rak, variant, alasan), buka menu Master data.</p>
     </div>
   );
 }

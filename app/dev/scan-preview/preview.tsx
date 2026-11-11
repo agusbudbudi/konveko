@@ -18,7 +18,7 @@ const base = { batch_code: 'BT-0001', variant, last_movement_at: new Date().toIS
 const fixtures: Record<string, LookupResult> = {
   'B-00001': { ...base, bundle_id: '1', code: 'B-00001', status: 'siap_jahit', ref_qty: 20, holder_name: 'Tim produksi', next_action: 'terima', allowed: true, message: null },
   'B-00002': { ...base, bundle_id: '2', code: 'B-00002', status: 'proses_jahit', ref_qty: 19, holder_name: 'Ani', next_action: 'selesai', allowed: true, message: null },
-  'B-00003': { ...base, bundle_id: '3', code: 'B-00003', status: 'ready_stock', ref_qty: 17, holder_name: 'Tim finishing', next_action: null, allowed: false, message: 'Bundle B-00003 sudah masuk stok.' },
+  'B-00003': { ...base, bundle_id: '3', code: 'B-00003', status: 'ready_stock', ref_qty: 17, holder_name: 'Tim finishing', next_action: null, allowed: false, message: 'Bundle B-00003 sudah selesai finishing (Ready stock), belum masuk rak. Langkah berikutnya: gudang cetak label pcs lalu simpan ke rak.' },
   'B-00004': { ...base, bundle_id: '4', code: 'B-00004', status: 'siap_finishing', ref_qty: 18, holder_name: 'Ani', next_action: 'terima', allowed: false, message: 'Bundle B-00004 berstatus siap finishing. Langkah berikutnya untuk finishing.' },
 };
 

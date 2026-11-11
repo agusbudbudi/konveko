@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Wordmark } from '@/components/brand/wordmark';
 import { CrumbProvider, MobileNav, PageCrumb, SidebarNav } from '@/components/nav/sidebar-nav';
+import { NotificationBell } from '@/components/nav/notification-bell';
 import { UserMenu } from '@/components/nav/user-menu';
 import { getCurrentAppUser } from '@/lib/supabase/server';
 
@@ -35,6 +36,7 @@ export default async function DeskLayout({ children }: { children: React.ReactNo
               <div className="lg:hidden">
                 <MobileNav />
               </div>
+              <NotificationBell userId={user.id} />
               <UserMenu name={user.name} roles={user.roles} />
             </div>
           </header>

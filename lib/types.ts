@@ -27,6 +27,8 @@ export type ScanResult = {
   code: string;
   status: BundleStatus;
   message: string;
+  /** scan_receive only: pcs short of what was sent. */
+  selisih?: number;
 };
 
 export type Reason = { id: string; type: 'selisih' | 'reject'; label: string };

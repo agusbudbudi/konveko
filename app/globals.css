@@ -36,7 +36,7 @@ html {
   --info-soft: #E6EEF7;     --info: #1F4F82;
   --warning-soft: #FBF0DC;  --warning: #8A5A0B;
   /* reconciliation bar: WIP being worked on. Light yellow, far lighter than --warning (selisih). */
-  --wip-active: #E8B931;
+  --wip-active: #E6C77A;
   --danger-soft: #FBE8E6;   --danger: #A1271C;  --danger-foreground: #FFFFFF;
   --neutral-soft: #F0EEEA;  --neutral: #4F4B45;
 
@@ -276,6 +276,12 @@ body {
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
+}
+
+/* Laser line sweeping over the QR in the "Siap scan" illustration. */
+@keyframes scan-sweep {
+  0%, 100% { transform: translateY(-13px); }
+  50%      { transform: translateY(13px); }
 }
 
 /* Clickable codes in tables and lists (bundle, batch, rak, pcs): always underlined so they read as links. */

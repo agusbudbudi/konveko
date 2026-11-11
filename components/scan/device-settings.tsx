@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Camera, ScanLine, Sparkles } from 'lucide-react';
+import { Camera, ScanLine, Sparkles } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { cn } from '@/lib/cn';
 import { subscribeTrace, type KeyTrace, type ScanEvent } from '@/lib/scan/bus';
@@ -33,9 +32,11 @@ type Row = { id: number; code: string; source: ScanEvent['source']; kind: CodeKi
  * Per-device scan setup: choose the input, then test it. The key log shows what the
  * scanner really sends (characters, suffix, ms between keys), which is what we need
  * to set up a new scanner model.
+ *
+ * One component for both entry points: /scan/perangkat (phones, SUNMI; no sidebar) and
+ * /pengaturan/perangkat (desk). Pages only add their own title around it.
  */
-export function DeviceSettings() {
-  const router = useRouter();
+export function DeviceSettings({ className }: { className?: string }) {
   const prefs = useScanPrefs();
   const [rows, setRows] = useState<Row[]>([]);
   const [keys, setKeys] = useState<KeyTrace[]>([]);
@@ -49,18 +50,10 @@ export function DeviceSettings() {
   useEffect(() => subscribeTrace((t) => setKeys((k) => [...k, t].slice(-60))), []);
 
   return (
-    <main className="flex flex-1 flex-col gap-6 px-4 pt-2 pb-10">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="Kembali"
-          className="inline-flex size-10 items-center justify-center rounded-md text-text-muted hover:bg-surface-muted"
-        >
-          <ArrowLeft size={20} strokeWidth={1.5} aria-hidden />
-        </button>
-        <h1 className="text-h2">Perangkat scan</h1>
-      </div>
+    <div className={cn('flex flex-col gap-6', className)}>
+      <InlineAlert tone="info">
+        Berlaku untuk perangkat ini saja. Pilihan disimpan di browser ini, tidak ikut ke perangkat atau akun lain.
+      </InlineAlert>
 
       <section className="flex flex-col gap-2">
         <h2 className="text-h3">Cara scan di perangkat ini</h2>
@@ -164,6 +157,6 @@ export function DeviceSettings() {
           Scanner lain (Zebra, Honeywell, Newland, scanner USB atau Bluetooth) diatur sama: output keyboard dengan akhiran Enter.
         </InlineAlert>
       </section>
-    </main>
+    </div>
   );
 }

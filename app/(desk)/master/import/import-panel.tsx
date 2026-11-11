@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { AlertTriangle, CircleCheck, FileSpreadsheet, Upload } from 'lucide-react';
+import { AlertTriangle, CircleCheck, Download, FileSpreadsheet, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
@@ -173,6 +173,17 @@ function More({ shown, total }: { shown: number; total: number }) {
   return <p className="mt-2 text-small text-text-muted">Menampilkan {shown} dari {total}. Semuanya tetap diproses.</p>;
 }
 
+/** Save a base64 .xlsx from the server as a file. */
+function download(f: { name: string; base64: string }) {
+  const bytes = Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = f.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Summary after a save: per master how many rows were saved, and what was skipped. */
 function ImportResult({ saved, onClose }: { saved: Applied; onClose: () => void }) {
   const rows = (Object.entries(saved.tables) as [Table, { added: number; changed: number }][]).filter(([, c]) => c.added + c.changed > 0);
@@ -205,10 +216,20 @@ function ImportResult({ saved, onClose }: { saved: Applied; onClose: () => void 
         <div className="flex flex-col gap-1 text-small">
           {saved.skippedErrors > 0 && (
             <p className="flex items-center gap-1.5 text-warning">
-              <AlertTriangle size={16} strokeWidth={1.5} aria-hidden /> {saved.skippedErrors} baris error dilewati. Perbaiki di file, lalu import lagi.
+              <AlertTriangle size={16} strokeWidth={1.5} aria-hidden /> {saved.skippedErrors} baris error dilewati.
             </p>
           )}
           {saved.skippedSame > 0 && <p className="text-text-muted">{saved.skippedSame} baris sama dengan sistem, dilewati.</p>}
+        </div>
+      )}
+      {saved.errorFile && (
+        <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-muted p-4 text-small">
+          <p>
+            Unduh baris yang error saja, lengkap dengan alasannya di kolom paling kanan. Perbaiki di Excel, lalu import file itu lagi.
+          </p>
+          <Button variant="secondary" className="self-start" onClick={() => download(saved.errorFile!)}>
+            <Download size={16} strokeWidth={1.5} aria-hidden /> Unduh {saved.skippedErrors} baris error (.xlsx)
+          </Button>
         </div>
       )}
       <div className="sticky bottom-0 -mx-5 mt-1 flex justify-end gap-2 border-t border-border bg-surface px-5 py-3">

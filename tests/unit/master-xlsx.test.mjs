@@ -46,3 +46,34 @@ test('example rows would pass validation if they were real (so they show a corre
     }
   }
 });
+
+test('error file: only failed rows, reason last; fixed and re-imported it passes', async () => {
+  const { buildErrorWorkbook } = await import('../../lib/master-xlsx.ts');
+  const ExcelJS = (await import('exceljs')).default;
+  const data = existing();
+  const rack = (code, kind) => [code, kind, null, 'Ya'];
+  const input = planImport(
+    [{ name: 'Rak', headers: ['Kode', 'Jenis', 'Catatan', 'Aktif'], rows: [rack('D1', 'stok'), rack('A-5', 'stok'), rack('D2', 'gudang')].map((cells, i) => ({ row: i + 2, cells })) }],
+    data,
+  );
+  assert.equal(input.errorCount, 2);
+
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await buildErrorWorkbook(input.sheets));
+  assert.deepEqual(wb.worksheets.map((w) => w.name), ['Rak']);
+  const ws = wb.getWorksheet('Rak');
+  const cells = (n) => Array.from({ length: 6 }, (_, i) => ws.getRow(n).getCell(i + 1).value);
+  assert.deepEqual(cells(1), ['Kode', 'Jenis', 'Catatan', 'Aktif', 'Baris asal', 'Alasan']);
+  assert.deepEqual(cells(2), ['A-5', 'stok', null, 'Ya', 3, input.sheets[2].errors[0].message]);
+  assert.equal(ws.rowCount, 3);
+
+  // as downloaded: the same two errors (the extra columns are ignored)
+  let again = planImport(await readWorkbook(await wb.xlsx.writeBuffer()), data);
+  assert.equal(again.errorCount, 2);
+  // fixed in Excel: both rows pass
+  ws.getCell('A2').value = 'A5';
+  ws.getCell('B3').value = 'reject';
+  again = planImport(await readWorkbook(await wb.xlsx.writeBuffer()), data);
+  assert.equal(again.errorCount, 0);
+  assert.deepEqual(again.sheets[2].added.map((a) => a.values.code), ['A5', 'D2']);
+});

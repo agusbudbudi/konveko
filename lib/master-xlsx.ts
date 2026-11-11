@@ -12,6 +12,7 @@ import {
   type Cell,
   type ExistingRow,
   type RawSheet,
+  type SheetPreview,
   type Table,
 } from './master-import.ts';
 
@@ -94,5 +95,44 @@ export async function buildWorkbook(existing: Record<Table, ExistingRow[]> | nul
   }
   help.getColumn('help').alignment = { wrapText: true, vertical: 'top' };
 
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}
+
+/** Extra columns of the error file. The import does not know these headers, so it ignores them. */
+export const ERROR_ROW_HEADER = 'Baris asal';
+export const ERROR_REASON_HEADER = 'Alasan';
+
+/**
+ * Only the rows that failed, per sheet, as they were typed, with the reason in the last column.
+ * The user fixes the cells and imports this same file again. A sheet-level problem (missing
+ * column) becomes one row with only the reason, which the import skips as an empty row.
+ */
+export async function buildErrorWorkbook(sheets: SheetPreview[]): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Konveko';
+  wb.created = new Date();
+  for (const preview of sheets) {
+    if (preview.errors.length === 0) continue;
+    const spec = SHEETS.find((s) => s.table === preview.table)!;
+    const ws = wb.addWorksheet(spec.sheet, { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws.columns = [
+      ...spec.columns.map((c) => ({
+        header: c.header,
+        key: c.field,
+        width: Math.max(12, c.header.length + 4, c.example.length + 4),
+        style: c.text ? { numFmt: '@' } : {},
+      })),
+      { header: ERROR_ROW_HEADER, key: '_row', width: 11 },
+      { header: ERROR_REASON_HEADER, key: '_reason', width: 60 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    ws.getCell(1, spec.columns.length + 2).font = { bold: true, color: { argb: 'FFB42318' } };
+    for (const e of preview.errors) {
+      const row = ws.addRow([...spec.columns.map((c) => e.values?.[c.field] ?? null), e.row, e.message]);
+      const reason = row.getCell(spec.columns.length + 2);
+      reason.font = { color: { argb: 'FFB42318' } };
+      reason.alignment = { wrapText: true, vertical: 'top' };
+    }
+  }
   return Buffer.from(await wb.xlsx.writeBuffer());
 }

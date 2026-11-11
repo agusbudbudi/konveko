@@ -5,7 +5,7 @@ import { refresh } from 'next/cache';
 import { callRpc } from '@/lib/rpc';
 import { loadExisting } from '@/lib/master-existing';
 import { MAX_FILE_BYTES, planImport, type ImportPlan, type SheetPreview, type Table } from '@/lib/master-import';
-import { readWorkbook } from '@/lib/master-xlsx';
+import { buildErrorWorkbook, readWorkbook } from '@/lib/master-xlsx';
 import { getCurrentAppUser } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/types';
 
@@ -20,6 +20,8 @@ export type Applied = {
   tables: Partial<Record<Table, { added: number; changed: number }>>;
   skippedErrors: number;
   skippedSame: number;
+  /** the skipped error rows as .xlsx (base64), to fix and import again; null when there were none */
+  errorFile: { name: string; base64: string } | null;
 };
 
 const bad = (message: string, code = 'import_invalid'): { ok: false; message: string; code: string } => ({ ok: false, message, code });
@@ -87,5 +89,12 @@ export async function applyImport(fd: FormData): Promise<ActionResult<Applied>> 
   if (!saved.ok) return saved;
   refresh();
   const skippedSame = p.sheets.reduce((n, s) => n + s.same, 0);
-  return { ok: true, data: { file, tables: saved.data, skippedErrors: p.errorCount, skippedSame } };
+  const errorFile =
+    p.errorCount > 0
+      ? {
+          name: `${file.replace(/\.xlsx$/i, '')}-error.xlsx`,
+          base64: (await buildErrorWorkbook(p.sheets)).toString('base64'),
+        }
+      : null;
+  return { ok: true, data: { file, tables: saved.data, skippedErrors: p.errorCount, skippedSame, errorFile } };
 }

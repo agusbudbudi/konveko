@@ -5,12 +5,15 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, ScanLine, Search, X } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { CameraScanner } from '@/app/scan/camera-scanner';
+import { normalizeScan } from '@/lib/scan/normalize';
+import { useScanner } from '@/lib/scan/use-scanner';
 
 const DEBOUNCE_MS = 300;
 
 /**
  * The one search box of Lacak. Results come from the server page via ?q; typing waits for a
- * pause, Enter searches at once. Autofocused so a handheld scanner can type straight into it.
+ * pause, Enter searches at once. Autofocused so a handheld scanner can type straight into it; when
+ * it is not focused, hardware scans still arrive through useScanner.
  * The Scan button reads a label QR with the camera; the server then opens that pcs, bundle or
  * rack directly.
  */
@@ -28,12 +31,15 @@ export function LacakBox() {
   const onScanned = (code: string) => {
     setScanning(false);
     navigator.vibrate?.(60);
-    const value = code.trim();
+    const value = normalizeScan(code);
     setText(value);
     sentQ.current = value;
     // push, not replace: Back from the opened page returns here
     start(() => router.push(`${path}?q=${encodeURIComponent(value)}`));
   };
+
+  // A hardware scanner (SUNMI, wedge gun) works even when the search box is not focused.
+  useScanner(onScanned, !scanning);
 
   const go = (value: string) => {
     clearTimeout(timer.current);

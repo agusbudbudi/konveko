@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import type { PutawayResult, WarehouseLookup } from '@/lib/types';
+import { useScanner } from '@/lib/scan/use-scanner';
 import { BottomBar, ScannerView } from '../scan-app';
 import { putaway, warehouseLookup } from './actions';
 
@@ -76,6 +77,12 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
     },
     [rack],
   );
+
+  // From the error screen, the next hardware scan starts over without tapping "Scan lagi".
+  useScanner((code) => {
+    busy.current = false;
+    onCode(code);
+  }, phase.k === 'error');
 
   useEffect(() => {
     if (phase.k !== 'success') return;

@@ -11,6 +11,7 @@ import {
   type PieceReturnResult,
 } from '@/lib/outbound';
 import { callRpc } from '@/lib/rpc';
+import { withSkuHint } from '@/lib/scan/sku-hint';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/types';
 
@@ -47,7 +48,7 @@ export async function addToOutbound(id: string, code: string): Promise<ActionRes
   if (!UUID.test(id) || !code64(code)) return { ok: false, message: 'Scan atau ketik kode pcs/bundle.', code: 'not_found' };
   const res = await callRpc<OutboundAddResult>('outbound_add', { p_outbound_id: id, p_code: code64(code) });
   if (res.ok) refresh();
-  return res;
+  return withSkuHint(res, code64(code));
 }
 
 export async function removeFromOutbound(id: string, code: string): Promise<ActionResult<OutboundRemoveResult>> {

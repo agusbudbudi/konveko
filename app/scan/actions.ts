@@ -1,6 +1,7 @@
 'use server';
 
 import { callRpc } from '@/lib/rpc';
+import { withSkuHint } from '@/lib/scan/sku-hint';
 import type { ActionResult, LookupResult, ScanResult } from '@/lib/types';
 
 const CODE_MAX = 64;
@@ -16,7 +17,7 @@ function isInt(n: unknown, min = 0): n is number {
 export async function lookupBundle(code: string): Promise<ActionResult<LookupResult>> {
   const c = cleanCode(code);
   if (!c) return { ok: false, message: 'Isi kode bundle.', code: 'qty_invalid' };
-  return callRpc<LookupResult>('scan_lookup', { p_code: c });
+  return withSkuHint(await callRpc<LookupResult>('scan_lookup', { p_code: c }), c);
 }
 
 export async function receiveBundle(input: {

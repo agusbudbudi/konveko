@@ -1,5 +1,6 @@
 'use server';
 
+import { scheduleDispatch } from '@/lib/notifications/server';
 import { callRpc } from '@/lib/rpc';
 import { withSkuHint } from '@/lib/scan/sku-hint';
 import type { ActionResult, LookupResult, ScanResult } from '@/lib/types';
@@ -28,13 +29,15 @@ export async function receiveBundle(input: {
   version: number;
 }): Promise<ActionResult<ScanResult>> {
   if (!isInt(input.qtyReceived)) return { ok: false, message: 'Qty diterima tidak valid.', code: 'qty_invalid' };
-  return callRpc<ScanResult>('scan_receive', {
+  const res = await callRpc<ScanResult>('scan_receive', {
     p_code: cleanCode(input.code),
     p_qty_received: input.qtyReceived,
     p_reason_id: input.reasonId,
     p_photo_path: input.photoPath,
     p_expected_version: input.version,
   });
+  if (res.ok && (res.data.selisih ?? 0) > 0) scheduleDispatch(); // selisih may have queued emails
+  return res;
 }
 
 export async function finishBundle(input: {

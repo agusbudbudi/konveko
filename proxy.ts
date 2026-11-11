@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 const PUBLIC_PATHS = [
   '/login',
   '/manifest.webmanifest',
+  '/api/cron', // Vercel Cron, guarded by CRON_SECRET in each route
   ...(process.env.NODE_ENV === 'development' ? ['/dev'] : []),
 ];
 

@@ -8,6 +8,8 @@ import { UUID } from '@/lib/master';
 import { OUTBOUND_STATUS, OUTBOUND_TYPE, type OutboundProgress, type OutboundStatus, type OutboundType } from '@/lib/outbound';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import { AddByCode, DocumentActions, ItemAction } from './outbound-detail';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Detail barang keluar' };
 
@@ -76,23 +78,26 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
         <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Barang keluar
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="num text-h1">{doc.code}</h1>
+      <PageHeader
+        title={<span className="num">{doc.code}</span>}
+        badges={
+          <>
             <Badge tone={OUTBOUND_STATUS[doc.status].tone}>{OUTBOUND_STATUS[doc.status].label}</Badge>
             <Badge tone={doc.type === 'penyesuaian' ? 'warning' : doc.type === 'jual_bs' ? 'danger' : 'neutral'}>{OUTBOUND_TYPE[doc.type].label}</Badge>
-          </div>
-          <p className="mt-1 text-text-muted">
+          </>
+        }
+        description={
+          <>
             {doc.type === 'penyesuaian' ? doc.destination : <>Ke {doc.destination}</>}
             {doc.ref_no && (
               <>
                 {' '}· <span className="num">{doc.ref_no}</span>
               </>
             )}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+          </>
+        }
+        actions={
+          <>
           {draft && canWork && (
             <Link
               href={`/scan/gudang/keluar?doc=${doc.id}`}
@@ -110,8 +115,9 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
             </Link>
           )}
           {draft && canWork && <DocumentActions id={doc.id} code={doc.code} count={live.length} destination={doc.destination} adjustment={doc.type === 'penyesuaian'} />}
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <section className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex flex-col gap-4">
@@ -123,7 +129,7 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
               <p className="num text-small text-text-muted">{live.length} pcs</p>
             </div>
             {progress.length === 0 ? (
-              <p className="border-t border-border px-5 py-4 text-text-muted">{draft ? 'Belum ada barang. Scan label pcs atau bundle.' : 'Tidak ada barang.'}</p>
+              <div className="border-t border-border"><EmptyState variant="box" compact>{draft ? 'Belum ada barang. Scan label pcs atau bundle.' : 'Tidak ada barang.'}</EmptyState></div>
             ) : (
               <table className="w-full border-t border-border">
                 <thead className="bg-surface-muted text-left text-caption tracking-[0.02em] text-text-muted">

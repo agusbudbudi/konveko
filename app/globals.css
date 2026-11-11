@@ -232,6 +232,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * iOS Safari zooms the page when a focused field has font-size < 16px. Keep fields at 16px on touch
+ * screens instead of disabling zoom in the viewport (which would hurt accessibility). Unlayered on
+ * purpose: it must beat Tailwind's text-* utilities, which live in a layer.
+ */
+@media (max-width: 1023px), (pointer: coarse) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='hidden'], [type='color']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;

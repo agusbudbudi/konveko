@@ -9,6 +9,7 @@ import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import { BATCH_STATUS, type BundleStatus } from '@/lib/types';
 import { SplitButton } from './split-button';
 import { SetCrumb } from '@/components/nav/sidebar-nav';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Detail batch' };
 
@@ -73,25 +74,26 @@ export default async function BatchDetailPage({
       <Link href="/batch" className="inline-flex h-10 items-center gap-2 text-small text-text-muted hover:text-text lg:hidden">
         <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Batch
       </Link>
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="num text-h1">{batch.code}</h1>
-            <Badge tone={BATCH_STATUS[batch.status].tone}>{BATCH_STATUS[batch.status].label}</Badge>
-          </div>
-          {roll && (
-            <p className="mt-1 text-text-muted">
+      <PageHeader
+        className="mt-2"
+        title={<span className="num">{batch.code}</span>}
+        badges={<Badge tone={BATCH_STATUS[batch.status].tone}>{BATCH_STATUS[batch.status].label}</Badge>}
+        description={
+          roll && (
+            <>
               Rol <span className="num">{roll.code}</span> · {roll.material} {roll.color}
-            </p>
-          )}
-        </div>
-        <Link
-          href={`/print/labels?batch=${id}`}
-          className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary-hover"
-        >
-          <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak semua label ({active.length})
-        </Link>
-      </div>
+            </>
+          )
+        }
+        actions={
+          <Link
+            href={`/print/labels?batch=${id}`}
+            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary-hover"
+          >
+            <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak semua label ({active.length})
+          </Link>
+        }
+      />
 
       {baru && (
         <InlineAlert tone="success" className="mt-6">

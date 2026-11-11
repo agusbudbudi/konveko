@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/server';
 import { TabLink, TabList } from '@/components/ui/tab-link';
 import { UrlPagination } from '@/components/ui/pagination';
 import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Antrian label' };
 
@@ -53,19 +55,18 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-h1">Antrian label</h1>
-          <p className="mt-1 text-text-muted">
-            Label pcs dibuat otomatis saat finishing scan selesai. Cetak, tempel di plastik, lalu gudang scan masuk rak.
-          </p>
-        </div>
-        {total > 0 && tab === 'belum' && (
-          <Link href="/print/pieces?pending=1" className={linkPrimary}>
-            <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak semua ({total})
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title="Antrian label"
+        description="Label pcs dibuat otomatis saat finishing scan selesai. Cetak, tempel di plastik, lalu gudang scan masuk rak."
+        actions={
+          total > 0 &&
+          tab === 'belum' && (
+            <Link href="/print/pieces?pending=1" className={linkPrimary}>
+              <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak semua ({total})
+            </Link>
+          )
+        }
+      />
 
       <TabList label="Status label" className="mt-6">
         <TabLink href={withQuery('/label', query, { tab: '', page: '' })} active={tab === 'belum'} label="Belum dicetak" count={total} />
@@ -80,7 +81,7 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
       <section role="tabpanel" className="mt-4 overflow-hidden rounded-lg border border-border bg-surface">
         {tab === 'belum' ? (
           toPrint.length === 0 ? (
-            <p className="px-5 py-4 text-text-muted">Semua label sudah dicetak.</p>
+            <EmptyState variant="check">Semua label sudah dicetak.</EmptyState>
           ) : (
             <ul className="divide-y divide-border">
               {paged.rows.map((r) => (
@@ -102,7 +103,7 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
             </ul>
           )
         ) : waiting.length === 0 ? (
-          <p className="px-5 py-4 text-text-muted">Tidak ada yang menunggu.</p>
+          <EmptyState variant="check">Tidak ada yang menunggu.</EmptyState>
         ) : (
           <ul className="divide-y divide-border">
             {paged.rows.map((r) => (

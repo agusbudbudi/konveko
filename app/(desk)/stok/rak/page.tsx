@@ -4,6 +4,8 @@ import { ChevronRight, PackageOpen, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/status-badge';
 import { loadStock } from '@/lib/stock';
 import { createClient } from '@/lib/supabase/server';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Stok per rak' };
 
@@ -32,22 +34,24 @@ export default async function StockByRackPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-h1">Per rak</h1>
-          <p className="mt-1 text-text-muted">
+      <PageHeader
+        title="Per rak"
+        description={
+          <>
             <span className="num">{total}</span> pcs di <span className="num">{byRack.size}</span> rak
-          </p>
-        </div>
-        {shown.length > 0 && (
-          <Link
-            href="/print/racks"
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
-          >
-            <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak label rak
-          </Link>
-        )}
-      </div>
+          </>
+        }
+        actions={
+          shown.length > 0 && (
+            <Link
+              href="/print/racks"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
+            >
+              <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak label rak
+            </Link>
+          )
+        }
+      />
 
       {/* Pieces finished but not on a rack yet: the gudang's to-do, so it goes first and stands out. */}
       {notShelved > 0 && (
@@ -69,12 +73,17 @@ export default async function StockByRackPage() {
       )}
 
       {shown.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-border bg-surface px-5 py-4 text-text-muted">
-          Belum ada rak.{' '}
-          <Link href="/master/rak" className="font-medium text-primary underline">
-            Tambah rak di master data
-          </Link>
-        </p>
+        <EmptyState
+          variant="rack"
+          className="mt-4"
+          action={
+            <Link href="/master/rak" className="font-medium text-primary underline">
+              Tambah rak di master data
+            </Link>
+          }
+        >
+          Belum ada rak.
+        </EmptyState>
       ) : (
         <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {shown.map((rack) => {

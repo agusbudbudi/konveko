@@ -23,6 +23,9 @@ import {
 import { getCurrentAppUser } from '@/lib/supabase/server';
 import { PeriodPicker } from './period-picker';
 import { TrendChart } from './trend-chart';
+import { MeterBar } from '@/components/ui/meter-bar';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Laporan' };
 
@@ -40,15 +43,15 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-h1">Laporan</h1>
-          <p className="mt-1 text-text-muted">
+      <PageHeader
+        title="Laporan"
+        description={
+          <>
             {period.label} <span className="text-text-subtle">· dibanding {period.prevLabel}</span>
-          </p>
-        </div>
-        <PeriodPicker period={period} today={todayJakarta()} />
-      </div>
+          </>
+        }
+        actions={<PeriodPicker period={period} today={todayJakarta()} />}
+      />
 
       {!cur.ok || !prev.ok ? (
         <InlineAlert tone="danger" className="mt-6">
@@ -133,7 +136,7 @@ function ReportBody({ r, prev, period }: { r: Report; prev: Report; period: Peri
             <SectionHead title="Per penjahit" csv={csv('penjahit')} />
           </div>
           {r.tailors.length === 0 ? (
-            <p className="border-t border-border px-5 py-4 text-text-muted">Belum ada scan selesai jahit.</p>
+            <div className="border-t border-border"><EmptyState variant="document" compact>Belum ada scan selesai jahit.</EmptyState></div>
           ) : (
             <div className="overflow-x-auto border-t border-border">
               <table className="w-full text-left">
@@ -194,7 +197,7 @@ function ReportBody({ r, prev, period }: { r: Report; prev: Report; period: Peri
           <SectionHead title="Per variant" csv={csv('variant')} />
         </div>
         {r.variants.length === 0 ? (
-          <p className="border-t border-border px-5 py-4 text-text-muted">Belum ada data.</p>
+          <div className="border-t border-border"><EmptyState variant="document" compact>Belum ada data.</EmptyState></div>
         ) : (
           <div className="overflow-x-auto border-t border-border">
             <table className="w-full text-left">
@@ -335,7 +338,7 @@ function ReasonBars({
     <div className="mt-4">
       <p className="text-caption tracking-[0.02em] text-text-muted">{title}</p>
       {rows.length === 0 ? (
-        <p className="mt-1 text-small text-text-muted">{empty}</p>
+        <EmptyState variant="check" compact>{empty}</EmptyState>
       ) : (
         <ul className="mt-2 flex flex-col gap-2.5">
           {rows.map((x) => (
@@ -346,9 +349,16 @@ function ReasonBars({
                 </span>
                 <span className="num font-medium">{x.qty}</span>
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-muted" aria-hidden>
-                <div className={`h-full rounded-full ${color}`} style={{ width: `${(x.qty / max) * 100}%` }} />
-              </div>
+              <MeterBar
+                share={x.qty / max}
+                color={color}
+                className="mt-1 h-1.5"
+                tip={
+                  <>
+                    {x.label} · {x.sub} <span className="num font-medium">{x.qty}</span> pcs
+                  </>
+                }
+              />
             </li>
           ))}
         </ul>

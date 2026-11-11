@@ -9,6 +9,7 @@ import { productHref } from '@/lib/stock';
 import { createClient } from '@/lib/supabase/server';
 import { BATCH_STATUS, type BundleStatus } from '@/lib/types';
 import { LacakBox } from './lacak-box';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export const metadata: Metadata = { title: 'Lacak' };
 
@@ -76,14 +77,19 @@ export default async function LacakPage({ searchParams }: { searchParams: Promis
       {q.length < MIN_LENGTH ? (
         <Hints short={q.length > 0} />
       ) : found === 0 && scanned ? (
-        <p className="mx-auto mt-2 max-w-3xl rounded-lg border border-border bg-surface px-5 py-4 text-text-muted">
-          Label ini tidak dikenal. Pastikan yang di-scan label pcs, bundle, atau rak dari Konveko.
-        </p>
+        <EmptyState variant="search" className="mx-auto mt-2 max-w-3xl">Label ini tidak dikenal. Pastikan yang di-scan label pcs, bundle, atau rak dari Konveko.</EmptyState>
       ) : found === 0 ? (
-        <p className="mt-6 rounded-lg border border-border bg-surface px-5 py-4 text-text-muted">
-          Tidak ada yang cocok dengan <span className="num font-medium text-text">{q}</span>. Coba kode lain atau sebagian saja, misal{' '}
-          <span className="num">00012</span>.
-        </p>
+        <EmptyState
+          variant="search"
+          className="mt-6"
+          hint={
+            <>
+              Coba kode lain atau sebagian saja, misal <span className="num">00012</span>.
+            </>
+          }
+        >
+          Tidak ada yang cocok dengan <span className="num">{q}</span>.
+        </EmptyState>
       ) : (
         <>
           <p className="mt-4 text-small text-text-muted">

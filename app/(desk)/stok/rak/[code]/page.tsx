@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/status-badge';
 import { pageCount, readPaging, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
 import { SetCrumb } from '@/components/nav/sidebar-nav';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   return { title: `Rak ${decodeURIComponent((await params).code).toUpperCase()}` };
@@ -45,33 +47,41 @@ export default async function RackDetailPage({
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <SetCrumb items={[{ label: `Rak ${rack.code}` }]} />
-          <Link href="/stok/rak" className="text-small text-text-muted hover:text-text lg:hidden">
-            Stok · Per rak
-          </Link>
-          <h1 className="flex items-center gap-3 text-h1">
+      <SetCrumb items={[{ label: `Rak ${rack.code}` }]} />
+      <Link href="/stok/rak" className="text-small text-text-muted hover:text-text lg:hidden">
+        Stok · Per rak
+      </Link>
+      <PageHeader
+        title={
+          <>
             Rak <span className="num">{rack.code}</span>
+          </>
+        }
+        badges={
+          <>
             <Badge tone={rack.kind === 'reject' ? 'danger' : 'neutral'}>{rack.kind === 'reject' ? 'Reject' : 'Stok'}</Badge>
             {!rack.is_active && <Badge tone="neutral">Nonaktif</Badge>}
-          </h1>
-          <p className="mt-1 text-text-muted">
+          </>
+        }
+        description={
+          <>
             <span className="num">{total}</span> pcs{rack.note ? ` · ${rack.note}` : ''}
-          </p>
-        </div>
-        <Link
-          href={`/print/racks?code=${rack.code}`}
-          className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
-        >
-          <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak label rak
-        </Link>
-      </div>
+          </>
+        }
+        actions={
+          <Link
+            href={`/print/racks?code=${rack.code}`}
+            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
+          >
+            <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak label rak
+          </Link>
+        }
+      />
 
       <section className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
         <h2 className="px-5 py-3 text-h3">Isi per variant</h2>
         {(stock ?? []).length === 0 ? (
-          <p className="border-t border-border px-5 py-4 text-text-muted">Rak kosong.</p>
+          <div className="border-t border-border"><EmptyState variant="rack" compact>Rak kosong.</EmptyState></div>
         ) : (
           <ul className="divide-y divide-border border-t border-border">
             {(stock ?? []).map((r) => (

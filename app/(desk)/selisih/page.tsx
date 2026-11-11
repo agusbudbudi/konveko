@@ -3,11 +3,13 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { TriangleAlert } from 'lucide-react';
 import { UrlSelect } from '@/components/ui/url-select';
-import { InlineAlert } from '@/components/ui/inline-alert';
 import { UrlPagination } from '@/components/ui/pagination';
 import { UUID } from '@/lib/master';
 import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadError } from '@/components/ui/load-error';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Selisih' };
 
@@ -59,12 +61,16 @@ export default async function SelisihPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <h1 className="text-h1">Selisih</h1>
-      <p className="mt-1 text-text-muted">
-        <span className="num text-text">{all.length}</span> flag terbuka, total <span className="num text-warning">{total}</span> pcs
-      </p>
+      <PageHeader
+        title="Selisih"
+        description={
+          <>
+            <span className="num text-text">{all.length}</span> flag terbuka, total <span className="num text-warning">{total}</span> pcs
+          </>
+        }
+      />
 
-      {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
+      {error && <LoadError className="mt-6" />}
 
       <div className="mt-6">
         <UrlSelect
@@ -77,7 +83,7 @@ export default async function SelisihPage({ searchParams }: { searchParams: Prom
 
       <div className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
-          <p className="p-5 text-text-muted">Tidak ada flag selisih terbuka.</p>
+          <EmptyState variant="check">Tidak ada flag selisih terbuka.</EmptyState>
         ) : (
           <table className="w-full">
             <thead className="bg-surface-muted text-left text-caption tracking-[0.02em] text-text-muted max-md:hidden">

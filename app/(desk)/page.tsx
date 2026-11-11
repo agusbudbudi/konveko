@@ -4,10 +4,14 @@ import { redirect } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
+import { MeterBar } from '@/components/ui/meter-bar';
 import { ReconciliationBar, ReconciliationLegend, type Recon } from '@/components/recon/reconciliation-bar';
 import { UrlPagination } from '@/components/ui/pagination';
 import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadError } from '@/components/ui/load-error';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Rekonsiliasi' };
 
@@ -62,10 +66,9 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
 
   return (
     <>
-      <h1 className="text-h1">Rekonsiliasi</h1>
-      <p className="mt-1 text-small text-text-muted">Semua batch, terbaru di atas</p>
+      <PageHeader title="Rekonsiliasi" description="Semua batch, terbaru di atas" />
 
-      {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
+      {error && <LoadError className="mt-6" />}
 
       {late > 0 && (
         <InlineAlert tone="warning" className="mt-6">
@@ -125,7 +128,7 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
           <h2 className="text-h2">Batch</h2>
         </div>
         {batches.length === 0 ? (
-          <p className="px-5 pb-5 text-text-muted">Belum ada batch.</p>
+          <EmptyState variant="box" compact>Belum ada batch.</EmptyState>
         ) : (
           <ul className="divide-y divide-border border-t border-border">
             {paged.rows.map((b) => (
@@ -184,9 +187,17 @@ function Kpi({
         <span className={`num text-display ${warn ? 'text-warning' : ''}`}>{value}</span>
         <span className="num text-small text-text-muted">{pct}%</span>
       </p>
-      <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-muted" aria-hidden>
-        <div className={`h-full rounded-full ${swatch}`} style={{ width: `${Math.min(share, 1) * 100}%` }} />
-      </div>
+      <MeterBar
+        share={share}
+        color={swatch}
+        className="mt-2 h-1"
+        tip={
+          <>
+            {label} <span className="num font-medium">{value}</span>
+            <span className="num opacity-70"> dari {target} · {pct}%</span>
+          </>
+        }
+      />
       {context && <p className={`mt-2 text-small ${warn ? 'text-warning' : 'text-text-muted'}`}>{context}</p>}
     </>
   );

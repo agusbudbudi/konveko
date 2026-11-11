@@ -10,6 +10,7 @@ import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import { OUTBOUND_TYPE, SKIP_LABEL, type OutboundProgress, type OutboundType } from '@/lib/outbound';
 import { BottomBar, ScannerView } from '../../scan-app';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export type DraftDoc = { id: string; code: string; type: OutboundType; destination: string; ref_no: string | null; total: number };
 
@@ -108,7 +109,7 @@ export function OutboundScan({
       <main className="flex flex-1 flex-col gap-3 px-4 pt-3 pb-8">
         <h1 className="text-h2">Pilih dokumen</h1>
         {drafts.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border-strong bg-surface p-4 text-text-muted">Belum ada dokumen yang sedang disiapkan.</p>
+          <div className="rounded-xl border border-dashed border-border-strong bg-surface"><EmptyState variant="document" compact>Belum ada dokumen yang sedang disiapkan.</EmptyState></div>
         ) : (
           <ul className="flex flex-col gap-2">
             {drafts.map((d) => (

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Pencil, Plus } from 'lucide-react';
+import { FileSpreadsheet, Pencil, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { UrlPagination } from '@/components/ui/pagination';
@@ -73,6 +74,14 @@ export function MasterList({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {headerExtra}
+        {canEdit && (
+          <Link
+            href="/master/import"
+            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium text-text hover:border-border-strong"
+          >
+            <FileSpreadsheet size={16} strokeWidth={1.5} aria-hidden /> Import & export
+          </Link>
+        )}
         {canEdit && (
           <Button onClick={() => setEditing('new')}>
             <Plus size={16} strokeWidth={1.5} aria-hidden /> {addLabel}

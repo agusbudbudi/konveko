@@ -80,6 +80,7 @@ const GROUPS: Group[] = [
           { href: '/master/user', label: 'User' },
           { href: '/master/alasan', label: 'Alasan' },
           { href: '/master/profil', label: 'Profil usaha' },
+          { href: '/master/import', label: 'Import & export' },
         ],
       },
       { href: '/pengaturan/perangkat', label: 'Perangkat scan', icon: ScanBarcode },

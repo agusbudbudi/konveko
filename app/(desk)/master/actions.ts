@@ -2,7 +2,8 @@
 
 import { refresh } from 'next/cache';
 import { createClient, createServiceClient, getCurrentAppUser, type Role } from '@/lib/supabase/server';
-import { canonicalProductName, dbError, done, fail, str, UUID, type FormState } from '@/lib/master';
+import { dbError, done, fail, str, UUID, type FormState } from '@/lib/master';
+import { holderRule, locationRule, reasonRule, rollRule, variantRule } from '@/lib/master-rules';
 import { normalizePhone, pinEmail } from '@/lib/phone';
 import { LOGO_MAX_BYTES, LOGO_TYPES } from '@/lib/business';
 
@@ -28,65 +29,45 @@ const idOf = (fd: FormData) => {
 };
 
 export async function saveVariant(_: FormState, fd: FormData): Promise<FormState> {
-  const sku = str(fd, 'sku', 40).toUpperCase();
-  const rawName = str(fd, 'product_name');
-  const size = str(fd, 'size', 20);
-  const color = str(fd, 'color', 40);
-  if (!sku || !rawName || !size || !color) return fail('Isi SKU, nama produk, ukuran, dan warna.');
-  if (!/^[A-Z0-9][A-Z0-9-]*$/.test(sku)) return fail('SKU hanya huruf, angka, dan tanda minus.');
   const supabase = await createClient();
   const { data: names } = await supabase.from('product_variant').select('product_name');
-  const product_name = canonicalProductName(rawName, [...new Set((names ?? []).map((n) => n.product_name as string))]);
-  return upsert('product_variant', idOf(fd), { sku, product_name, size, color }, 'SKU');
+  const r = variantRule(
+    { sku: str(fd, 'sku', 40), product_name: str(fd, 'product_name'), size: str(fd, 'size', 20), color: str(fd, 'color', 40) },
+    [...new Set((names ?? []).map((n) => n.product_name as string))],
+  );
+  if (!r.ok) return fail(r.error);
+  return upsert('product_variant', idOf(fd), r.value, 'SKU');
 }
 
 export async function saveRoll(_: FormState, fd: FormData): Promise<FormState> {
-  const code = str(fd, 'code', 40).toUpperCase();
-  const material = str(fd, 'material');
-  const color = str(fd, 'color', 40);
-  const unit = str(fd, 'unit', 2);
-  const amountRaw = str(fd, 'length_or_weight', 12).replace(',', '.');
-  const amount = amountRaw === '' ? null : Number(amountRaw);
-  const supplier = str(fd, 'supplier') || null;
-  if (!code || !material || !color) return fail('Isi kode rol, bahan, dan warna.');
-  if (amount !== null && !(amount > 0 && amount < 100000)) return fail('Panjang atau berat harus angka lebih dari 0.');
-  if (amount !== null && !['m', 'kg'].includes(unit)) return fail('Pilih satuan m atau kg.');
-  return upsert(
-    'fabric_roll',
-    idOf(fd),
-    { code, material, color, length_or_weight: amount, unit: amount === null ? null : unit, supplier },
-    'Kode rol',
-  );
+  const r = rollRule({
+    code: str(fd, 'code', 40),
+    material: str(fd, 'material'),
+    color: str(fd, 'color', 40),
+    length_or_weight: str(fd, 'length_or_weight', 12),
+    unit: str(fd, 'unit', 2),
+    supplier: str(fd, 'supplier'),
+  });
+  if (!r.ok) return fail(r.error);
+  return upsert('fabric_roll', idOf(fd), r.value, 'Kode rol');
 }
 
 export async function saveHolder(_: FormState, fd: FormData): Promise<FormState> {
-  const type = str(fd, 'type', 20);
-  const name = str(fd, 'name');
-  const phoneRaw = str(fd, 'phone', 20);
-  if (!['produksi', 'penjahit', 'finishing', 'gudang'].includes(type)) return fail('Pilih jenis.');
-  if (!name) return fail('Isi nama.');
-  const phone = phoneRaw ? normalizePhone(phoneRaw) : null;
-  if (phoneRaw && !phone) return fail('Nomor HP tidak valid.');
-  return upsert('holder', idOf(fd), { type, name, phone }, 'Nama');
+  const r = holderRule({ type: str(fd, 'type', 20), name: str(fd, 'name'), phone: str(fd, 'phone', 20) });
+  if (!r.ok) return fail(r.error);
+  return upsert('holder', idOf(fd), r.value, 'Nama');
 }
 
 export async function saveReason(_: FormState, fd: FormData): Promise<FormState> {
-  const type = str(fd, 'type', 10);
-  const code = str(fd, 'code', 30).toUpperCase().replace(/\s+/g, '_');
-  const label = str(fd, 'label', 120);
-  if (!['selisih', 'reject'].includes(type)) return fail('Pilih jenis alasan.');
-  if (!code || !label) return fail('Isi kode dan label.');
-  return upsert('reason', idOf(fd), { type, code, label }, 'Kode alasan');
+  const r = reasonRule({ type: str(fd, 'type', 10), code: str(fd, 'code', 30), label: str(fd, 'label', 120) });
+  if (!r.ok) return fail(r.error);
+  return upsert('reason', idOf(fd), r.value, 'Kode alasan');
 }
 
 export async function saveLocation(_: FormState, fd: FormData): Promise<FormState> {
-  const code = str(fd, 'code', 8).toUpperCase().replace(/\s+/g, '');
-  const kind = str(fd, 'kind', 10);
-  const note = str(fd, 'note', 120) || null;
-  if (!code) return fail('Isi kode rak.');
-  if (!/^[A-Z0-9]{1,8}$/.test(code)) return fail('Kode rak hanya huruf dan angka, maksimal 8, tanpa spasi atau tanda minus. Contoh: A1.');
-  if (!['stok', 'reject'].includes(kind)) return fail('Pilih jenis rak.');
-  return upsert('location', idOf(fd), { code, kind, note }, 'Kode rak');
+  const r = locationRule({ code: str(fd, 'code', 8), kind: str(fd, 'kind', 10), note: str(fd, 'note', 120) });
+  if (!r.ok) return fail(r.error);
+  return upsert('location', idOf(fd), r.value, 'Kode rak');
 }
 
 const ACTIVE_TABLES = ['product_variant', 'holder', 'reason', 'location'] as const;

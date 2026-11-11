@@ -21,11 +21,23 @@ export function ReconciliationBar({ r }: { r: Recon }) {
   const wip = r.wip_menunggu + r.wip_dikerjakan;
   return (
     <div>
-      <div className="flex h-3 gap-0.5 overflow-hidden rounded-sm bg-surface-muted" role="img"
+      <div className="flex h-3 gap-0.5 rounded-sm bg-surface-muted" role="img"
         aria-label={`${r.target} = ${r.ready} ready + ${r.reject} reject + ${wip} WIP + ${r.selisih} selisih`}>
         {segments.map((s) =>
           r[s.key] > 0 ? (
-            <span key={s.key} className={s.className} style={{ width: `${(r[s.key] / total) * 100}%` }} />
+            <span
+              key={s.key}
+              className={`group relative first:rounded-l-sm last:rounded-r-sm hover:brightness-90 ${s.className}`}
+              style={{ width: `${(r[s.key] / total) * 100}%` }}
+            >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-text px-2 py-1 text-caption text-surface opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                {s.label} <span className="num font-medium">{r[s.key]}</span>
+                <span className="num opacity-70"> · {Math.round((r[s.key] / total) * 100)}%</span>
+              </span>
+            </span>
           ) : null,
         )}
       </div>

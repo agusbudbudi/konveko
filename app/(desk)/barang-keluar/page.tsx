@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Plus } from 'lucide-react';
-import { InlineAlert } from '@/components/ui/inline-alert';
 import { UrlPagination } from '@/components/ui/pagination';
 import { Badge } from '@/components/ui/status-badge';
 import { TabLink, TabList } from '@/components/ui/tab-link';
@@ -10,6 +9,9 @@ import { UrlSelect } from '@/components/ui/url-select';
 import { OUTBOUND_STATUS, OUTBOUND_TYPE, isOutboundType, type OutboundStatus, type OutboundType } from '@/lib/outbound';
 import { NONE, pageCount, readPaging, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadError } from '@/components/ui/load-error';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Barang keluar' };
 
@@ -74,20 +76,20 @@ export default async function OutboundListPage({ searchParams }: { searchParams:
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-h1">Barang keluar</h1>
-          <p className="mt-1 text-text-muted">Surat jalan untuk setiap barang yang meninggalkan gudang.</p>
-        </div>
-        {canCreate && (
-          <Link
-            href="/barang-keluar/baru"
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary-hover"
-          >
-            <Plus size={16} strokeWidth={1.5} aria-hidden /> Dokumen baru
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title="Barang keluar"
+        description="Surat jalan untuk setiap barang yang meninggalkan gudang."
+        actions={
+          canCreate && (
+            <Link
+              href="/barang-keluar/baru"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary-hover"
+            >
+              <Plus size={16} strokeWidth={1.5} aria-hidden /> Dokumen baru
+            </Link>
+          )
+        }
+      />
 
       <div className="mt-6">
         <UrlSelect
@@ -111,16 +113,14 @@ export default async function OutboundListPage({ searchParams }: { searchParams:
       </TabList>
 
       {error && (
-        <InlineAlert tone="danger" className="mt-4">
-          Data gagal dimuat. Muat ulang halaman.
-        </InlineAlert>
+        <LoadError className="mt-4" />
       )}
 
       <section role="tabpanel" className="mt-4 overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
-          <p className="p-5 text-text-muted">
+          <EmptyState variant="document">
             {status === 'draft' ? 'Tidak ada dokumen yang sedang disiapkan.' : `Belum ada dokumen ${OUTBOUND_STATUS[status].label.toLowerCase()}.`}
-          </p>
+          </EmptyState>
         ) : (
           <table className="w-full">
             <thead className="bg-surface-muted text-left text-caption tracking-[0.02em] text-text-muted max-md:hidden">

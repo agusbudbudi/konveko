@@ -11,6 +11,7 @@ import { cn } from '@/lib/cn';
 import type { FormState } from '@/lib/master';
 import { slicePage } from '@/lib/paging';
 import { EntityForm, type Field } from './entity-form';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export type MasterRow = {
   id: string;
@@ -97,7 +98,7 @@ export function MasterList({
       </div>
 
       {rows.length === 0 ? (
-        <p className="border-t border-border px-5 py-4 text-text-muted">{empty}</p>
+        <div className="border-t border-border"><EmptyState variant="box">{empty}</EmptyState></div>
       ) : (
         <ul className="divide-y divide-border border-t border-border">
           {paged.rows.map((r) => (

@@ -3,6 +3,7 @@ import { InlineAlert } from '@/components/ui/inline-alert';
 import { loadBusinessProfile } from '@/lib/business';
 import { getCurrentAppUser } from '@/lib/supabase/server';
 import { ProfileForm } from './profile-form';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Profil usaha' };
 
@@ -12,8 +13,7 @@ export default async function BusinessProfilePage() {
 
   return (
     <>
-      <h1 className="text-h1">Profil usaha</h1>
-      <p className="mt-1 text-text-muted">Identitas usaha yang dicetak di kop surat jalan.</p>
+      <PageHeader title="Profil usaha" description="Identitas usaha yang dicetak di kop surat jalan." />
       {!canEdit && (
         <InlineAlert tone="info" className="mt-6">
           Hanya admin yang bisa mengubah profil usaha.

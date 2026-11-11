@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { InlineAlert } from '@/components/ui/inline-alert';
 import { Pagination } from '@/components/ui/pagination';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from '@/lib/paging';
 import { Badge } from '@/components/ui/status-badge';
@@ -9,6 +8,9 @@ import { TabLink, TabList } from '@/components/ui/tab-link';
 import { UUID } from '@/lib/master';
 import { createClient } from '@/lib/supabase/server';
 import { PcsFilters } from './pcs-filters';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadError } from '@/components/ui/load-error';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Stok per pcs' };
 
@@ -132,8 +134,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
 
   return (
     <>
-      <h1 className="text-h1">Per pcs</h1>
-      <p className="mt-1 text-text-muted">Setiap pcs barang jadi, satu baris per label.</p>
+      <PageHeader title="Per pcs" description="Setiap pcs barang jadi, satu baris per label." />
 
       <PcsFilters
         products={products}
@@ -148,14 +149,12 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
       </TabList>
 
       {list.error && (
-        <InlineAlert tone="danger" className="mt-4">
-          Data gagal dimuat. Muat ulang halaman.
-        </InlineAlert>
+        <LoadError className="mt-4" />
       )}
 
       <section role="tabpanel" className="mt-4 overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
-          <p className="p-5 text-text-muted">{filtered ? 'Tidak ada pcs yang cocok dengan filter.' : 'Belum ada pcs di status ini.'}</p>
+          <EmptyState variant={filtered ? 'search' : 'box'}>{filtered ? 'Tidak ada pcs yang cocok dengan filter.' : 'Belum ada pcs di status ini.'}</EmptyState>
         ) : (
           <table className="w-full">
             <thead className="bg-surface-muted text-left text-caption tracking-[0.02em] text-text-muted max-md:hidden">

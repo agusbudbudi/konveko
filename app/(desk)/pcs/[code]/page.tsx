@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { Printer } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/status-badge';
 import { createClient } from '@/lib/supabase/server';
 import { SetCrumb } from '@/components/nav/sidebar-nav';
+import { PageHeader } from '@/components/ui/page-header';
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   return { title: `Pcs ${decodeURIComponent((await params).code).toUpperCase()}` };
@@ -68,7 +69,23 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
     .select(select)
     .eq(byToken ? 'qr_token' : 'code', byToken ? raw : raw.toUpperCase())
     .maybeSingle();
-  if (!data) notFound();
+  if (!data) {
+    return (
+      <div className="mx-auto mt-16 max-w-3xl">
+        <EmptyState
+          variant="search"
+          hint="Periksa kembali kodenya, atau cari lewat Lacak."
+          action={
+            <Link href="/stok/pcs" className="font-medium text-primary underline">
+              Kembali ke stok per pcs
+            </Link>
+          }
+        >
+          Pcs <span className="num">{raw.toUpperCase()}</span> tidak ditemukan.
+        </EmptyState>
+      </div>
+    );
+  }
   const p = data as unknown as Piece;
 
   const [{ data: moves }, { data: evs }] = await Promise.all([
@@ -103,35 +120,39 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <SetCrumb
-            root
-            items={[{ label: 'Gudang' }, { label: 'Stok', href: '/stok' }, { label: 'Per pcs', href: '/stok/pcs' }, { label: p.code }]}
-          />
-          <Link href="/stok" className="text-small text-text-muted hover:text-text lg:hidden">
-            Stok
-          </Link>
-          <h1 className="flex flex-wrap items-center gap-3 text-h1">
-            <span className="num">{p.code}</span>
+      <SetCrumb
+        root
+        items={[{ label: 'Gudang' }, { label: 'Stok', href: '/stok' }, { label: 'Per pcs', href: '/stok/pcs' }, { label: p.code }]}
+      />
+      <Link href="/stok" className="text-small text-text-muted hover:text-text lg:hidden">
+        Stok
+      </Link>
+      <PageHeader
+        title={<span className="num">{p.code}</span>}
+        badges={
+          <>
             <Badge tone={p.grade === 'reject' ? 'danger' : 'success'}>{p.grade === 'reject' ? 'Reject' : 'Baik'}</Badge>
             {p.condition === 'rusak' && <Badge tone="danger">Rusak (retur)</Badge>}
             {p.status === 'batal' && <Badge tone="neutral">Dibatalkan</Badge>}
             {p.status === 'keluar' && <Badge tone="info">Keluar</Badge>}
-          </h1>
-          <p className="mt-1 text-text-muted">
+          </>
+        }
+        description={
+          <>
             {v?.product_name} {v?.size} · {v?.color} · <span className="num">{v?.sku}</span>
-          </p>
-        </div>
-        {p.status === 'aktif' && (
-          <Link
-            href={`/print/pieces?piece=${p.id}`}
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
-          >
-            <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak ulang label
-          </Link>
-        )}
-      </div>
+          </>
+        }
+        actions={
+          p.status === 'aktif' && (
+            <Link
+              href={`/print/pieces?piece=${p.id}`}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
+            >
+              <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak ulang label
+            </Link>
+          )
+        }
+      />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <section className="rounded-lg border border-border bg-surface">

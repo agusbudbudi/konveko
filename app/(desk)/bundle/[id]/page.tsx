@@ -11,6 +11,7 @@ import type { BundleStatus, Reason } from '@/lib/types';
 import { ResolveFlag } from './resolve-flag';
 import { ScanTimeline } from './scan-timeline';
 import { SetCrumb } from '@/components/nav/sidebar-nav';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Detail bundle' };
 
@@ -206,35 +207,42 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
         <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Batch <span className="num">{bundle.batch?.code}</span>
       </Link>
 
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="num text-h1">{bundle.code}</h1>
+      <PageHeader
+        className="mt-2"
+        title={<span className="num">{bundle.code}</span>}
+        badges={
+          <>
             <StatusBadge status={recon.status} />
             {openFlags.length > 0 && <Badge tone="warning">Selisih {openQty} pcs</Badge>}
-          </div>
-          <p className="mt-1 text-text-muted">
+          </>
+        }
+        description={
+          <>
             {v ? `${v.product_name} ${v.size} · ${v.color}` : '-'} · <span className="num">{v?.sku}</span>
             {bundle.holder && recon.is_active && <> · dipegang {bundle.holder.name}</>}
-          </p>
-          {parent && (
-            <p className="text-small text-text-muted">
+          </>
+        }
+        meta={
+          parent && (
+            <>
               Pecahan dari{' '}
               <Link href={`/bundle/${parent.id}`} className="num link-code">
                 {parent.code}
               </Link>
-            </p>
-          )}
-        </div>
-        {recon.is_active && (
-          <Link
-            href={`/print/labels?bundle=${bundle.id}`}
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
-          >
-            <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak ulang label
-          </Link>
-        )}
-      </div>
+            </>
+          )
+        }
+        actions={
+          recon.is_active && (
+            <Link
+              href={`/print/labels?bundle=${bundle.id}`}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
+            >
+              <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak ulang label
+            </Link>
+          )
+        }
+      />
 
       {children.length > 0 && (
         <InlineAlert tone="info" className="mt-6">

@@ -14,6 +14,7 @@ import { createUser, resetSecret, setUserActive, updateUser } from '../actions';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { UrlPagination } from '@/components/ui/pagination';
 import { slicePage } from '@/lib/paging';
+import { PageHeader } from '@/components/ui/page-header';
 
 export type UserRow = {
   id: string;
@@ -50,17 +51,17 @@ export function UserManager({ meId, users, holders }: { meId: string; users: Use
 
   return (
     <>
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-h1">User</h1>
-        <p className="mt-1 text-text-muted">Akun login, role, dan PIN. Penjahit dan finishing login pakai nomor HP + PIN.</p>
-      </div>
-      {mode?.kind !== 'new' && (
-        <Button onClick={() => setMode({ kind: 'new' })}>
-          <Plus size={16} strokeWidth={1.5} aria-hidden /> Tambah user
-        </Button>
-      )}
-    </div>
+    <PageHeader
+      title="User"
+      description="Akun login, role, dan PIN. Penjahit dan finishing login pakai nomor HP + PIN."
+      actions={
+        mode?.kind !== 'new' && (
+          <Button onClick={() => setMode({ kind: 'new' })}>
+            <Plus size={16} strokeWidth={1.5} aria-hidden /> Tambah user
+          </Button>
+        )
+      }
+    />
     <section className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
       <p className="px-5 py-3 text-small text-text-muted">
         <span className="num text-text">{users.length}</span> user

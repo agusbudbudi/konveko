@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { compareSize, loadStock, productHref, totals } from '@/lib/stock';
 import { createClient } from '@/lib/supabase/server';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Stok per produk' };
 
@@ -37,11 +39,10 @@ export default async function StockByProductPage() {
 
   return (
     <>
-      <h1 className="text-h1">Per produk</h1>
-      <p className="mt-1 text-text-muted">Stok baik per produk dan ukuran. Klik produk untuk melihat warna dan raknya.</p>
+      <PageHeader title="Per produk" description="Stok baik per produk dan ukuran. Klik produk untuk melihat warna dan raknya." />
 
       {products.length === 0 ? (
-        <p className="mt-6 rounded-lg border border-border bg-surface px-5 py-4 text-text-muted">Belum ada produk.</p>
+        <EmptyState variant="box" className="mt-6">Belum ada produk.</EmptyState>
       ) : (
         <ul className="mt-6 flex flex-col gap-3">
           {products.map((p) => (

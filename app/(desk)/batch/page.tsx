@@ -4,13 +4,15 @@ import { redirect } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/status-badge';
 import { UrlSelect } from '@/components/ui/url-select';
-import { InlineAlert } from '@/components/ui/inline-alert';
 import { UrlPagination } from '@/components/ui/pagination';
 import { ReconciliationBar, type Recon } from '@/components/recon/reconciliation-bar';
 import { UUID } from '@/lib/master';
 import { NONE, pageCount, readPaging, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
 import { BATCH_STATUS } from '@/lib/types';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadError } from '@/components/ui/load-error';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Batch' };
 
@@ -42,12 +44,14 @@ export default async function BatchListPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-h1">Batch</h1>
-        <Link href="/batch/new" className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary-hover">
-          <Plus size={16} strokeWidth={1.5} aria-hidden /> Batch baru
-        </Link>
-      </div>
+      <PageHeader
+        title="Batch"
+        actions={
+          <Link href="/batch/new" className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 font-medium text-primary-foreground hover:bg-primary-hover">
+            <Plus size={16} strokeWidth={1.5} aria-hidden /> Batch baru
+          </Link>
+        }
+      />
 
       <div className="mt-6">
         <UrlSelect
@@ -58,11 +62,11 @@ export default async function BatchListPage({ searchParams }: { searchParams: Pr
         />
       </div>
 
-      {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
+      {error && <LoadError className="mt-6" />}
 
       <div className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
-          <p className="p-5 text-text-muted">{rollId ? 'Belum ada batch dari rol ini.' : 'Belum ada batch.'}</p>
+          <EmptyState variant="box">{rollId ? 'Belum ada batch dari rol ini.' : 'Belum ada batch.'}</EmptyState>
         ) : (
           <table className="w-full">
             <thead className="bg-surface-muted text-left text-caption tracking-[0.02em] text-text-muted max-md:hidden">

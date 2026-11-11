@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { UrlSelect } from '@/components/ui/url-select';
-import { InlineAlert } from '@/components/ui/inline-alert';
 import { UrlPagination } from '@/components/ui/pagination';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { TabLink, TabList } from '@/components/ui/tab-link';
@@ -12,6 +11,9 @@ import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { calendarDaysAgo, daysAgoLabel } from '@/lib/date';
 import { createClient } from '@/lib/supabase/server';
 import { STATUS_LABEL, type BundleStatus } from '@/lib/types';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadError } from '@/components/ui/load-error';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'WIP' };
 
@@ -70,15 +72,19 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
 
   return (
     <>
-      <h1 className="text-h1">WIP</h1>
-      <p className="mt-1 text-text-muted">
-        <span className="num text-text">{allRows.length}</span> bundle, <span className="num text-text">{totalQty}</span> pcs belum jadi stok
-        {stale > 0 && (
+      <PageHeader
+        title="WIP"
+        description={
           <>
-            {' '}· <span className="text-warning">{stale} tidak di-scan ≥ {STALE_DAYS} hari</span>
+            <span className="num text-text">{allRows.length}</span> bundle, <span className="num text-text">{totalQty}</span> pcs belum jadi stok
+            {stale > 0 && (
+              <>
+                {' '}· <span className="text-warning">{stale} tidak di-scan ≥ {STALE_DAYS} hari</span>
+              </>
+            )}
           </>
-        )}
-      </p>
+        }
+      />
 
       <div className="mt-6">
         <UrlSelect
@@ -101,11 +107,11 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
         ))}
       </TabList>
 
-      {error && <InlineAlert tone="danger" className="mt-6">Data gagal dimuat. Muat ulang halaman.</InlineAlert>}
+      {error && <LoadError className="mt-6" />}
 
       <div className="mt-4 overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
-          <p className="p-5 text-text-muted">Tidak ada bundle di status ini.</p>
+          <EmptyState variant="box">Tidak ada bundle di status ini.</EmptyState>
         ) : (
           <table className="w-full">
             <thead className="bg-surface-muted text-left text-caption tracking-[0.02em] text-text-muted max-md:hidden">

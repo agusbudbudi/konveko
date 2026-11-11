@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { UrlPagination } from '@/components/ui/pagination';
 import { slicePage, withQuery, type PageQuery } from '@/lib/paging';
 import { createClient } from '@/lib/supabase/server';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Stok' };
 
@@ -62,11 +64,10 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-h1">Per variant</h1>
-          <p className="mt-1 text-text-muted">Barang jadi per variant dan per rak. Reject dihitung terpisah.</p>
-        </div>
+      <PageHeader
+        title="Per variant"
+        description="Barang jadi per variant dan per rak. Reject dihitung terpisah."
+        actions={
         <form action="/pcs" className="flex gap-2">
           <label htmlFor="pcs-code" className="sr-only">
             Lacak pcs
@@ -79,7 +80,8 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
             <Search size={16} strokeWidth={1.5} aria-hidden /> Lacak pcs
           </button>
         </form>
-      </div>
+        }
+      />
 
       <section className="mt-6 grid grid-cols-3 gap-4">
         <Kpi label="Stok baik" value={total.baik} context={`${total.baik - total.belum} di rak`} />
@@ -96,7 +98,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
           <span>Rak</span>
         </div>
         {variants.length === 0 ? (
-          <p className="px-5 py-4 text-text-muted">Belum ada barang jadi.</p>
+          <EmptyState variant="box">Belum ada barang jadi.</EmptyState>
         ) : (
           <ul className="divide-y divide-border border-t border-border md:border-t-0">
             {paged.rows.map((v) => (

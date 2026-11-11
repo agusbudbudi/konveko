@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildWorkbook, readWorkbook } from '../../lib/master-xlsx.ts';
-import { planImport } from '../../lib/master-import.ts';
+import { isSampleRow, planImport, SHEETS } from '../../lib/master-import.ts';
 
 const existing = () => ({
   product_variant: [
@@ -27,10 +27,22 @@ test('export then import unchanged: everything is "same", nothing to save', asyn
   assert.deepEqual(plan.sheets.map((s) => s.same), [2, 1, 1, 1, 1]);
 });
 
-test('the template has headers only and imports as nothing', async () => {
+test('the template has two example rows per sheet; they are valid and skipped on import', async () => {
   const sheets = await readWorkbook(await buildWorkbook(null));
-  assert.ok(sheets.every((s) => s.rows.length === 0));
+  assert.ok(sheets.every((s) => s.rows.length === 2));
   assert.deepEqual(sheets[0].headers, ['SKU', 'Nama produk', 'Ukuran', 'Warna', 'Aktif']);
   const plan = planImport(sheets, existing());
   assert.equal(plan.changeCount + plan.errorCount, 0);
+  assert.deepEqual(plan.sheets.map((s) => s.samples), [2, 2, 2, 2, 2]);
+});
+
+test('example rows would pass validation if they were real (so they show a correct format)', () => {
+  for (const spec of SHEETS) {
+    for (const sample of spec.samples) {
+      const raw = Object.fromEntries(spec.columns.map((c, i) => [c.field, sample[i] ?? null]));
+      const r = spec.rule(raw, { names: [] });
+      assert.ok(r.ok, `${spec.sheet}: ${r.error}`);
+      assert.ok(isSampleRow(spec, raw), `${spec.sheet}: example key must start with CONTOH`);
+    }
+  }
 });

@@ -6,6 +6,7 @@ import ExcelJS from 'exceljs';
 import {
   exportRow,
   HELP_SHEET,
+  SAMPLE_PREFIX,
   SHEETS,
   sortForExport,
   type Cell,
@@ -64,7 +65,12 @@ export async function buildWorkbook(existing: Record<Table, ExistingRow[]> | nul
       style: c.text ? { numFmt: '@' } : {},
     }));
     ws.getRow(1).font = { bold: true };
-    for (const row of existing ? sortForExport(spec, existing[spec.table]) : []) ws.addRow(exportRow(spec, row));
+    if (existing) {
+      for (const row of sortForExport(spec, existing[spec.table])) ws.addRow(exportRow(spec, row));
+    } else {
+      // template: two example rows, grey italic; their CONTOH key makes the import skip them
+      for (const sample of spec.samples) ws.addRow(sample).font = { italic: true, color: { argb: 'FF8A8A85' } };
+    }
   }
 
   const help = wb.addWorksheet(HELP_SHEET);
@@ -77,6 +83,10 @@ export async function buildWorkbook(existing: Record<Table, ExistingRow[]> | nul
   ];
   help.getRow(1).font = { bold: true };
   help.addRow({ sheet: 'Cara pakai', help: 'Ubah atau tambah baris, lalu import. Baris yang dihapus dari file tidak dihapus dari sistem; isi Aktif = Tidak untuk mematikan. Kunci (SKU, kode) tidak bisa diganti lewat import. Sheet ini diabaikan saat import.' });
+  help.addRow({
+    sheet: 'Baris contoh',
+    help: `Baris abu-abu yang kodenya (atau nama, untuk Penjahit dan tim) diawali ${SAMPLE_PREFIX} hanya contoh dan selalu dilewati saat import. Boleh dihapus atau dibiarkan.`,
+  });
   for (const spec of SHEETS) {
     for (const c of spec.columns) {
       help.addRow({ sheet: spec.sheet, column: c.header, required: c.required ? 'Ya' : '', help: c.help, example: c.example });

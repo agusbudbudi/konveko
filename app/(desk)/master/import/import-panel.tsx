@@ -167,6 +167,7 @@ function SheetView({ s }: { s: PreviewSheet }) {
     <div className="flex flex-col gap-4">
       <p className="num text-small text-text-muted">
         {s.counts.added} baru · {s.counts.changed} berubah · {s.same} sama · <span className={cn(s.counts.errors > 0 && 'text-danger')}>{s.counts.errors} error</span>
+        {s.samples > 0 && <> · {s.samples} baris contoh dilewati</>}
       </p>
 
       {s.errors.length > 0 && (

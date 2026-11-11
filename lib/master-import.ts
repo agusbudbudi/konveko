@@ -41,6 +41,12 @@ export type SheetSpec = {
   hasActive: boolean;
   keyOf: (v: Record<string, unknown>) => string;
   keyLabel: (v: Record<string, unknown>) => string;
+  /**
+   * Template example rows, in column order. Their key starts with CONTOH (`sampleField`), so a
+   * forgotten example is skipped on import instead of becoming real data.
+   */
+  samples: Cell[][];
+  sampleField: string;
   /** validate one row; `ctx.names` = product names in use so far (variant only) */
   rule: (raw: Record<string, Cell>, ctx: { names: string[] }) => RuleResult<Record<string, unknown>>;
 };
@@ -62,6 +68,11 @@ export const SHEETS: SheetSpec[] = [
     hasActive: true,
     keyOf: (v) => String(v.sku),
     keyLabel: (v) => `SKU ${v.sku}`,
+    samples: [
+      ['CONTOH-KMJ-PTH-M', 'Kemeja', 'M', 'Putih', 'Ya'],
+      ['CONTOH-KMJ-PTH-L', 'Kemeja', 'L', 'Putih', 'Tidak'],
+    ],
+    sampleField: 'sku',
     rule: (r, ctx) => variantRule(r, ctx.names),
   },
   {
@@ -79,6 +90,11 @@ export const SHEETS: SheetSpec[] = [
     hasActive: false,
     keyOf: (v) => String(v.code),
     keyLabel: (v) => `kode ${v.code}`,
+    samples: [
+      ['CONTOH-R-001', 'Katun combed 30s', 'Putih', 50, 'm', 'Toko Kain Jaya'],
+      ['CONTOH-R-002', 'Drill', 'Navy', 12.5, 'kg', null],
+    ],
+    sampleField: 'code',
     rule: (r) => rollRule(r),
   },
   {
@@ -94,6 +110,11 @@ export const SHEETS: SheetSpec[] = [
     hasActive: true,
     keyOf: (v) => String(v.code),
     keyLabel: (v) => `kode ${v.code}`,
+    samples: [
+      ['CONTOH1', 'stok', 'Lantai 1, dekat pintu', 'Ya'],
+      ['CONTOH2', 'reject', 'Rak barang reject', 'Ya'],
+    ],
+    sampleField: 'code',
     rule: (r) => locationRule(r),
   },
   {
@@ -109,6 +130,11 @@ export const SHEETS: SheetSpec[] = [
     hasActive: true,
     keyOf: (v) => holderKey(String(v.type), String(v.name)),
     keyLabel: (v) => `${v.name} (${v.type})`,
+    samples: [
+      ['penjahit', 'CONTOH Ani', '081110000001', 'Ya'],
+      ['finishing', 'CONTOH Tim QC', null, 'Ya'],
+    ],
+    sampleField: 'name',
     rule: (r) => holderRule(r),
   },
   {
@@ -124,11 +150,23 @@ export const SHEETS: SheetSpec[] = [
     hasActive: true,
     keyOf: (v) => `${v.type}|${v.code}`,
     keyLabel: (v) => `${v.code} (${v.type})`,
+    samples: [
+      ['reject', 'CONTOH_JAHITAN', 'Jahitan rusak', 'Ya'],
+      ['selisih', 'CONTOH_KURANG', 'Kurang hitung', 'Ya'],
+    ],
+    sampleField: 'code',
     rule: (r) => reasonRule(r),
   },
 ];
 
 export const HELP_SHEET = 'Petunjuk';
+
+/** Key prefix of the template's example rows; such rows are skipped on import. */
+export const SAMPLE_PREFIX = 'CONTOH';
+
+export function isSampleRow(spec: SheetSpec, raw: Record<string, Cell>): boolean {
+  return String(raw[spec.sampleField] ?? '').trim().toUpperCase().startsWith(SAMPLE_PREFIX);
+}
 
 // ---------------------------------------------------------------------------
 // Reading
@@ -161,6 +199,8 @@ export type SheetPreview = {
   added: { row: number; label: string; values: Record<string, unknown> }[];
   changed: { row: number; label: string; id: string; changes: Change[] }[];
   same: number;
+  /** template example rows (key starts with CONTOH) that were skipped */
+  samples: number;
   errors: RowError[];
 };
 
@@ -187,7 +227,7 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
   const names = [...new Set(existing.product_variant.map((v) => String(v.product_name)))];
 
   for (const spec of SHEETS) {
-    const preview: SheetPreview = { table: spec.table, sheet: spec.sheet, found: false, added: [], changed: [], same: 0, errors: [] };
+    const preview: SheetPreview = { table: spec.table, sheet: spec.sheet, found: false, added: [], changed: [], same: 0, samples: 0, errors: [] };
     plan.sheets.push(preview);
     const sheet = byName.get(norm(spec.sheet));
     if (!sheet) continue;
@@ -219,6 +259,10 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
         rawRow[c.field] = i === undefined ? null : (cells[i] ?? null);
       }
       if (Object.values(rawRow).every((v) => v === null || String(v).trim() === '')) continue;
+      if (isSampleRow(spec, rawRow)) {
+        preview.samples++;
+        continue;
+      }
 
       const fail = (message: string) => preview.errors.push({ row, message });
       const r = spec.rule(rawRow, { names });

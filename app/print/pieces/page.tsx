@@ -29,7 +29,7 @@ const MAX = 500;
  *   ?pending=1               every label not printed yet
  *   ?bundle=<id>             not printed yet in one bundle
  *   ?bundle=<id>&all=1       reprint every active piece of a bundle
- *   ?piece=<id>              reprint one piece
+ *   ?piece=<id>              reprint one piece (also one that left the warehouse)
  */
 export default async function PrintPiecesPage({
   searchParams,
@@ -44,14 +44,15 @@ export default async function PrintPiecesPage({
   let q = supabase
     .from('piece')
     .select('id, code, qr_token, grade, finish_movement_id, variant:product_variant(sku, product_name, size, color)')
-    .eq('status', 'aktif')
     .order('code')
     .limit(MAX);
-  if (piece && UUID.test(piece)) q = q.eq('id', piece);
+  // One piece may also have left the warehouse (a store may ask for a new label).
+  // Bundle and queue printing only cover pieces in stock.
+  if (piece && UUID.test(piece)) q = q.eq('id', piece).in('status', ['aktif', 'keluar']);
   else if (bundle && UUID.test(bundle)) {
-    q = q.eq('bundle_id', bundle);
+    q = q.eq('bundle_id', bundle).eq('status', 'aktif');
     if (all !== '1') q = q.is('printed_at', null);
-  } else if (pending === '1') q = q.is('printed_at', null);
+  } else if (pending === '1') q = q.eq('status', 'aktif').is('printed_at', null);
   else notFound();
 
   const { data } = await q;

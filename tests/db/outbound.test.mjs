@@ -283,3 +283,24 @@ describe('outbound report', () => {
     assert.deepEqual(empty.variants, []);
   });
 });
+
+describe('reprint after shipping', () => {
+  it('a shipped piece can be reprinted (same QR, logged); a cancelled one cannot', async () => {
+    const code = await stocked('kemejaM', 2);
+    const [a] = await pieces(code);
+    const doc = await newDoc(ids.gudang, 'jual');
+    await rpc(db, ids.gudang, 'outbound_add', { p_outbound_id: doc.id, p_code: a.code });
+    await rpc(db, ids.gudang, 'outbound_ship', { p_outbound_id: doc.id });
+
+    const n = await rpc(db, ids.finishing, 'mark_printed', { p_piece_ids: [a.id] });
+    assert.equal(n, 1);
+    await actAs(db, null);
+    const p = await one(db, `select status, print_count, qr_token from public.piece where id = $1`, [a.id]);
+    assert.deepEqual(p, { status: 'keluar', print_count: 2, qr_token: a.qr_token });
+    const ev = await one(db, `select count(*)::int as n from public.piece_event where piece_id = $1 and type = 'cetak'`, [a.id]);
+    assert.equal(ev.n, 2);
+
+    await db.query(`update public.piece set status = 'batal' where id = $1`, [a.id]);
+    assert.equal(await rpc(db, ids.finishing, 'mark_printed', { p_piece_ids: [a.id] }), 0);
+  });
+});

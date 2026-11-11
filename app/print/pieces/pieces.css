@@ -29,7 +29,8 @@
   box-sizing: border-box;
   width: 50mm;
   height: 30mm;
-  padding: 1.5mm 2mm;
+  /* wider left edge, same reason as the bundle label (labels.css) */
+  padding: 1.5mm 2mm 1.5mm 3.5mm;
   display: flex;
   flex-direction: column;
   justify-content: space-between;

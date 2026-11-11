@@ -26,7 +26,8 @@
   box-sizing: border-box;
   width: 50mm;
   height: 30mm;
-  padding: 2mm;
+  /* wider left edge: thermal printers lose ~1 mm at the edge and the QR needs a quiet zone */
+  padding: 2mm 2mm 2mm 4mm;
   display: flex;
   gap: 2mm;
   align-items: center;
@@ -38,8 +39,8 @@
 }
 
 .label-qr {
-  width: 22mm;
-  height: 22mm;
+  width: 21mm;
+  height: 21mm;
   flex: none;
 }
 .label-qr svg {

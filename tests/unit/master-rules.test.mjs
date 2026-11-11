@@ -32,7 +32,9 @@ test('roll: amount with comma, unit required with amount, numbers from Excel', (
   assert.deepEqual(value(rollRule({ code: 'R3', material: 'a', color: 'b', length_or_weight: '', unit: 'kg' })).unit, null);
   assert.equal(error(rollRule({ code: 'R4', material: 'a', color: 'b', length_or_weight: '10', unit: '' })), 'Pilih satuan (m atau kg).');
   assert.equal(error(rollRule({ code: 'R6', material: 'a', color: 'b', length_or_weight: '10', unit: 'meter' })), 'Satuan "meter" tidak dikenal. Isi m atau kg.');
-  assert.equal(error(rollRule({ code: 'R5', material: 'a', color: 'b', length_or_weight: '-1', unit: 'm' })), 'Panjang atau berat harus angka lebih dari 0.');
+  assert.equal(error(rollRule({ code: 'R5', material: 'a', color: 'b', length_or_weight: '-1', unit: 'm' })), 'Panjang atau berat harus angka lebih dari 0 (paling kecil 0.01).');
+  // stored as numeric(10,2): 0.004 would become 0 and break the database check
+  assert.match(error(rollRule({ code: 'R7', material: 'a', color: 'b', length_or_weight: 0.004, unit: 'm' })), /paling kecil 0.01/);
 });
 
 test('holder: type, phone normalised, key ignores case and spaces', () => {

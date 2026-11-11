@@ -91,14 +91,16 @@ export function rollRule(input: RollInput): RuleResult<RollValues> {
   if (empty) return err(empty);
   const long = tooLong('Kode rol', code, 40) ?? tooLong('Bahan', material, 120) ?? tooLong('Warna', color, 40) ?? tooLong('Supplier', supplier ?? '', 120);
   if (long) return err(long);
-  const amount = amountRaw === '' ? null : Number(amountRaw);
-  if (amount !== null && !(amount > 0 && amount < 100000)) return err('Panjang atau berat harus angka lebih dari 0.');
+  // the column is numeric(10,2): check the value as stored, so 0.004 (stored as 0) is refused here
+  // instead of failing the database check and the whole save
+  const amount = amountRaw === '' ? null : Math.round(Number(amountRaw) * 100) / 100;
+  if (amount !== null && !(amount > 0 && amount < 100000)) return err('Panjang atau berat harus angka lebih dari 0 (paling kecil 0.01).');
   if (amount !== null && !(ROLL_UNITS as readonly string[]).includes(unit)) return err(choice('Satuan', unit, ROLL_UNITS));
   return ok({
     code,
     material,
     color,
-    length_or_weight: amount === null ? null : Math.round(amount * 100) / 100,
+    length_or_weight: amount,
     unit: amount === null ? null : (unit as 'm' | 'kg'),
     supplier,
   });

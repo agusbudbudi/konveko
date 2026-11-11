@@ -23,9 +23,13 @@ function cellValue(v: ExcelJS.CellValue): Cell {
   if (v instanceof Date) return v.toISOString().slice(0, 10);
   if (typeof v === 'object') {
     if ('richText' in v) return v.richText.map((t) => t.text).join('');
+    // a formula: its cached result; none saved (e.g. some Google Sheets exports) = empty
+    if ('formula' in v || 'sharedFormula' in v) return 'result' in v ? cellValue((v.result ?? null) as ExcelJS.CellValue) : null;
     if ('result' in v) return cellValue((v.result ?? null) as ExcelJS.CellValue);
-    if ('text' in v) return String(v.text);
+    // a hyperlink: its text, which can itself be rich text
+    if ('text' in v) return cellValue(v.text as ExcelJS.CellValue);
     if ('error' in v) return null;
+    return null;
   }
   return String(v);
 }
@@ -50,6 +54,17 @@ export async function readWorkbook(data: ArrayBuffer): Promise<RawSheet[]> {
   return out;
 }
 
+/** A sheet's columns as the template has them; the error file uses the same, so it imports back. */
+function sheetColumns(spec: (typeof SHEETS)[number]): Partial<ExcelJS.Column>[] {
+  return spec.columns.map((c) => ({
+    header: c.header,
+    key: c.field,
+    width: Math.max(12, c.header.length + 4, c.example.length + 4),
+    // text format so Excel keeps leading zeros and long numbers in codes and phones
+    style: c.text ? { numFmt: '@' } : {},
+  }));
+}
+
 /** The export (with data) or the template (without): one sheet per master plus Petunjuk. */
 export async function buildWorkbook(existing: Record<Table, ExistingRow[]> | null): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
@@ -58,13 +73,7 @@ export async function buildWorkbook(existing: Record<Table, ExistingRow[]> | nul
 
   for (const spec of SHEETS) {
     const ws = wb.addWorksheet(spec.sheet, { views: [{ state: 'frozen', ySplit: 1 }] });
-    ws.columns = spec.columns.map((c) => ({
-      header: c.header,
-      key: c.field,
-      width: Math.max(12, c.header.length + 4, c.example.length + 4),
-      // text format so Excel keeps leading zeros and long numbers in codes and phones
-      style: c.text ? { numFmt: '@' } : {},
-    }));
+    ws.columns = sheetColumns(spec);
     ws.getRow(1).font = { bold: true };
     if (existing) {
       for (const row of sortForExport(spec, existing[spec.table])) ws.addRow(exportRow(spec, row));
@@ -116,12 +125,7 @@ export async function buildErrorWorkbook(sheets: SheetPreview[]): Promise<Buffer
     const spec = SHEETS.find((s) => s.table === preview.table)!;
     const ws = wb.addWorksheet(spec.sheet, { views: [{ state: 'frozen', ySplit: 1 }] });
     ws.columns = [
-      ...spec.columns.map((c) => ({
-        header: c.header,
-        key: c.field,
-        width: Math.max(12, c.header.length + 4, c.example.length + 4),
-        style: c.text ? { numFmt: '@' } : {},
-      })),
+      ...sheetColumns(spec),
       { header: ERROR_ROW_HEADER, key: '_row', width: 11 },
       { header: ERROR_REASON_HEADER, key: '_reason', width: 60 },
     ];

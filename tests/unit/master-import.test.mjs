@@ -52,9 +52,14 @@ test('new, changed, same and error rows per sheet; payload holds only new and ch
   assert.equal(plan.sheets.find((s) => s.table === 'location').found, false);
 });
 
-test('missing required column stops the sheet', () => {
-  const plan = planImport([sheet('Rak', ['Kode', 'Catatan'], ['A1', 'x'])], empty());
-  assert.deepEqual(plan.sheets.find((s) => s.table === 'location').errors, [{ row: 1, message: 'Kolom wajib tidak ada: Jenis.' }]);
+test('missing required column: every row is an error, with its values (for the error file)', () => {
+  const plan = planImport([sheet('Rak', ['Kode', 'Catatan'], ['A1', 'x'], ['B1', null])], empty());
+  const errors = plan.sheets.find((s) => s.table === 'location').errors;
+  assert.deepEqual(errors.map((e) => [e.row, e.message, e.values.code]), [
+    [2, 'Kolom wajib tidak ada di sheet: Jenis. Tambahkan kolomnya.', 'A1'],
+    [3, 'Kolom wajib tidak ada di sheet: Jenis. Tambahkan kolomnya.', 'B1'],
+  ]);
+  assert.equal(plan.errorCount, 2);
 });
 
 test('numbers compare by value, empty equals null, phone from a number cell', () => {
@@ -79,8 +84,9 @@ test('numbers compare by value, empty equals null, phone from a number cell', ()
   );
   assert.equal(plan.sheets.find((s) => s.table === 'fabric_roll').same, 1);
   const h = plan.sheets.find((s) => s.table === 'holder');
-  // name casing from the file is a change; the phone is not
-  assert.deepEqual(h.changed.map((c) => c.changes.map((x) => x.field)), [['name']]);
+  // "ani" matches "Ani" and does not rename it (renaming is done in the form); the phone is equal
+  assert.deepEqual(h.changed, []);
+  assert.equal(h.same, 1);
   assert.deepEqual(h.errors.map(({ row, message }) => ({ row, message })), [{ row: 3, message: 'Ada 2 data Budi (penjahit) di sistem. Ubah lewat form.' }]);
 });
 

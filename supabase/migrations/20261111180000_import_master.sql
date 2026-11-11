@@ -38,8 +38,12 @@ declare
   v_added integer;
   v_changed integer;
   v_where text;
+  v_key_value text;
   v_result jsonb := '{}'::jsonb;
 begin
+  -- One exception handler for the whole import, not one per row: a per-row handler is a
+  -- subtransaction per row, too slow for thousands of rows within the statement timeout.
+  -- v_where keeps the sheet and row being written, so the message still points at it.
   perform app.require_role(u, 'admin', 'import master data');
   if jsonb_typeof(p_payload->'tables') is distinct from 'object' then
     raise exception 'File import kosong.' using detail = 'import_empty';
@@ -57,7 +61,7 @@ begin
 
     for v_row in select * from jsonb_array_elements(v_rows) loop
       v_where := format('Sheet %s baris %s', v_row->>'sheet', v_row->>'row');
-      begin
+      v_key_value := v_row->>(v_key->>v_table);
         if v_row->>'id' is null then
           execute format(
             'insert into public.%I (%s) select %s from jsonb_populate_record(null::public.%I, $1) returning id',
@@ -94,18 +98,17 @@ begin
             v_changed := v_changed + 1;
           end if;
         end if;
-      exception
-        when unique_violation then
-          raise exception '%: % sudah dipakai data lain.', v_where, v_row->>(v_key->>v_table) using detail = 'import_duplicate';
-        when check_violation or not_null_violation or invalid_text_representation then
-          raise exception '%: isian tidak valid.', v_where using detail = 'import_invalid';
-      end;
     end loop;
 
     v_result := v_result || jsonb_build_object(v_table, jsonb_build_object('added', v_added, 'changed', v_changed));
   end loop;
 
   return v_result;
+exception
+  when unique_violation then
+    raise exception '%: % sudah dipakai data lain.', v_where, v_key_value using detail = 'import_duplicate';
+  when check_violation or not_null_violation or invalid_text_representation or numeric_value_out_of_range then
+    raise exception '%: isian tidak valid.', v_where using detail = 'import_invalid';
 end $$;
 
 create function public.import_master(p_payload jsonb)

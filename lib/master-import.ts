@@ -252,10 +252,6 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
     // header -> column index; missing required columns stop this sheet
     const index = new Map(sheet.headers.map((h, i) => [norm(h), i]));
     const missing = spec.columns.filter((c) => c.required && !index.has(norm(c.header))).map((c) => c.header);
-    if (missing.length && sheet.rows.length) {
-      preview.errors.push({ row: 1, message: `Kolom wajib tidak ada: ${missing.join(', ')}.` });
-      continue;
-    }
     if (sheet.rows.length > MAX_ROWS) {
       preview.errors.push({ row: 1, message: `Maksimal ${MAX_ROWS} baris per sheet. Pecah filenya.` });
       continue;
@@ -277,6 +273,12 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
       if (Object.values(rawRow).every((v) => v === null || String(v).trim() === '')) continue;
       if (isSampleRow(spec, rawRow)) {
         preview.samples++;
+        continue;
+      }
+      // a required column is missing from the sheet: every row is an error, with what it has, so
+      // the error file holds them all and they can be fixed and imported again
+      if (missing.length) {
+        preview.errors.push({ row, message: `Kolom wajib tidak ada di sheet: ${missing.join(', ')}. Tambahkan kolomnya.`, values: rawRow });
         continue;
       }
 
@@ -313,6 +315,9 @@ export function planImport(raw: RawSheet[], existing: Record<Table, ExistingRow[
 
       const payloadRow = (id: string | null) => ({ id, sheet: spec.sheet, row, ...Object.fromEntries(spec.fields.map((f) => [f, values[f] ?? null])) });
       const old = matches[0];
+      // holders are matched on type + name ignoring case and spaces; the stored name stays as is
+      // (renaming goes through the form), so "ani" in the file does not rename "Ani"
+      if (old && spec.table === 'holder') values.name = old.name;
       if (!old) {
         preview.added.push({ row, label: spec.keyLabel(values), values });
         (plan.payload[spec.table] ??= []).push(payloadRow(null));

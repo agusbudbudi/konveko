@@ -77,3 +77,17 @@ test('error file: only failed rows, reason last; fixed and re-imported it passes
   assert.equal(again.errorCount, 0);
   assert.deepEqual(again.sheets[2].added.map((a) => a.values.code), ['A5', 'D2']);
 });
+
+test('cells: formula without a cached result is empty, hyperlink text is read', async () => {
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Rak');
+  ws.addRow(['Kode', 'Jenis', 'Catatan', 'Aktif']);
+  ws.addRow(['E1', 'stok', null, 'Ya']);
+  ws.getCell('C2').value = { formula: 'CONCAT("a","b")' }; // no result saved
+  ws.addRow(['E2', 'stok', null, 'Ya']);
+  ws.getCell('C3').value = { text: { richText: [{ text: 'Lihat ' }, { text: 'denah' }] }, hyperlink: 'https://example.com' };
+  const [rak] = await readWorkbook(await wb.xlsx.writeBuffer());
+  assert.equal(rak.rows[0].cells[2], null);
+  assert.equal(rak.rows[1].cells[2], 'Lihat denah');
+});

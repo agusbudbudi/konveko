@@ -39,16 +39,18 @@ export function ImportPanel() {
   const [checking, startCheck] = useTransition();
   const [saving, startSave] = useTransition();
 
-  const check = (f: File) => {
+  /** Preview `f`. `notice` stays on screen above the new preview (e.g. why a save was refused). */
+  const check = (f: File, notice: string | null = null) => {
     setFile(f);
     setPreview(null);
     setSaved(null);
-    setError(null);
+    setError(notice);
     startCheck(async () => {
       const fd = new FormData();
       fd.set('file', f);
       const res = await previewImport(fd);
       if (!res.ok) return setError(res.message);
+      setError(notice);
       setPreview(res.data);
       const found = res.data.sheets.filter((s) => s.found);
       // open the first sheet with errors, else the first with changes
@@ -65,9 +67,9 @@ export function ImportPanel() {
       fd.set('hash', preview.hash);
       const res = await applyImport(fd);
       if (!res.ok) {
-        setError(res.message);
-        // the data moved since the preview: show the new preview
-        if (res.code === 'import_stale') check(file);
+        // the data moved since the preview: show the new preview, and say why nothing was saved
+        if (res.code === 'import_stale') check(file, res.message);
+        else setError(res.message);
         return;
       }
       setSaved(res.data);
@@ -98,6 +100,8 @@ export function ImportPanel() {
           tabIndex={-1}
           onChange={(e) => {
             const f = e.target.files?.[0];
+            // clear at once, so picking the same (fixed) file again still fires onChange
+            e.target.value = '';
             if (f) check(f);
           }}
         />

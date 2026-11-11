@@ -24,7 +24,7 @@ export type Applied = {
   errorFile: { name: string; base64: string } | null;
 };
 
-const bad = (message: string, code = 'import_invalid'): { ok: false; message: string; code: string } => ({ ok: false, message, code });
+const bad = (message: string, code: string | null = 'import_invalid'): { ok: false; message: string; code: string | null } => ({ ok: false, message, code });
 
 async function plan(fd: FormData): Promise<ActionResult<{ file: string; plan: ImportPlan; hash: string }>> {
   const me = await getCurrentAppUser();
@@ -41,7 +41,13 @@ async function plan(fd: FormData): Promise<ActionResult<{ file: string; plan: Im
   } catch {
     return bad('File tidak bisa dibaca. Simpan ulang sebagai Excel Workbook (.xlsx) lalu coba lagi.');
   }
-  const p = planImport(sheets, await loadExisting());
+  let existing;
+  try {
+    existing = await loadExisting();
+  } catch {
+    return bad('Data master tidak bisa dimuat. Coba lagi sebentar.', null);
+  }
+  const p = planImport(sheets, existing);
   if (!p.sheets.some((s) => s.found)) {
     return bad('Tidak ada sheet yang dikenali. Pakai template: Variant, Rol kain, Rak, Penjahit dan tim, Alasan.');
   }
@@ -89,12 +95,14 @@ export async function applyImport(fd: FormData): Promise<ActionResult<Applied>> 
   if (!saved.ok) return saved;
   refresh();
   const skippedSame = p.sheets.reduce((n, s) => n + s.same, 0);
-  const errorFile =
-    p.errorCount > 0
-      ? {
-          name: `${file.replace(/\.xlsx$/i, '')}-error.xlsx`,
-          base64: (await buildErrorWorkbook(p.sheets)).toString('base64'),
-        }
-      : null;
+  // the rows are already saved: a failure here must not turn the result into an error
+  let errorFile: Applied['errorFile'] = null;
+  if (p.errorCount > 0) {
+    try {
+      errorFile = { name: `${file.replace(/\.xlsx$/i, '')}-error.xlsx`, base64: (await buildErrorWorkbook(p.sheets)).toString('base64') };
+    } catch {
+      errorFile = null;
+    }
+  }
   return { ok: true, data: { file, tables: saved.data, skippedErrors: p.errorCount, skippedSame, errorFile } };
 }

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { UrlSelect } from '@/components/ui/url-select';
 import { UrlPagination } from '@/components/ui/pagination';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { Badge, StatusBadge } from '@/components/ui/status-badge';
 import { TabLink, TabList } from '@/components/ui/tab-link';
 import { cn } from '@/lib/cn';
 import { UUID } from '@/lib/master';
@@ -29,6 +29,7 @@ type Row = {
   current_qty: number;
   holder_name: string | null;
   last_movement_at: string;
+  rework_of_bundle_id: string | null;
 };
 
 export default async function WipPage({ searchParams }: { searchParams: Promise<PageQuery> }) {
@@ -131,9 +132,12 @@ export default async function WipPage({ searchParams }: { searchParams: Promise<
                 return (
                   <tr key={r.bundle_id} className={cn('hover:bg-surface-muted max-md:grid max-md:grid-cols-2 max-md:gap-1 max-md:px-5 max-md:py-3', isStale && 'border-l-[3px] border-l-warning')}>
                     <td className="px-5 py-3 max-md:p-0">
-                      <Link href={`/bundle/${r.bundle_id}`} className="num link-code">
-                        {r.code}
-                      </Link>
+                      <span className="flex items-center gap-2">
+                        <Link href={`/bundle/${r.bundle_id}`} className="num link-code">
+                          {r.code}
+                        </Link>
+                        {r.rework_of_bundle_id && <Badge tone="info">Rework</Badge>}
+                      </span>
                       <p className="num text-small text-text-muted">{r.batch_code}</p>
                     </td>
                     <td className="px-5 py-3 max-md:col-span-2 max-md:row-start-2 max-md:p-0">{v ? `${v.product_name} ${v.size} · ${v.color}` : '-'}</td>

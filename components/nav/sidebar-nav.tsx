@@ -15,6 +15,7 @@ import {
   Package,
   Tag,
   Truck,
+  Wrench,
   ScanBarcode,
   ScanLine,
   Search,
@@ -43,6 +44,7 @@ const GROUPS: Group[] = [
     label: 'Produksi',
     items: [
       { href: '/batch', label: 'Batch', icon: Layers },
+      { href: '/rework', label: 'Rework', icon: Wrench },
       { href: '/scan', label: 'Scan', icon: ScanLine },
     ],
   },

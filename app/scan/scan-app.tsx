@@ -8,7 +8,7 @@ import { InlineAlert } from '@/components/ui/inline-alert';
 import { Combobox } from '@/components/ui/combobox';
 import { Input, Label } from '@/components/ui/input';
 import { QtyStepper } from '@/components/ui/qty-stepper';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { Badge, StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
 import { uploadSelisihPhoto } from '@/lib/photo';
 import { STATUS_LABEL, type ActionResult, type LookupResult, type Reason, type ScanResult } from '@/lib/types';
@@ -287,8 +287,17 @@ function BundleSummary({ bundle }: { bundle: LookupResult }) {
             {v.color} · Batch <span className="num">{bundle.batch_code}</span>
           </p>
         </div>
-        <StatusBadge status={bundle.status} />
+        <div className="flex flex-col items-end gap-1.5">
+          <StatusBadge status={bundle.status} />
+          {bundle.rework && <Badge tone="info">Rework</Badge>}
+        </div>
       </div>
+      {bundle.rework && (
+        <p className="mt-3 rounded-md bg-info-soft px-3 py-2 text-small text-info">
+          Rework dari <span className="num font-medium">{bundle.rework.of_code}</span>
+          {bundle.rework.note && <>: {bundle.rework.note}</>}
+        </p>
+      )}
       <div className="mt-4 flex items-end justify-between border-t border-border pt-4">
         <div>
           <p className="text-caption text-text-muted">Qty acuan</p>

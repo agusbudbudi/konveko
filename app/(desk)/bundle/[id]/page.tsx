@@ -7,7 +7,16 @@ import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
 import { CORRECTABLE, type MovementType } from '@/lib/movement';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
-import type { BundleStatus, Reason } from '@/lib/types';
+import {
+  REWORK_SOURCE_LABEL,
+  REWORK_STEP_LABEL,
+  type BundleStatus,
+  type Reason,
+  type ReworkSource,
+  type ReworkStep,
+} from '@/lib/types';
+import { ReworkButton, type ReworkCandidate } from '@/components/rework/rework-button';
+import { CancelRework } from './cancel-rework';
 import { ResolveFlag } from './resolve-flag';
 import { ScanTimeline } from './scan-timeline';
 import { SetCrumb } from '@/components/nav/sidebar-nav';
@@ -60,12 +69,13 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
   const supabase = await createClient();
   const user = await getCurrentAppUser();
   const isSupervisor = user?.roles.includes('supervisor') ?? false;
+  const canRework = isSupervisor || (user?.roles.includes('admin') ?? false);
 
-  const [bundleRes, reconRes, movRes, effRes, reasonRes, discRes, childRes, pieceRes] = await Promise.all([
+  const [bundleRes, reconRes, movRes, effRes, reasonRes, discRes, childRes, pieceRes, reworkRes] = await Promise.all([
     supabase
       .from('bundle')
       .select(
-        'id, code, target_qty, parent_bundle_id, batch:production_batch(id, code), variant:product_variant(sku, product_name, size, color), holder:holder!bundle_current_holder_id_fkey(name)',
+        'id, code, target_qty, parent_bundle_id, rework_of_bundle_id, rework_source, start_step, rework_note, cancel_note, batch:production_batch(id, code), variant:product_variant(sku, product_name, size, color), holder:holder!bundle_current_holder_id_fkey(name)',
       )
       .eq('id', id)
       .maybeSingle(),
@@ -77,9 +87,14 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
     supabase.from('bundle').select('id, code, target_qty').eq('parent_bundle_id', id).order('code'),
     supabase
       .from('piece')
-      .select('id, code, grade, printed_at, location:location(code)')
+      .select('id, code, grade, condition, outbound_id, printed_at, location:location(code), finish:movement(type)')
       .eq('bundle_id', id)
       .eq('status', 'aktif')
+      .order('code'),
+    supabase
+      .from('bundle')
+      .select('id, code, target_qty, current_status, rework_source, start_step')
+      .eq('rework_of_bundle_id', id)
       .order('code'),
   ]);
 
@@ -88,13 +103,30 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
     code: string;
     target_qty: number;
     parent_bundle_id: string | null;
+    rework_of_bundle_id: string | null;
+    rework_source: ReworkSource | null;
+    start_step: ReworkStep;
+    rework_note: string | null;
+    cancel_note: string | null;
     batch: { id: string; code: string } | null;
     variant: { sku: string; product_name: string; size: string; color: string } | null;
     holder: { name: string } | null;
   };
   const bundle = bundleRes.data as unknown as BundleRow | null;
   const recon = reconRes.data as
-    | { status: BundleStatus; is_active: boolean; ref_qty: number; target_qty: number; ready: number; reject: number; wip_menunggu: number; wip_dikerjakan: number; selisih: number }
+    | {
+        status: BundleStatus;
+        is_active: boolean;
+        ref_qty: number;
+        target_qty: number;
+        ready: number;
+        reject: number;
+        wip_menunggu: number;
+        wip_dikerjakan: number;
+        selisih: number;
+        reject_awal: number;
+        reworked: number;
+      }
     | null;
   if (!bundle || !recon) notFound();
 
@@ -110,13 +142,36 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
     id: string;
     code: string;
     grade: 'baik' | 'reject';
+    condition: 'baik' | 'rusak';
+    outbound_id: string | null;
     printed_at: string | null;
     location: { code: string } | null;
+    finish: { type: MovementType } | null;
+  }[];
+  const reworks = (reworkRes.data ?? []) as {
+    id: string;
+    code: string;
+    target_qty: number;
+    current_status: BundleStatus;
+    rework_source: ReworkSource;
+    start_step: ReworkStep;
   }[];
 
   const parent = bundle.parent_bundle_id
     ? (await supabase.from('bundle').select('id, code').eq('id', bundle.parent_bundle_id).maybeSingle()).data
     : null;
+  const origin = bundle.rework_of_bundle_id
+    ? (await supabase.from('bundle').select('id, code').eq('id', bundle.rework_of_bundle_id).maybeSingle()).data
+    : null;
+  // reject pcs and damaged returns of this bundle that are still free to go to rework
+  const candidates: ReworkCandidate[] = pieces
+    .filter((p) => !p.outbound_id && (p.grade === 'reject' || p.condition === 'rusak'))
+    .map((p) => ({
+      code: p.code,
+      source: p.grade === 'baik' ? 'retur' : p.finish?.type === 'finish_sew' ? 'jahit' : 'finishing',
+      where: p.location?.code ?? null,
+    }));
+  const scanned = effective.some((e) => e.type !== 'rework');
 
   // Names: holders (readable by staff) and scanners (via staff_names, id + name only).
   const holderIds = [...new Set(movements.flatMap((m) => [m.from_holder_id, m.to_holder_id]).filter(Boolean))] as string[];
@@ -213,6 +268,7 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
         badges={
           <>
             <StatusBadge status={recon.status} />
+            {origin && <Badge tone="info">Rework</Badge>}
             {openFlags.length > 0 && <Badge tone="warning">Selisih {openQty} pcs</Badge>}
           </>
         }
@@ -223,26 +279,48 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
           </>
         }
         meta={
-          parent && (
+          (parent && (
             <>
               Pecahan dari{' '}
               <Link href={`/bundle/${parent.id}`} className="num link-code">
                 {parent.code}
               </Link>
             </>
-          )
+          )) ||
+          (origin && bundle.rework_source && (
+            <>
+              Rework dari{' '}
+              <Link href={`/bundle/${origin.id}`} className="num link-code">
+                {origin.code}
+              </Link>{' '}
+              · {REWORK_SOURCE_LABEL[bundle.rework_source]} · mulai {REWORK_STEP_LABEL[bundle.start_step].toLowerCase()}
+              {bundle.rework_note && <> · {bundle.rework_note}</>}
+            </>
+          ))
         }
         actions={
           recon.is_active && (
+            <div className="flex flex-wrap gap-2">
+              {origin && canRework && !scanned && (
+                <CancelRework code={bundle.code} qty={bundle.target_qty} originCode={origin.code} />
+              )}
             <Link
               href={`/print/labels?bundle=${bundle.id}`}
               className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
             >
               <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak ulang label
             </Link>
+            </div>
           )
         }
       />
+
+      {recon.status === 'batal' && (
+        <InlineAlert tone="info" className="mt-6">
+          Rework ini dibatalkan{bundle.cancel_note && <>: {bundle.cancel_note}</>}. Pcs-nya kembali menjadi reject bundle asal. Labelnya
+          tidak berlaku lagi.
+        </InlineAlert>
+      )}
 
       {children.length > 0 && (
         <InlineAlert tone="info" className="mt-6">
@@ -267,8 +345,13 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
           <div className="rounded-lg border border-border bg-surface p-5">
             <h2 className="text-h2">Rekonsiliasi</h2>
             <div className="mt-4 flex flex-col gap-3">
-              <ReconciliationBar r={{ ...recon, target: recon.target_qty }} />
-              <ReconciliationLegend r={{ ...recon, target: recon.target_qty }} />
+              <ReconciliationBar r={{ ...recon, target: recon.target_qty, reworkedOut: recon.reworked }} />
+              <ReconciliationLegend r={{ ...recon, target: recon.target_qty, reworkedOut: recon.reworked }} />
+              {recon.reworked > 0 && (
+                <p className="text-small text-text-muted">
+                  Dirework: reject yang sedang atau sudah diperbaiki di bundle rework. Hasilnya dihitung di bundle rework.
+                </p>
+              )}
             </div>
           </div>
           <div className="rounded-lg border border-border bg-surface p-5">
@@ -277,6 +360,16 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
             <p className="text-small text-text-muted">dari target {recon.target_qty} pcs</p>
           </div>
         </section>
+      )}
+
+      {(recon.reject_awal > 0 || reworks.length > 0 || candidates.length > 0) && (
+        <ReworkSection
+          rejectAwal={recon.reject_awal}
+          reworked={recon.reworked}
+          reject={recon.reject}
+          reworks={reworks}
+          candidates={canRework ? candidates : []}
+        />
       )}
 
       {pieces.length > 0 && <PieceSummary bundleId={bundle.id} pieces={pieces} />}
@@ -303,6 +396,62 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
         )}
       </section>
     </>
+  );
+}
+
+/** Fase 2 rework: reject recorded on this bundle, what went to rework, and the rework bundles. */
+function ReworkSection({
+  rejectAwal,
+  reworked,
+  reject,
+  reworks,
+  candidates,
+}: {
+  rejectAwal: number;
+  reworked: number;
+  reject: number;
+  reworks: { id: string; code: string; target_qty: number; current_status: BundleStatus; rework_source: ReworkSource; start_step: ReworkStep }[];
+  candidates: ReworkCandidate[];
+}) {
+  return (
+    <section className="mt-6 rounded-lg border border-border bg-surface">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+        <h2 className="text-h2">Reject dan rework</h2>
+        {candidates.length > 0 && <ReworkButton candidates={candidates} />}
+      </div>
+      <dl className="mt-4 grid grid-cols-3 gap-4 px-5 pb-5">
+        <div>
+          <dt className="text-caption tracking-[0.02em] text-text-muted">Reject tercatat</dt>
+          <dd className="num text-h2">{rejectAwal}</dd>
+        </div>
+        <div>
+          <dt className="text-caption tracking-[0.02em] text-text-muted">Dirework</dt>
+          <dd className="num text-h2 text-info">{reworked}</dd>
+        </div>
+        <div>
+          <dt className="text-caption tracking-[0.02em] text-text-muted">Sisa reject</dt>
+          <dd className={`num text-h2 ${reject > 0 ? 'text-danger' : ''}`}>{reject}</dd>
+        </div>
+      </dl>
+      {reworks.length > 0 && (
+        <ul className="divide-y divide-border border-t border-border">
+          {reworks.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+              <div>
+                <Link href={`/bundle/${r.id}`} className="num link-code font-medium">
+                  {r.code}
+                </Link>
+                <p className="text-small text-text-muted">
+                  <span className="num">{r.target_qty}</span> pcs · {REWORK_SOURCE_LABEL[r.rework_source]} · mulai{' '}
+                  {REWORK_STEP_LABEL[r.start_step].toLowerCase()}
+                </p>
+              </div>
+              <StatusBadge status={r.current_status} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

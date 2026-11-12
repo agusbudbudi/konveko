@@ -241,6 +241,7 @@ function ItemView({
     count = 1;
     const kind = item.grade === 'reject' ? 'reject' : item.condition === 'rusak' ? 'rusak' : 'baik';
     if (item.status === 'batal') blocked = 'Pcs ini sudah dibatalkan. Buang labelnya.';
+    else if (item.status === 'rework') blocked = 'Pcs ini sudah dikirim ke rework. Labelnya tidak berlaku lagi.';
     else if (item.status === 'keluar') blocked = `Pcs ini sudah keluar di ${item.outbound_code}. Catat dulu lewat mode Retur.`;
     else if (item.sellable === forReject) {
       blocked = `Pcs ini barang ${kind}. Scan rak ${item.sellable ? 'stok' : 'reject'}.`;

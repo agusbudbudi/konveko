@@ -375,7 +375,7 @@ function ReportDocument({ period, r, prev, out, outPrev, business, appUrl, now =
           <Stat
             label="REJECT"
             value={`${n1(rejectRate(t))}%`}
-            context={`${reject} pcs · jahit ${t.sew_reject}, QC ${t.qc_reject}`}
+            context={`${reject} pcs · jahit ${t.sew_reject}, QC ${t.qc_reject}${t.reworked > 0 ? ` · ${t.reworked} dirework` : ''}`}
             delta={finished(p) > 0 && finished(t) > 0 ? rejectRate(t) - rejectRate(p) : null}
             deltaUnit="poin"
             higherIsWorse

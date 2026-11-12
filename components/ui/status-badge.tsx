@@ -18,6 +18,7 @@ const statusTone: Record<BundleStatus, Tone> = {
   proses_finishing: 'info',
   ready_stock: 'success',
   dipecah: 'neutral',
+  batal: 'neutral',
 };
 
 export function Badge({ tone, children }: { tone: Tone; children: React.ReactNode }) {

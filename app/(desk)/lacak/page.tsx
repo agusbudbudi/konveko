@@ -301,6 +301,8 @@ const SHORTCUTS: Shortcut[] = [
   { label: 'WIP siap finishing', href: '/wip?status=siap_finishing', words: ['siap finishing'] },
   { label: 'WIP proses finishing', href: '/wip?status=proses_finishing', words: ['proses finishing', 'sedang finishing', 'qc'] },
   { label: 'Semua WIP', href: '/wip', words: ['wip', 'dalam proses', 'belum jadi'] },
+  { label: 'Rework berjalan', href: '/rework', words: ['rework', 'perbaikan', 'diperbaiki', 'jahit ulang'] },
+  { label: 'Pcs di rework', href: '/stok/pcs?tab=rework', words: ['rework', 'perbaikan'] },
   { label: 'Stok barang jadi', href: '/stok', words: ['stok', 'ready stock', 'gudang'] },
   { label: 'Barang keluar', href: '/barang-keluar', words: ['barang keluar', 'surat jalan', 'kirim', 'retur'] },
 ];

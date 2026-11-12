@@ -16,6 +16,8 @@ type LabelBundle = {
   target_qty: number;
   current_status: string;
   batch: { code: string } | null;
+  /** Set on a rework bundle: the bundle its pcs came from. */
+  origin: { code: string } | null;
   variant: { product_name: string; size: string; color: string } | null;
 };
 
@@ -34,8 +36,10 @@ export default async function PrintLabelsPage({
   const supabase = await createClient();
   let query = supabase
     .from('bundle')
-    .select('id, code, qr_token, target_qty, current_status, batch:production_batch(code), variant:product_variant(product_name, size, color)')
-    .neq('current_status', 'dipecah')
+    .select(
+      'id, code, qr_token, target_qty, current_status, batch:production_batch(code), origin:bundle!rework_of_bundle_id(code), variant:product_variant(product_name, size, color)',
+    )
+    .not('current_status', 'in', '(dipecah,batal)')
     .order('code');
   query = batch ? query.eq('batch_id', batch) : query.eq('id', bundle!);
   const { data } = await query;
@@ -58,7 +62,11 @@ export default async function PrintLabelsPage({
             <div className="label-qr" dangerouslySetInnerHTML={{ __html: l.qrSvg }} />
             <div className="label-text">
               <p className="label-code">{l.code}</p>
-              <p className="label-batch">{l.batch?.code}</p>
+              {l.origin ? (
+                <p className="label-batch label-rework">REWORK · {l.origin.code}</p>
+              ) : (
+                <p className="label-batch">{l.batch?.code}</p>
+              )}
               <p className="label-variant">
                 {l.variant?.product_name} {l.variant?.size}
               </p>

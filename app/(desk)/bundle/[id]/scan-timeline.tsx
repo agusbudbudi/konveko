@@ -180,7 +180,7 @@ function ScanEntry({
           {userName.get(m.scanned_by) ?? '-'}
           {isReceive && from && to && <> · {from} → {to}</>}
           {reason && <> · {reason.label}</>}
-          {m.type === 'split' && m.note && <> · {m.note}</>}
+          {(m.type === 'split' || m.type === 'rework') && m.note && <> · {m.note}</>}
         </p>
         {photo && (
           <PhotoPreview

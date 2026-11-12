@@ -4,7 +4,8 @@ export type BundleStatus =
   | 'siap_finishing'
   | 'proses_finishing'
   | 'ready_stock'
-  | 'dipecah';
+  | 'dipecah'
+  | 'batal';
 
 export type LookupResult = {
   bundle_id: string;
@@ -20,7 +21,20 @@ export type LookupResult = {
   allowed: boolean;
   message: string | null;
   children: string | null;
+  /** Set when this is a rework bundle. */
+  rework: ReworkInfo | null;
 };
+
+export type ReworkSource = 'jahit' | 'finishing' | 'retur';
+export type ReworkStep = 'jahit' | 'finishing';
+export type ReworkInfo = { of_code: string; source: ReworkSource; start_step: ReworkStep; note: string | null };
+
+export const REWORK_SOURCE_LABEL: Record<ReworkSource, string> = {
+  jahit: 'Reject jahit',
+  finishing: 'Reject finishing',
+  retur: 'Retur rusak',
+};
+export const REWORK_STEP_LABEL: Record<ReworkStep, string> = { jahit: 'Jahit', finishing: 'Finishing' };
 
 export type ScanResult = {
   movement_id: string;
@@ -42,6 +56,7 @@ export const STATUS_LABEL: Record<BundleStatus, string> = {
   proses_finishing: 'Proses finishing',
   ready_stock: 'Ready stock',
   dipecah: 'Dipecah',
+  batal: 'Batal',
 };
 
 export const BATCH_STATUS = {
@@ -71,7 +86,7 @@ export type WarehouseLookup =
       id: string;
       code: string;
       grade: 'baik' | 'reject';
-      status: 'aktif' | 'batal' | 'keluar';
+      status: 'aktif' | 'batal' | 'keluar' | 'rework';
       /** Fase 2b: condition after production (a damaged return is 'rusak'); sellable = baik + baik */
       condition: 'baik' | 'rusak';
       sellable: boolean;

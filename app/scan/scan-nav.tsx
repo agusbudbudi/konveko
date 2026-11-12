@@ -49,7 +49,7 @@ export function ScanNav({ kind }: { kind: ScanNavKind }) {
     <nav
       data-scan-nav
       aria-label="Menu scan"
-      className="sticky bottom-0 z-10 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]"
+      className="sticky bottom-0 z-10 mt-auto border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]"
     >
       <ul className="grid h-16" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
         {items.map((it) => {

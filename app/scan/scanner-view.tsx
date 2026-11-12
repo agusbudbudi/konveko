@@ -140,16 +140,87 @@ export function ScannerView({
 function HardwareReady({ loading }: { loading: boolean }) {
   return (
     <div className="px-4 pt-4 pb-3">
-      <div className="flex items-center gap-4 rounded-xl border-2 border-dashed border-primary bg-primary-soft px-4 py-5">
-        <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <ScanLine size={30} strokeWidth={1.75} aria-hidden className={cn(loading && 'motion-safe:animate-pulse')} />
-        </span>
-        <div>
-          <p className="text-h1 text-primary">{loading ? 'Membaca...' : 'Siap scan'}</p>
-          <p className="text-small text-primary-hover">Tekan tombol scan di perangkat, arahkan ke QR di label.</p>
-        </div>
+      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-border-strong bg-surface px-6 py-5 text-center">
+        <ScanReadyArt loading={loading} />
+        <p className="text-h2">{loading ? 'Membaca...' : 'Siap scan'}</p>
+        <p className="text-small text-text-muted">Tekan tombol scan di perangkat, arahkan ke QR di label.</p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Handheld scanner aiming at a QR label, a laser line sweeping the code.
+ * Same palette and soft blob as components/ui/empty-state.tsx.
+ */
+function ScanReadyArt({ loading }: { loading: boolean }) {
+  const c = {
+    blob: 'var(--primary-soft)',
+    surface: 'var(--surface)',
+    muted: 'var(--surface-muted)',
+    line: 'var(--border-strong)',
+    primary: 'var(--primary)',
+    laser: 'var(--highlight)',
+  };
+  // QR data modules (x, y, w, h) between the three finder squares
+  const modules = [
+    [108, 30, 4, 4], [108, 38, 4, 4], [116, 42, 4, 4], [124, 48, 4, 4], [108, 50, 4, 4],
+    [116, 56, 4, 4], [124, 60, 4, 4], [108, 62, 8, 4], [120, 52, 4, 4],
+  ];
+  const finders = [
+    [92, 28],
+    [118, 28],
+    [92, 54],
+  ];
+  return (
+    <svg aria-hidden viewBox="0 0 160 104" fill="none" className="h-28 w-44 shrink-0">
+      <ellipse cx="80" cy="95" rx="54" ry="6" style={{ fill: c.muted }} />
+      <circle cx="80" cy="50" r="42" style={{ fill: c.blob }} />
+      <circle cx="132" cy="14" r="3" style={{ fill: c.laser }} opacity=".7" />
+      <circle cx="26" cy="78" r="2.5" style={{ fill: c.primary }} opacity=".35" />
+
+      {/* Beam from the scanner window to the label */}
+      <path
+        d="M63 43 88 26v46L63 55Z"
+        style={{ fill: c.laser }}
+        opacity=".18"
+        className={cn(loading && 'motion-safe:animate-pulse')}
+      />
+
+      {/* Label with QR */}
+      <rect x="86" y="22" width="48" height="58" rx="6" style={{ fill: c.surface, stroke: c.line }} strokeWidth="2" />
+      {finders.map(([x, y]) => (
+        <g key={`${x}-${y}`}>
+          <rect x={x} y={y} width="12" height="12" rx="2" style={{ stroke: c.primary }} strokeWidth="2" />
+          <rect x={x + 4} y={y + 4} width="4" height="4" rx="1" style={{ fill: c.primary }} />
+        </g>
+      ))}
+      {modules.map(([x, y, w, h]) => (
+        <rect key={`${x}-${y}`} x={x} y={y} width={w} height={h} rx="1" style={{ fill: c.primary }} opacity=".85" />
+      ))}
+      <path d="M92 73h18" style={{ stroke: c.line }} strokeWidth="2.5" strokeLinecap="round" />
+      <rect
+        x="89"
+        y="46"
+        width="42"
+        height="2"
+        rx="1"
+        style={{ fill: c.laser }}
+        className={cn('motion-safe:animate-[scan-sweep_2.4s_ease-in-out_infinite]', loading && 'opacity-40')}
+      />
+
+      {/* Handheld scanner */}
+      <path
+        d="M40 57 34 80a3 3 0 0 0 3 4h8a3 3 0 0 0 3-2.5L52 57Z"
+        style={{ fill: c.surface, stroke: c.primary }}
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+      <rect x="28" y="38" width="38" height="21" rx="7" style={{ fill: c.surface, stroke: c.primary }} strokeWidth="2.5" />
+      <rect x="60" y="43" width="4" height="11" rx="1.5" style={{ fill: c.laser }} />
+      <path d="M36 46h12" style={{ stroke: c.line }} strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M53 60c2 4 1 7-2 8" style={{ stroke: c.primary }} strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
   );
 }
 

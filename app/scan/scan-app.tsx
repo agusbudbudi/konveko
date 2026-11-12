@@ -1,22 +1,27 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import Link from 'next/link';
 import { Camera, CircleCheck, ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Combobox } from '@/components/ui/combobox';
-import { Input, Label } from '@/components/ui/input';
+import { Label } from '@/components/ui/input';
 import { QtyStepper } from '@/components/ui/qty-stepper';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
 import { uploadSelisihPhoto } from '@/lib/photo';
 import { STATUS_LABEL, type ActionResult, type LookupResult, type Reason, type ScanResult } from '@/lib/types';
 import { finishBundle, lookupBundle, receiveBundle } from './actions';
-import { CameraScanner } from './camera-scanner';
-import { normalizeScan } from '@/lib/scan/normalize';
-import { setScanPrefs, usesCamera, useScanPrefs } from '@/lib/scan/prefs';
 import { useScanner } from '@/lib/scan/use-scanner';
+import { BottomBar, loadRecent, pushRecent, ScannerView, type RecentScan } from './scanner-view';
+
+const RECENT_KEY = 'konveko:scan-recent';
+
+/** "Bundle B-00231 diterima. 18 dari 20 pcs, selisih 2." -> "Diterima 18 dari 20 pcs, selisih 2" */
+export function shortResult(code: string, message: string) {
+  const s = message.replace(new RegExp(`^Bundle ${code}\\s*`), '').replace(/\.$/, '').replace(/^(\w+)\./, '$1');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 type Phase =
   | { k: 'scan' }
@@ -46,7 +51,10 @@ export function ScanApp({
   actions?: ScanActions;
 }) {
   const [phase, setPhase] = useState<Phase>({ k: 'scan' });
+  const [recent, setRecent] = useState<RecentScan[]>([]);
   const busy = useRef(false);
+
+  useEffect(() => setRecent(loadRecent(RECENT_KEY)), []);
 
   const reset = useCallback(() => {
     busy.current = false;
@@ -70,6 +78,13 @@ export function ScanApp({
   const onDone = useCallback((result: ScanResult) => {
     navigator.vibrate?.(60);
     setPhase({ k: 'success', result });
+    setRecent((list) =>
+      pushRecent(RECENT_KEY, list, {
+        code: result.code,
+        text: shortResult(result.code, result.message),
+        tone: (result.selisih ?? 0) > 0 ? 'warning' : 'success',
+      }),
+    );
   }, []);
 
   useEffect(() => {
@@ -79,9 +94,9 @@ export function ScanApp({
   }, [phase, reset]);
 
   return (
-    <main className="flex flex-1 flex-col px-4 pb-32">
+    <main className={cn('flex flex-1 flex-col', phase.k !== 'scan' && phase.k !== 'loading' && 'px-4')}>
       {phase.k === 'scan' || phase.k === 'loading' ? (
-        <ScannerView onCode={lookup} loading={phase.k === 'loading'} />
+        <ScannerView onCode={lookup} loading={phase.k === 'loading'} recent={recent} loadingText="Mencari bundle..." />
       ) : phase.k === 'error' ? (
         <>
           <InlineAlert tone="danger" className="mt-4">{phase.message}</InlineAlert>
@@ -97,179 +112,6 @@ export function ScanApp({
         <SuccessView result={phase.result} />
       )}
     </main>
-  );
-}
-
-// ---------------------------------------------------------------------------
-
-export function ScannerView({
-  onCode,
-  loading,
-  label = 'Ketik kode bundle',
-  placeholder = 'B-00231',
-  loadingText = 'Mencari bundle...',
-}: {
-  onCode: (code: string) => void;
-  loading: boolean;
-  label?: string;
-  placeholder?: string;
-  loadingText?: string;
-}) {
-  const [manual, setManual] = useState('');
-  const [fineP, setFinePointer] = useState(false);
-  const prefs = useScanPrefs();
-  const camera = prefs ? usesCamera(prefs) : null;
-
-  // Desktop / handheld-scanner stations: keep the field focused so the
-  // scanner's keystrokes + Enter land here. On phones, don't pop the keyboard.
-  useEffect(() => setFinePointer(window.matchMedia('(pointer: fine)').matches), []);
-
-  // Hardware scanners (SUNMI, wedge guns, native bridge) work with no field focused.
-  useScanner((code) => {
-    setManual(''); // a scan into the focused code box replaces what was typed
-    onCode(code);
-  }, !loading);
-
-  return (
-    <div className="mt-2 flex flex-col gap-4">
-      {camera === null ? (
-        <div aria-hidden className="h-40 rounded-xl border border-border bg-surface-muted" />
-      ) : camera ? (
-        <CameraScanner onDetected={(c) => onCode(normalizeScan(c))} paused={loading} />
-      ) : (
-        <HardwareReady loading={loading} />
-      )}
-      {camera !== null && (
-        <div className="-mt-2 flex items-center justify-between text-small">
-          <button
-            type="button"
-            onClick={() => setScanPrefs({ input: camera ? 'scanner' : 'camera' })}
-            className="inline-flex h-10 items-center gap-1.5 text-text-muted hover:text-text"
-          >
-            {camera ? <ScanLine size={16} strokeWidth={1.5} aria-hidden /> : <Camera size={16} strokeWidth={1.5} aria-hidden />}
-            {camera ? 'Pakai tombol scan perangkat' : 'Pakai kamera'}
-          </button>
-          <Link href="/scan/perangkat" className="inline-flex h-10 items-center text-text-muted hover:text-text">
-            Atur perangkat
-          </Link>
-        </div>
-      )}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!manual.trim()) return;
-          onCode(manual);
-          setManual(''); // the view can stay mounted (warehouse: rack -> bundle), start clean
-        }}
-        className="flex flex-col gap-2"
-      >
-        <Label htmlFor="manual-code">{label}</Label>
-        <div className="flex gap-2">
-          <Input
-            id="manual-code"
-            data-scan-field
-            value={manual}
-            onChange={(e) => setManual(e.target.value)}
-            placeholder={placeholder}
-            autoComplete="off"
-            autoCapitalize="characters"
-            enterKeyHint="search"
-            autoFocus={fineP}
-            className="num h-12 sm:h-12"
-          />
-          <Button type="submit" variant="secondary" size="lg" disabled={loading || !manual.trim()}>
-            Cari
-          </Button>
-        </div>
-      </form>
-      {loading && <p className="text-small text-text-muted" aria-live="polite">{loadingText}</p>}
-    </div>
-  );
-}
-
-/** Shown instead of the camera on devices with a built-in or attached scanner. */
-function HardwareReady({ loading }: { loading: boolean }) {
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border-strong bg-surface px-6 py-8 text-center">
-      <ScanReadyArt loading={loading} />
-      <p className="text-h3">{loading ? 'Membaca...' : 'Siap scan'}</p>
-      <p className="text-small text-text-muted">Tekan tombol scan di perangkat, arahkan ke QR di label.</p>
-    </div>
-  );
-}
-
-/**
- * Handheld scanner aiming at a QR label, a laser line sweeping the code.
- * Same palette and soft blob as components/ui/empty-state.tsx.
- */
-function ScanReadyArt({ loading }: { loading: boolean }) {
-  const c = {
-    blob: 'var(--primary-soft)',
-    surface: 'var(--surface)',
-    muted: 'var(--surface-muted)',
-    line: 'var(--border-strong)',
-    primary: 'var(--primary)',
-    laser: 'var(--highlight)',
-  };
-  // QR data modules (x, y, w, h) between the three finder squares
-  const modules = [
-    [108, 30, 4, 4], [108, 38, 4, 4], [116, 42, 4, 4], [124, 48, 4, 4], [108, 50, 4, 4],
-    [116, 56, 4, 4], [124, 60, 4, 4], [108, 62, 8, 4], [120, 52, 4, 4],
-  ];
-  const finders = [
-    [92, 28],
-    [118, 28],
-    [92, 54],
-  ];
-  return (
-    <svg aria-hidden viewBox="0 0 160 104" fill="none" className="h-28 w-44 shrink-0">
-      <ellipse cx="80" cy="95" rx="54" ry="6" style={{ fill: c.muted }} />
-      <circle cx="80" cy="50" r="42" style={{ fill: c.blob }} />
-      <circle cx="132" cy="14" r="3" style={{ fill: c.laser }} opacity=".7" />
-      <circle cx="26" cy="78" r="2.5" style={{ fill: c.primary }} opacity=".35" />
-
-      {/* Beam from the scanner window to the label */}
-      <path
-        d="M63 43 88 26v46L63 55Z"
-        style={{ fill: c.laser }}
-        opacity=".18"
-        className={cn(loading && 'motion-safe:animate-pulse')}
-      />
-
-      {/* Label with QR */}
-      <rect x="86" y="22" width="48" height="58" rx="6" style={{ fill: c.surface, stroke: c.line }} strokeWidth="2" />
-      {finders.map(([x, y]) => (
-        <g key={`${x}-${y}`}>
-          <rect x={x} y={y} width="12" height="12" rx="2" style={{ stroke: c.primary }} strokeWidth="2" />
-          <rect x={x + 4} y={y + 4} width="4" height="4" rx="1" style={{ fill: c.primary }} />
-        </g>
-      ))}
-      {modules.map(([x, y, w, h]) => (
-        <rect key={`${x}-${y}`} x={x} y={y} width={w} height={h} rx="1" style={{ fill: c.primary }} opacity=".85" />
-      ))}
-      <path d="M92 73h18" style={{ stroke: c.line }} strokeWidth="2.5" strokeLinecap="round" />
-      <rect
-        x="89"
-        y="46"
-        width="42"
-        height="2"
-        rx="1"
-        style={{ fill: c.laser }}
-        className={cn('motion-safe:animate-[scan-sweep_2.4s_ease-in-out_infinite]', loading && 'opacity-40')}
-      />
-
-      {/* Handheld scanner */}
-      <path
-        d="M40 57 34 80a3 3 0 0 0 3 4h8a3 3 0 0 0 3-2.5L52 57Z"
-        style={{ fill: c.surface, stroke: c.primary }}
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-      />
-      <rect x="28" y="38" width="38" height="21" rx="7" style={{ fill: c.surface, stroke: c.primary }} strokeWidth="2.5" />
-      <rect x="60" y="43" width="4" height="11" rx="1.5" style={{ fill: c.laser }} />
-      <path d="M36 46h12" style={{ stroke: c.line }} strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M53 60c2 4 1 7-2 8" style={{ stroke: c.primary }} strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
   );
 }
 
@@ -574,15 +416,6 @@ function SuccessView({ result }: { result: ScanResult }) {
       <p className="text-h2">{result.message}</p>
       <p className="text-small">Status sekarang: {STATUS_LABEL[result.status].toLowerCase()}</p>
       {result.status === 'ready_stock' && <p className="text-small">Label pcs masuk antrian cetak.</p>}
-    </div>
-  );
-}
-
-/** Sticky action bar of a task screen. Its [data-scan-task] hides the tab bar (globals.css). */
-export function BottomBar({ children }: { children: React.ReactNode }) {
-  return (
-    <div data-scan-task className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface">
-      <div className="mx-auto w-full max-w-md px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">{children}</div>
     </div>
   );
 }

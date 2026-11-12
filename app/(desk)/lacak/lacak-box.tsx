@@ -117,7 +117,7 @@ export function LacakBox() {
           // the modal body has no bottom padding (forms use a sticky footer), so add it here
           <div className="flex flex-col gap-3 pb-5">
             <p className="text-small text-text-muted">Arahkan ke QR di label pcs, bundle, atau rak. Halamannya langsung terbuka.</p>
-            <CameraScanner onDetected={onScanned} paused={false} fallback="Tutup, lalu ketik kodenya di kolom cari." />
+            <CameraScanner onDetected={onScanned} paused={false} hint="Arahkan ke QR di label" className="aspect-[4/5] max-h-[60dvh] rounded-xl" />
           </div>
         )}
       </Modal>

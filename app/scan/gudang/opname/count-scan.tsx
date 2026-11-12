@@ -12,7 +12,7 @@ import { QtyStepper } from '@/components/ui/qty-stepper';
 import { Badge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
 import { normalizeScan } from '@/lib/scan/normalize';
-import { BottomBar, ScannerView } from '../../scan-app';
+import { BottomBar, ScannerView } from '../../scanner-view';
 import { countCloseRack, countScan, countUndo, countUnlabeled, type CountTally } from './actions';
 
 export type CountRack = { code: string; kind: 'stok' | 'reject'; token: string; status: 'menghitung' | 'ditutup' };
@@ -117,7 +117,7 @@ function PickRack({ count }: { count: OpenCount }) {
         <p className="num font-medium">{count.code}</p>
       </div>
       <p className="mt-2 text-h3">Scan QR rak yang akan dihitung</p>
-      <ScannerView onCode={onCode} loading={false} label="Ketik kode rak" placeholder="A1" loadingText="" />
+      <ScannerView onCode={onCode} loading={false} kinds={['rack']} hint="Scan QR rak yang akan dihitung" className="-mx-4 mt-3" />
       {error && (
         <InlineAlert tone="danger" className="mt-3">
           {error}
@@ -198,7 +198,7 @@ function CountRackView({
     });
 
   return (
-    <main className="flex flex-1 flex-col px-4 pb-32">
+    <main className="flex flex-1 flex-col px-4">
       <div className="mt-3 flex items-center justify-between">
         <Link href={`/scan/gudang/opname?count=${count.id}`} className="inline-flex h-10 items-center gap-1 text-small text-text-muted">
           <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Rak lain
@@ -236,7 +236,7 @@ function CountRackView({
 
       {view === 'scan' && (
         <>
-          <ScannerView onCode={onCode} loading={busy} label="Ketik kode pcs" placeholder="P-0000123" loadingText="Mencatat..." />
+          <ScannerView onCode={onCode} loading={busy} kinds={['piece']} hint="Scan setiap pcs di rak ini" loadingText="Mencatat..." className="-mx-4 mt-3" />
           {tally.last.length > 0 && (
             <section className="mt-4">
               <h2 className="text-small font-medium text-text-muted">Scan terakhir</h2>

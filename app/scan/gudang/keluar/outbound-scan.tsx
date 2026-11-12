@@ -10,7 +10,7 @@ import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import { OUTBOUND_TYPE, SKIP_LABEL, type OutboundProgress, type OutboundType } from '@/lib/outbound';
 import { forgetLastScan } from '@/lib/scan/bus';
-import { BottomBar, ScannerView } from '../../scan-app';
+import { BottomBar, ScannerView } from '../../scanner-view';
 import { EmptyState } from '@/components/ui/empty-state';
 
 export type DraftDoc = { id: string; code: string; type: OutboundType; destination: string; ref_no: string | null; total: number };
@@ -86,7 +86,7 @@ export function OutboundScan({
 
   if (shipped) {
     return (
-      <main className="flex flex-1 flex-col px-4 pb-32">
+      <main className="flex flex-1 flex-col px-4">
         <div role="status" className="mt-4 flex flex-col items-center gap-3 rounded-xl bg-success-soft px-6 py-10 text-center text-success">
           <CircleCheck size={24} strokeWidth={1.5} aria-hidden />
           <p className="text-h2">{shipped}</p>
@@ -139,7 +139,7 @@ export function OutboundScan({
 
   const adjustment = selected.type === 'penyesuaian';
   return (
-    <main className="flex flex-1 flex-col px-4 pb-36">
+    <main className="flex flex-1 flex-col px-4">
       <section className="mt-2 rounded-xl border border-primary bg-primary-soft p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -175,7 +175,7 @@ export function OutboundScan({
         </InlineAlert>
       )}
 
-      <ScannerView onCode={onCode} loading={loading} label="Ketik kode pcs atau bundle" placeholder="P-0000123 atau B-00231" loadingText="Menambahkan..." />
+      <ScannerView onCode={onCode} loading={loading} kinds={['piece', 'bundle']} hint="Scan pcs atau bundle, satu per satu" loadingText="Menambahkan..." className="-mx-4 mt-3" />
 
       <BottomBar>
         {confirming ? (

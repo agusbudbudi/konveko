@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { CameraOff } from 'lucide-react';
+import { CameraOff, Flashlight } from 'lucide-react';
+import { cn } from '@/lib/cn';
 
 // BarcodeDetector is not in the TS DOM lib yet.
 type DetectedBarcode = { rawValue: string };
@@ -50,19 +51,33 @@ async function createDecoder(): Promise<Decoder> {
   };
 }
 
+type CameraError = 'denied' | 'unavailable' | 'failed';
+
+/**
+ * Edge-to-edge camera with the corner guide. Fills its parent (give it a height or flex-1).
+ * `paused` keeps the last frame visible but stops the stream and decoding (a lookup is running).
+ */
 export function CameraScanner({
   onDetected,
   paused,
-  fallback = 'Ketik kode bundle di bawah.',
+  hint = 'Arahkan ke QR di label',
+  actions,
+  className,
 }: {
   onDetected: (code: string) => void;
   paused: boolean;
-  /** What to do instead when the camera cannot be used (shown after the error). */
-  fallback?: string;
+  /** One line over the camera telling what to aim at. */
+  hint?: string;
+  /** Extra controls over the bottom of the camera (left side), e.g. "Pakai scanner". */
+  actions?: React.ReactNode;
+  className?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const onDetectedRef = useRef(onDetected);
-  const [error, setError] = useState<string | null>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
+  const [error, setError] = useState<CameraError | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [torch, setTorch] = useState<{ supported: boolean; on: boolean }>({ supported: false, on: false });
 
   useEffect(() => {
     onDetectedRef.current = onDetected;
@@ -76,7 +91,7 @@ export function CameraScanner({
 
     (async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setError(`Kamera tidak tersedia di perangkat ini. ${fallback}`);
+        setError('unavailable');
         return;
       }
       try {
@@ -85,12 +100,7 @@ export function CameraScanner({
           audio: false,
         });
       } catch (e) {
-        const denied = e instanceof DOMException && e.name === 'NotAllowedError';
-        setError(
-          denied
-            ? `Izin kamera ditolak. Izinkan kamera di pengaturan browser. ${fallback}`
-            : `Kamera tidak bisa dibuka. ${fallback}`,
-        );
+        setError(e instanceof DOMException && e.name === 'NotAllowedError' ? 'denied' : 'failed');
         return;
       }
       if (cancelled) return stream.getTracks().forEach((t) => t.stop());
@@ -99,6 +109,11 @@ export function CameraScanner({
       video.srcObject = stream;
       await video.play().catch(() => {});
       setError(null);
+
+      const track = stream.getVideoTracks()[0] ?? null;
+      trackRef.current = track;
+      const caps = (track?.getCapabilities?.() ?? {}) as { torch?: boolean };
+      setTorch({ supported: caps.torch === true, on: false });
 
       const decode = await createDecoder();
       const tick = async () => {
@@ -120,24 +135,102 @@ export function CameraScanner({
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      trackRef.current = null;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [paused, fallback]);
+  }, [paused, attempt]);
+
+  const toggleTorch = async () => {
+    const track = trackRef.current;
+    if (!track) return;
+    const on = !torch.on;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] });
+      setTorch((t) => ({ ...t, on }));
+    } catch {
+      setTorch({ supported: false, on: false });
+    }
+  };
+
+  if (error) {
+    return (
+      <div className={cn('flex flex-col gap-4 px-4 py-4', className)}>
+        <div className="flex flex-col items-center gap-2.5 rounded-xl bg-surface-muted px-4 py-6 text-center">
+          <span className="flex size-14 items-center justify-center rounded-xl bg-danger-soft text-danger">
+            <CameraOff size={28} strokeWidth={1.75} aria-hidden />
+          </span>
+          <h2 className="text-h2">{error === 'denied' ? 'Kamera belum diizinkan' : 'Kamera tidak bisa dibuka'}</h2>
+          <p className="text-small text-text-muted">
+            {error === 'denied'
+              ? 'Konveko butuh kamera untuk membaca QR label.'
+              : error === 'unavailable'
+                ? 'Perangkat atau browser ini tidak punya kamera yang bisa dipakai.'
+                : 'Mungkin sedang dipakai aplikasi lain. Tutup aplikasi itu lalu coba lagi.'}
+          </p>
+        </div>
+        {error === 'denied' && (
+          <div>
+            <h3 className="mb-1.5 text-h3">Cara mengizinkan di Chrome</h3>
+            <ol className="flex list-decimal flex-col gap-1 pl-5 text-small">
+              <li>Ketuk ikon di kiri alamat web (gembok atau pengaturan).</li>
+              <li>Pilih Izin, lalu Kamera: Izinkan.</li>
+              <li>Kembali ke sini dan ketuk Coba lagi.</li>
+            </ol>
+          </div>
+        )}
+        {error !== 'unavailable' && (
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setAttempt((n) => n + 1);
+            }}
+            className="h-12 rounded-md bg-primary font-semibold text-primary-foreground"
+          >
+            Coba lagi
+          </button>
+        )}
+        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      </div>
+    );
+  }
 
   return (
-    <div className="relative aspect-[4/5] max-h-[60dvh] w-full overflow-hidden rounded-xl border border-border bg-surface-muted">
-      <video ref={videoRef} playsInline muted className="size-full object-cover" />
-      {/* corner guide, the one highlight on this screen (DESIGN §6) */}
-      <div aria-hidden className="pointer-events-none absolute inset-[18%]">
-        {['left-0 top-0 border-l-2 border-t-2', 'right-0 top-0 border-r-2 border-t-2',
-          'left-0 bottom-0 border-l-2 border-b-2', 'right-0 bottom-0 border-r-2 border-b-2'].map((pos) => (
-          <span key={pos} className={`absolute size-8 rounded-sm border-highlight ${pos}`} />
-        ))}
+    <div className={cn('relative min-h-64 w-full overflow-hidden bg-[#2B302D]', className)}>
+      <video ref={videoRef} playsInline muted className={cn('absolute inset-0 size-full object-cover', paused && 'opacity-60')} />
+      {/* corner guide, the one highlight on this screen (DESIGN §6); green while a code is looked up */}
+      <div aria-hidden className="pointer-events-none absolute top-1/2 left-1/2 aspect-square w-[62%] max-w-72 -translate-x-1/2 -translate-y-1/2">
+        {paused ? (
+          <span className="absolute inset-0 rounded-xl border-[3px] border-success" />
+        ) : (
+          ['left-0 top-0 border-l-[3px] border-t-[3px] rounded-tl-md', 'right-0 top-0 border-r-[3px] border-t-[3px] rounded-tr-md',
+            'left-0 bottom-0 border-l-[3px] border-b-[3px] rounded-bl-md', 'right-0 bottom-0 border-r-[3px] border-b-[3px] rounded-br-md'].map((pos) => (
+            <span key={pos} className={`absolute size-9 border-highlight ${pos}`} />
+          ))
+        )}
       </div>
-      {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-muted px-6 text-center text-text-muted">
-          <CameraOff size={24} strokeWidth={1.5} aria-hidden />
-          <p>{error}</p>
+      <p className="absolute inset-x-0 top-3 text-center">
+        <span className={cn('inline-block rounded-md px-3 py-2 text-small font-medium text-white', paused ? 'bg-success' : 'bg-text')}>
+          {paused ? 'QR terbaca' : hint}
+        </span>
+      </p>
+      {(actions || torch.supported) && (
+        <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
+          <div className="flex gap-2">{actions}</div>
+          {torch.supported && (
+            <button
+              type="button"
+              onClick={toggleTorch}
+              aria-pressed={torch.on}
+              className={cn(
+                'inline-flex h-11 items-center gap-2 rounded-md px-3.5 text-small font-medium',
+                torch.on ? 'bg-highlight text-white' : 'bg-surface text-text',
+              )}
+            >
+              <Flashlight size={20} strokeWidth={1.75} aria-hidden />
+              Senter
+            </button>
+          )}
         </div>
       )}
     </div>

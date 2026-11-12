@@ -278,11 +278,6 @@ body {
   to   { opacity: 1; transform: none; }
 }
 
-/* Laser line sweeping over the QR in the "Siap scan" illustration. */
-@keyframes scan-sweep {
-  0%, 100% { transform: translateY(-13px); }
-  50%      { transform: translateY(13px); }
-}
 
 /* Scan app: a task screen (result form, return, rack count) brings its own sticky action bar;
    the bottom tab bar steps aside so nobody switches mode halfway through a task. */

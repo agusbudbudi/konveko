@@ -11,7 +11,7 @@ import { RETURN_REASONS } from '@/lib/outbound';
 import type { WarehouseLookup } from '@/lib/types';
 import { warehouseLookup } from '../actions';
 import { useScanner } from '@/lib/scan/use-scanner';
-import { BottomBar, ScannerView } from '../../scan-app';
+import { BottomBar, ScannerView } from '../../scanner-view';
 
 type Piece = Extract<WarehouseLookup, { kind: 'piece' }>;
 type Phase = { k: 'scan' } | { k: 'loading' } | { k: 'piece'; piece: Piece } | { k: 'error'; message: string } | { k: 'done'; message: string };
@@ -56,9 +56,9 @@ export function ReturnScan({ canWork }: { canWork: boolean }) {
   }
 
   return (
-    <main className="flex flex-1 flex-col px-4 pb-32">
+    <main className="flex flex-1 flex-col px-4">
       {phase.k === 'scan' || phase.k === 'loading' ? (
-        <ScannerView onCode={onCode} loading={phase.k === 'loading'} label="Ketik kode pcs" placeholder="P-0000123" loadingText="Mencari pcs..." />
+        <ScannerView onCode={onCode} loading={phase.k === 'loading'} kinds={['piece']} hint="Scan label pcs yang dikembalikan" loadingText="Mencari pcs..." className="-mx-4 mt-3" />
       ) : phase.k === 'error' ? (
         <>
           <InlineAlert tone="danger" className="mt-4">

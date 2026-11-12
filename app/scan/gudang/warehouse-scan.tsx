@@ -7,7 +7,7 @@ import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import type { PutawayResult, WarehouseLookup } from '@/lib/types';
 import { useScanner } from '@/lib/scan/use-scanner';
-import { BottomBar, ScannerView } from '../scan-app';
+import { BottomBar, ScannerView } from '../scanner-view';
 import { putaway, warehouseLookup } from './actions';
 
 type Rack = Extract<WarehouseLookup, { kind: 'location' }>;
@@ -110,7 +110,7 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
   }, [phase, reset]);
 
   return (
-    <main className="flex flex-1 flex-col px-4 pb-32">
+    <main className="flex flex-1 flex-col px-4">
       <RackCard rack={rack} onClear={clearRack} />
 
       {!canShelve && (
@@ -132,9 +132,10 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
           <ScannerView
             onCode={onCode}
             loading={phase.k === 'loading'}
-            label={rack ? 'Ketik kode bundle atau pcs' : 'Ketik kode rak'}
-            placeholder={rack ? 'B-00231 atau P-0000123' : 'A1'}
+            kinds={rack ? ['bundle', 'piece', 'rack'] : ['rack']}
+            hint={rack ? `Scan bundle atau pcs untuk masuk ke ${rack.code}` : 'Scan QR rak dulu'}
             loadingText="Mencari..."
+            className="-mx-4 mt-3"
           />
         </>
       ) : phase.k === 'error' ? (

@@ -1,6 +1,7 @@
 export type MovementType =
   | 'cut'
   | 'split'
+  | 'rework'
   | 'receive_sew'
   | 'finish_sew'
   | 'receive_finishing'
@@ -10,6 +11,7 @@ export type MovementType =
 export const MOVEMENT_LABEL: Record<MovementType, string> = {
   cut: 'Potong',
   split: 'Pecah',
+  rework: 'Masuk rework',
   receive_sew: 'Terima jahit',
   finish_sew: 'Selesai jahit',
   receive_finishing: 'Terima finishing',
@@ -29,6 +31,7 @@ export function qtySummary(type: MovementType, m: QtyFields): string {
   switch (type) {
     case 'cut':
     case 'split':
+    case 'rework':
       return `${m.qty_sent} pcs`;
     case 'receive_sew':
     case 'receive_finishing': {

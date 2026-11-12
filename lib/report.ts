@@ -14,6 +14,10 @@ export type ReportTotals = {
   selisih_events: number;
   shelved: number;
   flags_open: number;
+  /** Rework: pcs sent to rework, and the rework bundles' finishing result (repaired returns included). */
+  reworked: number;
+  rework_good: number;
+  rework_reject: number;
 };
 
 export type Report = {
@@ -256,6 +260,12 @@ export function buildInsights(r: Report, prev: Report): Insight[] {
       tone: rate >= 5 || diff >= 1 ? 'warning' : 'info',
       text: `Reject ${n1(rate)}% (${reject} pcs: ${t.sew_reject} di jahit, ${t.qc_reject} di QC)${cmp}.`,
     });
+    if (t.reworked > 0 || t.rework_good > 0) {
+      out.push({
+        tone: 'info',
+        text: `${t.reworked} pcs dikirim ke rework, ${t.rework_good} pcs hasil rework lolos QC${t.rework_reject > 0 ? `, ${t.rework_reject} tetap reject` : ''}.`,
+      });
+    }
     const top = [...r.reject_reasons].sort((a, b) => b.qty - a.qty)[0];
     if (top) out.push({ tone: 'info', text: `Alasan reject terbanyak: ${top.label.toLowerCase()} (${top.qty} pcs, ${n1(pct(top.qty, reject))}% dari reject).` });
   } else if (t.ready > 0) {

@@ -29,6 +29,7 @@ type BundleRow = {
   wip_dikerjakan: number;
   ref_qty: number;
   variant_id: string;
+  rework_of_bundle_id: string | null;
 };
 
 export default async function BatchDetailPage({
@@ -57,7 +58,9 @@ export default async function BatchDetailPage({
       .select('id, parent_bundle_id, holder:holder!bundle_current_holder_id_fkey(name), batch:production_batch(fabric_roll(code, material, color))')
       .eq('batch_id', id),
   ]);
-  const batch = batchRes.data as (Recon & { code: string; status: keyof typeof BATCH_STATUS; open_discrepancies: number }) | null;
+  const batch = batchRes.data as
+    | (Recon & { code: string; status: keyof typeof BATCH_STATUS; open_discrepancies: number; reject_awal: number; reworked: number })
+    | null;
   if (!batch) notFound();
 
   const bundles = (bundleRes.data ?? []) as BundleRow[];
@@ -121,6 +124,12 @@ export default async function BatchDetailPage({
         <div className="mt-4 flex flex-col gap-3">
           <ReconciliationBar r={batch} />
           <ReconciliationLegend r={batch} />
+          {batch.reworked > 0 && (
+            <p className="text-small text-text-muted">
+              Reject tercatat <span className="num text-text">{batch.reject_awal}</span> pcs,{' '}
+              <span className="num text-info">{batch.reworked}</span> dikirim ke rework. Hasil rework sudah ikut di angka di atas.
+            </p>
+          )}
         </div>
       </section>
 
@@ -159,6 +168,9 @@ export default async function BatchDetailPage({
                   <td className="px-5 py-3 max-md:p-0">
                     <Link href={`/bundle/${b.bundle_id}`} className="num link-code">{b.code}</Link>
                     {parentCode && <p className="text-small text-text-muted">dari {parentCode}</p>}
+                    {b.rework_of_bundle_id && (
+                      <p className="text-small text-info">rework dari {codeById.get(b.rework_of_bundle_id) ?? '-'}</p>
+                    )}
                   </td>
                   <td className="px-5 py-3 max-md:col-span-2 max-md:row-start-2 max-md:p-0">
                     {v ? `${v.product_name} ${v.size} · ${v.color}` : '-'}
@@ -176,7 +188,7 @@ export default async function BatchDetailPage({
                         {canEdit && b.status === 'siap_jahit' && !extra?.parent_bundle_id && (
                           <EditBundleButton code={b.code} qty={b.target_qty} variantId={b.variant_id} variants={allVariants} />
                         )}
-                        {canProduce && b.status === 'siap_jahit' && b.target_qty >= 2 && (
+                        {canProduce && b.status === 'siap_jahit' && b.target_qty >= 2 && !b.rework_of_bundle_id && (
                           <SplitButton code={b.code} qty={b.target_qty} />
                         )}
                         <Link

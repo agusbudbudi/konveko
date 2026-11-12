@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { Printer } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/status-badge';
-import { createClient } from '@/lib/supabase/server';
+import { ReworkButton } from '@/components/rework/rework-button';
+import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import { SetCrumb } from '@/components/nav/sidebar-nav';
 import { PageHeader } from '@/components/ui/page-header';
 
@@ -15,7 +16,7 @@ type Piece = {
   id: string;
   code: string;
   grade: 'baik' | 'reject';
-  status: 'aktif' | 'batal' | 'keluar';
+  status: 'aktif' | 'batal' | 'keluar' | 'rework';
   condition: 'baik' | 'rusak';
   outbound: { id: string; code: string; destination: string } | null;
   printed_at: string | null;
@@ -24,14 +25,26 @@ type Piece = {
   bundle_id: string;
   finish_movement_id: string;
   variant: { sku: string; product_name: string; size: string; color: string } | null;
-  bundle: { code: string } | null;
+  bundle: { code: string; origin: { id: string; code: string } | null } | null;
   batch: { id: string; code: string; roll: { code: string; material: string; color: string } | null } | null;
   location: { code: string } | null;
 };
 
 type Event = {
   id: string;
-  type: 'dibuat' | 'cetak' | 'masuk_rak' | 'pindah_rak' | 'keluar_rak' | 'batal' | 'dipesan' | 'lepas_pesan' | 'keluar' | 'retur';
+  type:
+    | 'dibuat'
+    | 'cetak'
+    | 'masuk_rak'
+    | 'pindah_rak'
+    | 'keluar_rak'
+    | 'batal'
+    | 'dipesan'
+    | 'lepas_pesan'
+    | 'keluar'
+    | 'retur'
+    | 'rework'
+    | 'batal_rework';
   doc: { id: string; code: string } | null;
   note: string | null;
   created_by: string;
@@ -51,6 +64,8 @@ const EVENT_LABEL: Record<Event['type'], string> = {
   lepas_pesan: 'Dilepas dari dokumen',
   keluar: 'Keluar gudang',
   retur: 'Retur',
+  rework: 'Dikirim ke rework',
+  batal_rework: 'Rework dibatalkan',
 };
 
 const when = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
@@ -61,7 +76,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
   const select =
     'id, code, grade, status, condition, printed_at, print_count, created_at, bundle_id, finish_movement_id, ' +
     'outbound:outbound!piece_outbound_id_fkey(id, code, destination), ' +
-    'variant:product_variant(sku, product_name, size, color), bundle:bundle(code), ' +
+    'variant:product_variant(sku, product_name, size, color), bundle:bundle(code, origin:bundle!rework_of_bundle_id(id, code)), ' +
     'batch:production_batch(id, code, roll:fabric_roll(code, material, color)), location:location(code)';
   const byToken = /^[0-9a-f]{32}$/.test(raw);
   const { data } = await supabase
@@ -88,7 +103,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
   }
   const p = data as unknown as Piece;
 
-  const [{ data: moves }, { data: evs }] = await Promise.all([
+  const [{ data: moves }, { data: evs }, { data: rw }, user] = await Promise.all([
     supabase
       .from('effective_movement')
       .select('id, type, to_holder_id, reason_id, scanned_at')
@@ -99,7 +114,23 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
       .select('id, type, note, created_by, created_at, from:location!piece_event_from_location_id_fkey(code), to:location!piece_event_to_location_id_fkey(code), doc:outbound(id, code)')
       .eq('piece_id', p.id)
       .order('seq', { ascending: false }),
+    // the rework bundle this pcs went into (a cancelled one does not count)
+    supabase
+      .from('bundle_rework_piece')
+      .select('bundle:bundle(id, code, cancelled_at)')
+      .eq('piece_id', p.id),
+    getCurrentAppUser(),
   ]);
+  const reworkBundle =
+    ((rw ?? []) as unknown as { bundle: { id: string; code: string; cancelled_at: string | null } | null }[])
+      .map((r) => r.bundle)
+      .find((b) => b && !b.cancelled_at) ?? null;
+  const finishType = (moves ?? []).find((m) => m.id === p.finish_movement_id)?.type;
+  const canRework =
+    (user?.roles.some((r) => r === 'supervisor' || r === 'admin') ?? false) &&
+    p.status === 'aktif' &&
+    !p.outbound &&
+    (p.grade === 'reject' || p.condition === 'rusak');
   const events = (evs ?? []) as unknown as Event[];
 
   const holderIds = [...new Set((moves ?? []).map((m) => m.to_holder_id).filter(Boolean))];
@@ -135,6 +166,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
             {p.condition === 'rusak' && <Badge tone="danger">Rusak (retur)</Badge>}
             {p.status === 'batal' && <Badge tone="neutral">Dibatalkan</Badge>}
             {p.status === 'keluar' && <Badge tone="info">Keluar</Badge>}
+            {p.status === 'rework' && <Badge tone="info">Di rework</Badge>}
           </>
         }
         description={
@@ -143,13 +175,26 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
           </>
         }
         actions={
-          p.status !== 'batal' && (
-            <Link
-              href={`/print/pieces?piece=${p.id}`}
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
-            >
-              <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak ulang label
-            </Link>
+          (p.status === 'aktif' || p.status === 'keluar') && (
+            <div className="flex flex-wrap gap-2">
+              {canRework && (
+                <ReworkButton
+                  candidates={[
+                    {
+                      code: p.code,
+                      source: p.grade === 'baik' ? 'retur' : finishType === 'finish_sew' ? 'jahit' : 'finishing',
+                      where: p.location?.code ?? null,
+                    },
+                  ]}
+                />
+              )}
+              <Link
+                href={`/print/pieces?piece=${p.id}`}
+                className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 font-medium hover:border-border-strong"
+              >
+                <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak ulang label
+              </Link>
+            </div>
           )
         }
       />
@@ -170,6 +215,18 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
                     {p.outbound.code}
                   </Link>{' '}
                   · {p.outbound.destination}
+                </>
+              ) : p.status === 'rework' ? (
+                <>
+                  Di rework{' '}
+                  {reworkBundle ? (
+                    <Link href={`/bundle/${reworkBundle.id}`} className="num link-code">
+                      {reworkBundle.code}
+                    </Link>
+                  ) : (
+                    '-'
+                  )}
+                  <span className="block text-small text-text-muted">Label ini tidak berlaku lagi.</span>
                 </>
               ) : p.status === 'batal' ? (
                 '-'
@@ -199,12 +256,21 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
               <Link href={`/bundle/${p.bundle_id}`} className="num link-code">
                 {p.bundle?.code}
               </Link>
+              {p.bundle?.origin && (
+                <span className="text-small text-text-muted">
+                  {' '}
+                  · hasil rework dari{' '}
+                  <Link href={`/bundle/${p.bundle.origin.id}`} className="num link-code">
+                    {p.bundle.origin.code}
+                  </Link>
+                </span>
+              )}
             </Row>
             <Row label="Penjahit">{holderOf('receive_sew')}</Row>
             <Row label="Finishing">{holderOf('receive_finishing')}</Row>
             {p.grade === 'reject' && (
               <Row label="Reject di">
-                {(moves ?? []).find((m) => m.id === p.finish_movement_id)?.type === 'finish_sew' ? 'Jahit' : 'QC finishing'}
+                {finishType === 'finish_sew' ? 'Jahit' : 'QC finishing'}
                 {reason ? ` · ${reason.label}` : ''}
               </Row>
             )}
@@ -232,6 +298,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
                       </span>
                     )}
                     {e.type === 'keluar_rak' && e.from && <span className="num"> {e.from.code}</span>}
+                    {e.type === 'batal_rework' && e.to && <span className="num">, kembali ke rak {e.to.code}</span>}
                     {e.doc && ['dipesan', 'lepas_pesan', 'keluar', 'retur'].includes(e.type) && (
                       <>
                         {' '}

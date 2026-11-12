@@ -24,6 +24,7 @@ const TABS = [
   { key: 'belum', label: 'Belum di rak' },
   { key: 'reject', label: 'Reject' },
   { key: 'keluar', label: 'Keluar' },
+  { key: 'rework', label: 'Di rework' },
   { key: 'batal', label: 'Dibatalkan' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
@@ -34,7 +35,7 @@ type Row = {
   id: string;
   code: string;
   grade: 'baik' | 'reject';
-  status: 'aktif' | 'batal' | 'keluar';
+  status: 'aktif' | 'batal' | 'keluar' | 'rework';
   condition: 'baik' | 'rusak';
   outbound: { id: string; code: string } | null;
   created_at: string;
@@ -85,6 +86,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
     if (reasonMoveIds) x = x.in('finish_movement_id', reasonMoveIds.length ? reasonMoveIds : [NONE]);
     if (t === 'batal') return x.eq('status', 'batal');
     if (t === 'keluar') return x.eq('status', 'keluar');
+    if (t === 'rework') return x.eq('status', 'rework');
     x = x.eq('status', 'aktif');
     if (t === 'rak') x = x.not('location_id', 'is', null);
     if (t === 'belum') x = x.is('location_id', null);
@@ -189,6 +191,8 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
                         <Badge tone="neutral">Dibatalkan</Badge>
                       ) : r.status === 'keluar' ? (
                         <Badge tone="info">Keluar</Badge>
+                      ) : r.status === 'rework' ? (
+                        <Badge tone="info">Di rework</Badge>
                       ) : r.grade === 'reject' || r.condition === 'rusak' ? (
                         <Badge tone="danger">{r.grade === 'reject' ? 'Reject' : 'Rusak'}</Badge>
                       ) : (

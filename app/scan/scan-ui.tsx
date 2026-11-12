@@ -81,9 +81,10 @@ export function BigStepper({
           onChange(digits === '' ? 0 : clamp(Number(digits)));
         }}
         aria-invalid={invalid || undefined}
+        // inline size: globals.css forces fields to 16px on phones (iOS zoom guard) and would beat a text-* class
+        style={{ fontSize: inline ? 32 : 40, lineHeight: inline ? '40px' : '48px' }}
         className={cn(
           'num w-full min-w-0 bg-transparent text-center font-semibold outline-none focus-visible:outline-none',
-          inline ? 'text-[32px]' : 'text-[40px]',
           tone === 'danger' && value > 0 ? 'text-danger' : 'text-text',
         )}
       />

@@ -105,7 +105,10 @@ export function KeypadEntry({
               autoComplete="off"
               enterKeyHint="go"
               placeholder={isRack ? 'A1' : ''}
-              className="num w-full min-w-0 bg-transparent pl-0.5 text-[32px] font-semibold uppercase outline-none placeholder:text-text-subtle focus-visible:outline-none"
+              // inline size: globals.css forces fields to 16px on phones (iOS zoom guard) and would
+              // beat a text-* class; 32px is above that threshold anyway
+              style={{ fontSize: 32, lineHeight: '40px' }}
+              className="num w-full min-w-0 bg-transparent pl-0.5 font-semibold uppercase outline-none placeholder:text-text-subtle focus-visible:outline-none"
             />
           </div>
           <p className="mt-2 text-small text-text-muted" aria-live="polite">

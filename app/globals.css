@@ -286,8 +286,10 @@ body {
 }
 
 /* Scan app: a task screen (result form, return, rack count) brings its own sticky action bar;
-   the bottom tab bar steps aside so nobody switches mode halfway through a task. */
-body:has([data-scan-task]) [data-scan-nav] {
+   the bottom tab bar steps aside so nobody switches mode halfway through a task. The code keypad
+   fills the bottom of the screen itself, so the tab bar steps aside then too. */
+body:has([data-scan-task]) [data-scan-nav],
+body:has([data-keypad]) [data-scan-nav] {
   display: none;
 }
 /* ...and while the code keypad is open, the task bar steps aside too so it does not cover the keys. */

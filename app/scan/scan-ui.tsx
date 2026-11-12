@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Check, CircleX, Minus, Plus, ScanLine } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { BottomBar } from './scanner-view';
 
 /** Row under the app header on a task screen: a way back and what this screen does. */
 export function TaskHeader({ title, backLabel = 'Batal', onBack }: { title: string; backLabel?: string; onBack: () => void }) {
@@ -185,7 +186,7 @@ export function RejectedPanel({
 }: {
   message: string;
   children?: React.ReactNode;
-  /** Shows "Scan lagi" under the panel. It sits in the page, not a sticky bar, so the tab bar stays. */
+  /** Shows "Scan lagi" in the bottom action bar (the tab bar steps aside, like on other task screens). */
   onRescan?: () => void;
 }) {
   return (
@@ -207,9 +208,7 @@ export function RejectedPanel({
       </p>
     </section>
     {onRescan && (
-      // Pushed to the bottom of the page and stuck right above the tab bar (h-16 + safe area).
-      // Needs to be a direct child of the page's flex column <main>.
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-auto border-t border-border bg-surface px-4 pt-3 pb-3">
+      <BottomBar>
         <button
           type="button"
           onClick={onRescan}
@@ -218,7 +217,7 @@ export function RejectedPanel({
         >
           <ScanLine size={22} strokeWidth={1.75} aria-hidden /> Scan lagi
         </button>
-      </div>
+      </BottomBar>
     )}
     </>
   );

@@ -33,7 +33,6 @@ const RECENT_KEY = 'konveko:gudang-recent';
 export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
   const [rack, setRack] = useState<Rack | null>(null);
   const [phase, setPhase] = useState<Phase>({ k: 'scan' });
-  const [notice, setNotice] = useState<string | null>(null);
   const [recent, setRecent] = useState<RecentScan[]>([]);
   // Code of the bundle/pcs that was open when "Ganti rak" was tapped: reopened
   // once the new rack is scanned, so it does not have to be scanned again.
@@ -55,7 +54,6 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
 
   const chooseRack = (r: Rack) => {
     setRack(r);
-    setNotice(`Rak aktif: ${r.code}`);
     try {
       localStorage.setItem(RACK_KEY, r.code);
     } catch {}
@@ -70,7 +68,6 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
     async (raw: string) => {
       if (busy.current) return;
       busy.current = true;
-      setNotice(null);
       setPhase({ k: 'loading' });
       const res = await warehouseLookup(raw);
       if (!res.ok) return setPhase({ k: 'error', message: res.message });
@@ -94,7 +91,6 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
   const clearRack = () => {
     if (phase.k === 'item') setPending(phase.item.code);
     setRack(null);
-    setNotice(null);
     try {
       localStorage.removeItem(RACK_KEY);
     } catch {}
@@ -123,13 +119,8 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
 
       {phase.k === 'scan' || phase.k === 'loading' ? (
         <>
-          {notice && (
-            <InlineAlert tone="success" className="mt-3">
-              {notice}
-            </InlineAlert>
-          )}
           {pending && !rack && (
-            <InlineAlert tone="info" className="mt-3">
+            <InlineAlert tone="info" className="my-3">
               Scan QR rak baru. <span className="num">{pending}</span> akan dibuka lagi setelah rak dipilih.
             </InlineAlert>
           )}
@@ -140,7 +131,7 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
             kinds={rack ? ['bundle', 'piece', 'rack'] : ['rack']}
             hint={rack ? `Scan bundle atau pcs untuk masuk ke ${rack.code}` : 'Scan QR rak dulu'}
             loadingText="Mencari..."
-            className="-mx-4 mt-3"
+            className="-mx-4"
           />
         </>
       ) : phase.k === 'error' ? (

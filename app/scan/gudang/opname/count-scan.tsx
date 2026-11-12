@@ -75,7 +75,7 @@ function PickCount({ counts }: { counts: OpenCount[] }) {
       </div>
       {counts.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border-strong bg-surface">
-          <EmptyState variant="rack" compact hint="Buat dulu di desk: Gudang → Stok opname.">
+          <EmptyState variant="count" compact hint="Buat dulu di desk: Gudang → Stok opname.">
             Belum ada stok opname yang sedang dihitung.
           </EmptyState>
         </div>

@@ -174,7 +174,7 @@ describe('stock count: full flow', () => {
 
     // unlocked: normal work again, stok awal pieces print and sell like any other
     await rpc(db, ids.gudang, 'putaway', { p_location: 'RJ1', p_code: rej[0].code });
-    await rpc(db, ids.finishing, 'mark_printed', { p_piece_ids: awal.map((p) => p.id) });
+    await rpc(db, ids.gudang, 'mark_printed', { p_piece_ids: awal.map((p) => p.id) }); // gudang labels stok awal
     const sale = await rpc(db, ids.gudang, 'outbound_create', {
       p_type: 'jual', p_destination: 'Toko', p_ref_no: null, p_note: null, p_plan: null,
     });

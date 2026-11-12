@@ -21,7 +21,8 @@ import {
   type Period,
   type Report,
 } from '@/lib/report';
-import { getCurrentAppUser } from '@/lib/supabase/server';
+import { accuracy } from '@/lib/stock-count';
+import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import { PeriodPicker } from './period-picker';
 import { TrendChart } from './trend-chart';
 import { MeterBar } from '@/components/ui/meter-bar';
@@ -43,6 +44,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
     callRpc<OutboundReport>('outbound_report', { p_from: period.from, p_to: period.to }),
     callRpc<OutboundReport>('outbound_report', { p_from: period.prevFrom, p_to: period.prevTo }),
   ]);
+  const counts = await stockCountsIn(period.from, period.to);
 
   return (
     <>
@@ -79,6 +81,46 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
           out={out.ok ? out.data : null}
           outPrev={outPrev.ok ? outPrev.data : null}
         />
+      )}
+      {cur.ok && prev.ok && counts && <StockCountSection c={counts} />}
+    </>
+  );
+}
+
+type CountSummary = { counts: number; racks: number; expected: number; matched: number; missing: number; unlabeled: number };
+
+/** Fase 2c: stock counts approved in the period (Asia/Jakarta days, inclusive), summed over their racks. */
+async function stockCountsIn(from: string, to: string): Promise<CountSummary | null> {
+  const end = new Date(`${to}T00:00:00+07:00`);
+  end.setUTCDate(end.getUTCDate() + 1);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('stock_count')
+    .select('id, racks:stock_count_location(expected, matched, missing, unlabeled)')
+    .eq('status', 'disetujui')
+    .gte('approved_at', `${from}T00:00:00+07:00`)
+    .lt('approved_at', end.toISOString());
+  if (error) return null;
+  const rows = (data ?? []) as { racks: { expected: number | null; matched: number | null; missing: number | null; unlabeled: number | null }[] }[];
+  const racks = rows.flatMap((r) => r.racks);
+  const sum = (k: 'expected' | 'matched' | 'missing' | 'unlabeled') => racks.reduce((n, x) => n + (x[k] ?? 0), 0);
+  return { counts: rows.length, racks: racks.length, expected: sum('expected'), matched: sum('matched'), missing: sum('missing'), unlabeled: sum('unlabeled') };
+}
+
+function StockCountSection({ c }: { c: CountSummary }) {
+  return (
+    <>
+      <h2 className="mt-8 text-h2">Stok opname</h2>
+      <p className="text-small text-text-muted">Opname yang disetujui di periode ini.</p>
+      {c.counts === 0 ? (
+        <p className="mt-4 rounded-lg border border-border bg-surface px-5 py-4 text-text-muted">Belum ada stok opname yang disetujui di periode ini.</p>
+      ) : (
+        <section className="mt-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <Stat label="Rak dihitung" value={c.racks} unit="rak" context={`${c.counts} opname`} delta={null} />
+          <Stat label="Akurasi" value={accuracy(c.matched, c.expected)} context={`${c.matched} dari ${c.expected} pcs cocok`} delta={null} />
+          <Stat label="Hilang" value={c.missing} unit="pcs" warn={c.missing > 0} context="keluar lewat penyesuaian" delta={null} />
+          <Stat label="Stok awal" value={c.unlabeled} unit="pcs" context="barang tanpa label yang didaftarkan" delta={null} />
+        </section>
       )}
     </>
   );

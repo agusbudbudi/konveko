@@ -30,16 +30,16 @@ const MAX = 500;
  *   ?bundle=<id>             not printed yet in one bundle
  *   ?bundle=<id>&all=1       reprint every active piece of a bundle
  *   ?piece=<id>              reprint one piece (also one that left the warehouse)
- *   ?count=<id>              not printed yet among the stok awal pieces of one stock count
+ *   ?count=<id>[&rak=<id>]   not printed yet among the stok awal pieces of one stock count (one rack)
  */
 export default async function PrintPiecesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pending?: string; bundle?: string; all?: string; piece?: string; count?: string }>;
+  searchParams: Promise<{ pending?: string; bundle?: string; all?: string; piece?: string; count?: string; rak?: string }>;
 }) {
   const user = await getCurrentAppUser();
   if (!user) redirect('/login');
-  const { pending, bundle, all, piece, count } = await searchParams;
+  const { pending, bundle, all, piece, count, rak } = await searchParams;
 
   const supabase = await createClient();
   let q = supabase
@@ -53,7 +53,10 @@ export default async function PrintPiecesPage({
   else if (bundle && UUID.test(bundle)) {
     q = q.eq('bundle_id', bundle).eq('status', 'aktif');
     if (all !== '1') q = q.is('printed_at', null);
-  } else if (count && UUID.test(count)) q = q.eq('stock_count_id', count).eq('status', 'aktif').is('printed_at', null);
+  } else if (count && UUID.test(count)) {
+    q = q.eq('stock_count_id', count).eq('status', 'aktif').is('printed_at', null);
+    if (rak && UUID.test(rak)) q = q.eq('location_id', rak);
+  }
   else if (pending === '1') q = q.eq('status', 'aktif').is('printed_at', null);
   else notFound();
 
@@ -87,7 +90,7 @@ export default async function PrintPiecesPage({
     })),
   );
 
-  const canMark = user.roles.some((r) => r === 'finishing' || r === 'supervisor' || r === 'admin');
+  const canMark = user.roles.some((r) => r === 'finishing' || r === 'gudang' || r === 'supervisor' || r === 'admin');
 
   return (
     <div className="print-root">

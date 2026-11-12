@@ -5,6 +5,7 @@ import { roleChip, scanNavKind } from '@/lib/scan/nav';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
 import { OnlineStatus } from './online-status';
 import { ScanNav } from './scan-nav';
+import { ScanToaster } from './scan-toaster';
 
 export const metadata: Metadata = { title: 'Scan' };
 
@@ -32,6 +33,7 @@ export default async function ScanLayout({ children }: { children: React.ReactNo
         </span>
       </header>
       {children}
+      <ScanToaster />
       <ScanNav kind={scanNavKind(user.roles)} />
     </div>
   );

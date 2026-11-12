@@ -10,6 +10,7 @@ import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import { OUTBOUND_TYPE, SKIP_LABEL, type OutboundProgress, type OutboundType } from '@/lib/outbound';
 import { forgetLastScan } from '@/lib/scan/bus';
+import { toast } from '@/lib/scan/toast';
 import { BottomBar, ScannerView } from '../../scanner-view';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -36,7 +37,6 @@ export function OutboundScan({
   const router = useRouter();
   const [progress, setProgress] = useState(initialProgress);
   const [total, setTotal] = useState(selected?.total ?? 0);
-  const [result, setResult] = useState<{ tone: 'success' | 'warning' | 'danger'; text: string } | null>(null);
   const [lastPiece, setLastPiece] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -56,7 +56,7 @@ export function OutboundScan({
       setLoading(false);
       if (!res.ok) {
         navigator.vibrate?.([40, 60, 40]);
-        return setResult({ tone: 'danger', text: res.message });
+        return toast('danger', res.message);
       }
       navigator.vibrate?.(60);
       const d = res.data;
@@ -68,10 +68,7 @@ export function OutboundScan({
       const skipped = Object.entries(d.skipped)
         .map(([k, n]) => `${n} ${SKIP_LABEL[k] ?? k}`)
         .join(', ');
-      setResult({
-        tone: d.warning ? 'warning' : 'success',
-        text: [d.message, skipped && `Dilewati: ${skipped}.`, d.warning].filter(Boolean).join(' '),
-      });
+      toast(d.warning ? 'warning' : 'success', [d.message, skipped && `Dilewati: ${skipped}.`, d.warning].filter(Boolean).join(' '));
     },
     [selected, loading],
   );
@@ -179,12 +176,6 @@ export function OutboundScan({
         )}
       </section>
 
-      {result && (
-        <InlineAlert tone={result.tone} className="my-3">
-          {result.text}
-        </InlineAlert>
-      )}
-
       <ScannerView onCode={onCode} loading={loading} kinds={['piece', 'bundle']} hint="Scan pcs atau bundle, satu per satu" loadingText="Menambahkan..." className="-mx-4" />
 
       <BottomBar>
@@ -206,7 +197,7 @@ export function OutboundScan({
                     const res = await shipOutbound(selected.id);
                     if (!res.ok) {
                       setConfirming(false);
-                      return setResult({ tone: 'danger', text: res.message });
+                      return toast('danger', res.message);
                     }
                     navigator.vibrate?.(120);
                     setShipped(res.data.message);
@@ -228,13 +219,13 @@ export function OutboundScan({
                 onClick={() =>
                   start(async () => {
                     const res = await removeFromOutbound(selected.id, lastPiece);
-                    if (!res.ok) return setResult({ tone: 'danger', text: res.message });
+                    if (!res.ok) return toast('danger', res.message);
                     setProgress(res.data.progress);
                     setTotal(res.data.total);
                     setLastPiece(null);
                     last.current = null;
                     forgetLastScan(); // the same label can go in again right away
-                    setResult({ tone: 'success', text: res.data.message });
+                    toast('success', res.data.message);
                   })
                 }
               >

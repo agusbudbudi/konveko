@@ -14,12 +14,15 @@ const variant = { sku: 'KMJ-PTH-M', product_name: 'Kemeja', size: 'M', color: 'P
 const base = { batch_code: 'BT-0001', variant, last_movement_at: new Date().toISOString(), version: 1, children: null, rework: null };
 
 // B-00001 siap jahit, B-00002 sedang dijahit oleh user ini,
-// B-00003 sudah stok, B-00004 menunggu finishing (role lain), B-00005 rework siap jahit
+// B-00003 sudah stok, B-00004 menunggu finishing (role lain), B-00005 rework siap jahit,
+// B-00006 terima gagal karena sudah diterima orang lain
 const fixtures: Record<string, LookupResult> = {
   'B-00001': { ...base, bundle_id: '1', code: 'B-00001', status: 'siap_jahit', ref_qty: 20, holder_name: 'Tim produksi', next_action: 'terima', allowed: true, message: null },
   'B-00002': { ...base, bundle_id: '2', code: 'B-00002', status: 'proses_jahit', ref_qty: 19, holder_name: 'Ani', next_action: 'selesai', allowed: true, message: null },
   'B-00003': { ...base, bundle_id: '3', code: 'B-00003', status: 'ready_stock', ref_qty: 17, holder_name: 'Tim finishing', next_action: null, allowed: false, message: 'Bundle B-00003 sudah selesai finishing (Ready stock), belum masuk rak. Langkah berikutnya: gudang cetak label pcs lalu simpan ke rak.' },
   'B-00004': { ...base, bundle_id: '4', code: 'B-00004', status: 'siap_finishing', ref_qty: 18, holder_name: 'Ani', next_action: 'terima', allowed: false, message: 'Bundle B-00004 berstatus siap finishing. Langkah berikutnya untuk finishing.' },
+  // receive fails: someone else got there first (version conflict)
+  'B-00006': { ...base, bundle_id: '6', code: 'B-00006', status: 'siap_jahit', ref_qty: 20, holder_name: 'Tim produksi', next_action: 'terima', allowed: true, message: null },
   'B-00005': { ...base, bundle_id: '5', code: 'B-00005', status: 'siap_jahit', ref_qty: 2, holder_name: null, next_action: 'terima', allowed: true, message: null, rework: { of_code: 'B-00001', source: 'jahit', start_step: 'jahit', note: 'Jahitan lepas di bahu' } },
 };
 
@@ -33,6 +36,9 @@ const mock: ScanActions = {
   },
   async receive({ code, qtyReceived }) {
     await wait();
+    if (code === 'B-00006') {
+      return { ok: false, message: 'Bundle B-00006 sudah diterima oleh Budi tadi. Data di layar ini sudah lama.', code: 'version_conflict' };
+    }
     const b = fixtures[code];
     const diff = b.ref_qty - qtyReceived;
     return {

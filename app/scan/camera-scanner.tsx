@@ -190,7 +190,7 @@ export function CameraScanner({
             Coba lagi
           </button>
         )}
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        {actions && <div className="flex flex-col gap-2 [&>*]:h-12 [&>*]:w-full [&>*]:justify-center">{actions}</div>}
       </div>
     );
   }

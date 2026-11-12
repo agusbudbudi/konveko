@@ -61,11 +61,11 @@ export function ScanNav({ kind }: { kind: ScanNavKind }) {
                 href={it.href}
                 aria-current={on ? 'page' : undefined}
                 className={cn(
-                  'flex h-full flex-col items-center justify-center gap-0.5 text-caption',
+                  'flex h-full flex-col items-center justify-center gap-0 text-caption',
                   on ? 'font-semibold text-primary' : 'font-medium text-text-muted hover:text-text',
                 )}
               >
-                <span className={cn('flex h-7 w-12 items-center justify-center rounded-md', on && 'bg-primary-soft')}>
+                <span className={cn('flex size-9 items-center justify-center rounded-md', on && 'bg-primary-soft')}>
                   <Icon size={20} strokeWidth={1.75} aria-hidden />
                 </span>
                 {it.label}

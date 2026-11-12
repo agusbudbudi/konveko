@@ -141,7 +141,7 @@ function HardwareReady({ loading }: { loading: boolean }) {
   return (
     <div className="px-4 pt-4 pb-3">
       <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-primary bg-primary-soft py-3 pr-4 pl-2">
-        <ScanReadyArt loading={loading} onTint className="h-20 w-32" />
+        <ScanReadyArt loading={loading} onTint className="h-16 w-24" />
         <div className="min-w-0">
           <p className="text-h1 text-primary">{loading ? 'Membaca...' : 'Siap scan'}</p>
           <p className="text-small text-primary-hover">Tekan tombol scan di perangkat, arahkan ke QR di label.</p>

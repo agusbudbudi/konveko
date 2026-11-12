@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, LogOut } from 'lucide-react';
 import { logout } from '@/app/actions/auth';
 import { Avatar } from '@/components/ui/avatar';
+import { Scrim, useScrollLock } from '@/components/ui/scrim';
 import { cn } from '@/lib/cn';
 
 /** Top-right profile button with a small dropdown: who is signed in, and Keluar. */
 export function UserMenu({ name, roles }: { name: string; roles: string[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  useScrollLock(open);
 
   useEffect(() => {
     if (!open) return;
@@ -46,6 +49,8 @@ export function UserMenu({ name, roles }: { name: string; roles: string[] }) {
       </button>
 
       {open && (
+        <>
+        <Scrim onClose={() => setOpen(false)} />
         <div
           role="menu"
           className="absolute top-full right-0 z-20 mt-1 w-60 rounded-lg border border-border-strong bg-surface p-1"
@@ -68,6 +73,7 @@ export function UserMenu({ name, roles }: { name: string; roles: string[] }) {
             </button>
           </form>
         </div>
+        </>
       )}
     </div>
   );

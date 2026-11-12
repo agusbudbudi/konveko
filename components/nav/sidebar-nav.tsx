@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Scrim, useScrollLock } from '@/components/ui/scrim';
 import {
   AlertTriangle,
   BarChart3,
@@ -215,6 +216,7 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   useEffect(() => setOpen(false), [path]);
+  useScrollLock(open, 'lg');
 
   return (
     <>
@@ -229,9 +231,12 @@ export function MobileNav() {
         Menu
       </button>
       {open && (
-        <div id="mobile-nav" className="absolute inset-x-0 top-full max-h-[calc(100dvh-56px)] overflow-y-auto border-b border-border-strong bg-surface p-3">
-          <SidebarNav onNavigate={() => setOpen(false)} />
-        </div>
+        <>
+          <Scrim onClose={() => setOpen(false)} below="lg" />
+          <div id="mobile-nav" className="absolute inset-x-0 top-full z-20 max-h-[calc(100dvh-56px)] overflow-y-auto overscroll-contain border-b border-border-strong bg-surface p-3">
+            <SidebarNav onNavigate={() => setOpen(false)} />
+          </div>
+        </>
       )}
     </>
   );

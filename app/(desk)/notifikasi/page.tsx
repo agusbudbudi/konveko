@@ -57,7 +57,7 @@ export default async function NotifikasiPage({ searchParams }: { searchParams: P
 
       <div className="mt-6 overflow-hidden rounded-lg border border-border bg-surface">
         {rows.length === 0 ? (
-          <EmptyState variant="check">{tab === 'belum' ? 'Semua notifikasi sudah dibaca.' : 'Belum ada notifikasi.'}</EmptyState>
+          <EmptyState variant={tab === 'belum' ? 'check' : 'bell'}>{tab === 'belum' ? 'Semua notifikasi sudah dibaca.' : 'Belum ada notifikasi.'}</EmptyState>
         ) : (
           <NotificationList rows={rows} canMarkAll={unread > 0} />
         )}

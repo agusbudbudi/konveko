@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Delete } from 'lucide-react';
+import { Delete } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { expandCode, type EntryKind } from '@/lib/scan/normalize';
+import { TaskHeader } from './task-header';
 
 export type { EntryKind };
 
@@ -18,20 +19,20 @@ const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '0'] as const;
 /**
  * Type a code when a label is damaged. Bundle and pcs codes are digits, so the page
  * shows its own keypad: the phone keyboard does not pop up and cover half the screen.
- * A rack code has letters and uses the normal keyboard. A plain page section, not a modal.
+ * A rack code has letters and uses the normal keyboard. It covers the whole scan screen like a
+ * page of its own (own task header with the way back), so the app header and the page's context
+ * bars step aside and the keys get the room.
  */
 export function KeypadEntry({
   kinds,
   onSubmit,
   onClose,
   busy,
-  className,
 }: {
   kinds: EntryKind[];
   onSubmit: (code: string) => void;
   onClose: () => void;
   busy?: boolean;
-  className?: string;
 }) {
   const [kind, setKind] = useState<EntryKind>(kinds[0]);
   const [typed, setTyped] = useState('');
@@ -51,17 +52,14 @@ export function KeypadEntry({
   };
 
   return (
-    // data-keypad hides the page's task bar (Kirim, Tutup rak) while typing: it would cover the keys
-    <section data-keypad aria-label="Ketik kode" className={cn('flex flex-1 flex-col', className)}>
-      <div className="flex flex-1 flex-col gap-3 px-4 pt-2 pb-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="-ml-2 inline-flex h-11 items-center gap-1.5 self-start rounded-md px-2 font-medium hover:bg-surface-muted"
-        >
-          <ArrowLeft size={20} strokeWidth={1.75} aria-hidden />
-          Kembali ke scan
-        </button>
+    // data-keypad also hides the tab bar and the page's task bar (Kirim, Tutup rak) underneath
+    <section
+      data-keypad
+      aria-label="Ketik kode"
+      className="fixed inset-0 z-30 mx-auto flex w-full max-w-md flex-col overflow-y-auto bg-background"
+    >
+      <div className="flex flex-1 flex-col gap-3 px-4 pb-4">
+        <TaskHeader title="Ketik kode" backLabel="Kembali" onBack={onClose} />
 
         {kinds.length > 1 && (
           <div role="radiogroup" aria-label="Jenis kode" className="grid gap-1 rounded-md bg-surface-muted p-1" style={{ gridTemplateColumns: `repeat(${kinds.length}, minmax(0, 1fr))` }}>

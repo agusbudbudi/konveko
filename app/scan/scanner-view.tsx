@@ -55,8 +55,6 @@ export function ScannerView({
   if (typing) {
     return (
       <KeypadEntry
-        // same bleed as the camera, but never its height cap (the keypad needs its full height)
-        className={className?.split(' ').filter((c) => !c.startsWith('max-h-')).join(' ')}
         kinds={kinds}
         busy={loading}
         onClose={() => setTyping(false)}

@@ -109,11 +109,20 @@ export async function checkInvariants(db) {
   await actAs(db, null);
   const problems = [];
 
+  // Rework: reject is net of what went to rework; those pcs live on in the rework children.
   const unbalanced = await all(db, `
-    select code, target_qty, ready, reject, wip_menunggu, wip_dikerjakan, selisih
+    select code, target_qty, ready, reject, wip_menunggu, wip_dikerjakan, selisih, reworked
     from public.bundle_reconciliation
-    where is_active and target_qty <> ready + reject + wip_menunggu + wip_dikerjakan + selisih`);
+    where is_active and target_qty <> ready + reject + wip_menunggu + wip_dikerjakan + selisih + reworked`);
   for (const r of unbalanced) problems.push(`unbalanced ${r.code}: ${JSON.stringify(r)}`);
+
+  const reworkKids = await all(db, `
+    select r.code, r.reworked,
+           coalesce((select sum(c.target_qty) from public.bundle c
+                     where c.rework_of_bundle_id = r.bundle_id and c.cancelled_at is null
+                       and c.rework_source <> 'retur'), 0)::int as kids
+    from public.bundle_reconciliation r`);
+  for (const r of reworkKids) if (r.reworked !== r.kids) problems.push(`reworked vs children ${r.code}: ${r.reworked} vs ${r.kids}`);
 
   const drift = await all(db, `
     select b.code, b.current_status, r.status, b.current_qty, r.ref_qty, b.current_holder_id, r.holder_id
@@ -126,15 +135,16 @@ export async function checkInvariants(db) {
     select r.code, r.ready, coalesce(sum(sl.qty), 0)::int as ledger
     from public.bundle_reconciliation r
     left join public.stock_ledger sl on sl.bundle_id = r.bundle_id
+    where r.rework_source is distinct from 'retur'
     group by r.bundle_id, r.code, r.ready
     having r.ready <> coalesce(sum(sl.qty), 0)`);
   for (const r of stock) problems.push(`stock mismatch ${r.code}: ready ${r.ready} vs ledger ${r.ledger}`);
 
   const conserved = await all(db, `
     select pb.code, br.target,
-           (select sum(target_qty) from public.bundle b where b.batch_id = pb.id and b.parent_bundle_id is null)::int as cut
+           (select sum(target_qty) from public.bundle b where b.batch_id = pb.id and b.parent_bundle_id is null and b.rework_of_bundle_id is null)::int as cut
     from public.production_batch pb join public.batch_reconciliation br on br.batch_id = pb.id
-    where br.target <> (select sum(target_qty) from public.bundle b where b.batch_id = pb.id and b.parent_bundle_id is null)`);
+    where br.target <> (select sum(target_qty) from public.bundle b where b.batch_id = pb.id and b.parent_bundle_id is null and b.rework_of_bundle_id is null)`);
   for (const r of conserved) problems.push(`batch target changed ${r.code}: ${r.target} vs cut ${r.cut}`);
 
   // Voided receives keep their flag row with qty 0, so a plain sum must match.
@@ -146,21 +156,27 @@ export async function checkInvariants(db) {
     having r.selisih <> coalesce(sum(d.qty), 0)`);
   for (const r of flags) problems.push(`discrepancy mismatch ${r.code}: selisih ${r.selisih} vs flagged ${r.flagged}`);
 
-  // Fase 2a/2b: one piece per finished good / reject pcs; shipped ('keluar') pieces still count as produced
+  // Fase 2a/2b: one piece per finished good / reject pcs; shipped ('keluar') pieces still count as produced.
+  // Rework: a good piece in rework (damaged return) still counts as produced; a reject piece in rework
+  // left the net reject; reject_awal counts it.
   const pieces = await all(db, `
-    select r.code, r.ready, r.reject,
+    select r.code, r.ready, r.reject, r.reject_awal,
            count(p.id) filter (where p.grade = 'baik')::int   as baik,
-           count(p.id) filter (where p.grade = 'reject')::int as rej
+           count(p.id) filter (where p.grade = 'reject' and p.status <> 'rework')::int as rej,
+           count(p.id) filter (where p.grade = 'reject')::int as rej_awal
     from public.bundle_reconciliation r
-    left join public.piece p on p.bundle_id = r.bundle_id and p.status in ('aktif', 'keluar')
-    group by r.bundle_id, r.code, r.ready, r.reject
+    left join public.piece p on p.bundle_id = r.bundle_id and p.status in ('aktif', 'keluar', 'rework')
+    group by r.bundle_id, r.code, r.ready, r.reject, r.reject_awal
     having r.ready <> count(p.id) filter (where p.grade = 'baik')
-        or r.reject <> count(p.id) filter (where p.grade = 'reject')`);
+        or r.reject <> count(p.id) filter (where p.grade = 'reject' and p.status <> 'rework')
+        or r.reject_awal <> count(p.id) filter (where p.grade = 'reject')`);
   for (const r of pieces) problems.push(`piece mismatch ${r.code}: ${JSON.stringify(r)}`);
 
   const ledger = await all(db, `
     select pv.sku, coalesce((select sum(qty) from public.stock_ledger sl where sl.variant_id = pv.id), 0)::int as ledger,
-           (select count(*) from public.piece p where p.variant_id = pv.id and p.status in ('aktif', 'keluar') and p.grade = 'baik')::int as baik
+           (select count(*) from public.piece p
+             join public.bundle b on b.id = p.bundle_id and b.rework_source is distinct from 'retur'
+            where p.variant_id = pv.id and p.status in ('aktif', 'keluar', 'rework') and p.grade = 'baik')::int as baik
     from public.product_variant pv`);
   for (const r of ledger) if (r.ledger !== r.baik) problems.push(`ledger vs pieces ${r.sku}: ${r.ledger} vs ${r.baik}`);
 
@@ -169,10 +185,10 @@ export async function checkInvariants(db) {
     from public.piece p
     left join lateral (
       select e.type, e.to_location_id from public.piece_event e
-      where e.piece_id = p.id and e.type in ('masuk_rak', 'pindah_rak', 'keluar_rak', 'batal', 'keluar', 'retur')
+      where e.piece_id = p.id and e.type in ('masuk_rak', 'pindah_rak', 'keluar_rak', 'batal', 'keluar', 'retur', 'rework', 'batal_rework')
       order by e.seq desc limit 1
     ) last on true
-    where p.location_id is distinct from (case when last.type in ('masuk_rak', 'pindah_rak') then last.to_location_id end)`);
+    where p.location_id is distinct from (case when last.type in ('masuk_rak', 'pindah_rak', 'batal_rework') then last.to_location_id end)`);
   for (const r of pdrift) problems.push(`piece location drift ${r.code}`);
 
   const wrongKind = await all(db, `

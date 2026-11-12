@@ -72,7 +72,7 @@ export function ScannerView({
     <button
       type="button"
       onClick={() => setTyping(true)}
-      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-surface font-medium whitespace-nowrap hover:bg-surface-muted"
+      className="inline-flex h-12 w-full min-w-0 items-center justify-center gap-2 rounded-md border border-border-strong bg-surface font-medium whitespace-nowrap hover:bg-surface-muted"
     >
       <Keyboard size={20} strokeWidth={1.75} aria-hidden />
       {camera === false ? 'Ketik kode' : 'Label rusak? Ketik kode'}
@@ -123,13 +123,13 @@ export function ScannerView({
           recent[0] && <LastScan item={recent[0]} />
         )}
         {!loading && (
-          <div className="flex gap-2">
+          <div className={cn("gap-2", camera === false ? "grid grid-cols-2" : "flex")}>
             {typeButton}
             {camera === false && (
               <button
                 type="button"
                 onClick={() => setScanPrefs({ input: 'camera', hardwareSeen: false })}
-                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-md border border-border-strong bg-surface px-3.5 font-medium hover:bg-surface-muted"
+                className="inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-md border border-border-strong bg-surface px-3.5 font-medium hover:bg-surface-muted"
               >
                 <Camera size={20} strokeWidth={1.75} aria-hidden />
                 Kamera

@@ -140,10 +140,12 @@ export function ScannerView({
 function HardwareReady({ loading }: { loading: boolean }) {
   return (
     <div className="px-4 pt-4 pb-3">
-      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-border-strong bg-surface px-6 py-5 text-center">
-        <ScanReadyArt loading={loading} />
-        <p className="text-h2">{loading ? 'Membaca...' : 'Siap scan'}</p>
-        <p className="text-small text-text-muted">Tekan tombol scan di perangkat, arahkan ke QR di label.</p>
+      <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-primary bg-primary-soft py-3 pr-4 pl-2">
+        <ScanReadyArt loading={loading} onTint className="h-20 w-32" />
+        <div className="min-w-0">
+          <p className="text-h1 text-primary">{loading ? 'Membaca...' : 'Siap scan'}</p>
+          <p className="text-small text-primary-hover">Tekan tombol scan di perangkat, arahkan ke QR di label.</p>
+        </div>
       </div>
     </div>
   );
@@ -153,9 +155,10 @@ function HardwareReady({ loading }: { loading: boolean }) {
  * Handheld scanner aiming at a QR label, a laser line sweeping the code.
  * Same palette and soft blob as components/ui/empty-state.tsx.
  */
-function ScanReadyArt({ loading }: { loading: boolean }) {
+function ScanReadyArt({ loading, onTint = false, className }: { loading: boolean; onTint?: boolean; className?: string }) {
   const c = {
-    blob: 'var(--primary-soft)',
+    // on the primary-soft card the usual blob would vanish; a white one keeps the shape
+    blob: onTint ? 'var(--surface)' : 'var(--primary-soft)',
     surface: 'var(--surface)',
     muted: 'var(--surface-muted)',
     line: 'var(--border-strong)',
@@ -173,7 +176,7 @@ function ScanReadyArt({ loading }: { loading: boolean }) {
     [92, 54],
   ];
   return (
-    <svg aria-hidden viewBox="0 0 160 104" fill="none" className="h-28 w-44 shrink-0">
+    <svg aria-hidden viewBox="0 0 160 104" fill="none" className={cn("shrink-0", className ?? "h-28 w-44")}>
       <ellipse cx="80" cy="95" rx="54" ry="6" style={{ fill: c.muted }} />
       <circle cx="80" cy="50" r="42" style={{ fill: c.blob }} />
       <circle cx="132" cy="14" r="3" style={{ fill: c.laser }} opacity=".7" />

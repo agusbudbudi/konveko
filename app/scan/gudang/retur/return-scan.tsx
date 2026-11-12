@@ -11,7 +11,7 @@ import { RETURN_REASONS } from '@/lib/outbound';
 import type { WarehouseLookup } from '@/lib/types';
 import { warehouseLookup } from '../actions';
 import { useScanner } from '@/lib/scan/use-scanner';
-import { ReasonChips, RejectedPanel, SuccessScreen, TaskHeader } from '../../scan-ui';
+import { NoAccess, ReasonChips, RejectedPanel, SuccessScreen, TaskHeader } from '../../scan-ui';
 import { BottomBar, ScannerView } from '../../scanner-view';
 
 type Piece = Extract<WarehouseLookup, { kind: 'piece' }>;
@@ -50,9 +50,7 @@ export function ReturnScan({ canWork }: { canWork: boolean }) {
 
   if (!canWork) {
     return (
-      <main className="px-4 pt-3">
-        <InlineAlert tone="info">Hanya akun gudang atau supervisor yang bisa mencatat retur.</InlineAlert>
-      </main>
+      <NoAccess action="mencatat retur" />
     );
   }
 

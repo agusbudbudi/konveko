@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/input';
 import { Badge } from '@/components/ui/status-badge';
 import { normalizeScan } from '@/lib/scan/normalize';
 import { toast } from '@/lib/scan/toast';
-import { BigStepper, SuccessScreen, TaskHeader } from '../../scan-ui';
+import { BigStepper, NoAccess, SuccessScreen, TaskHeader } from '../../scan-ui';
 import { BottomBar, ScannerView } from '../../scanner-view';
 import { countCloseRack, countScan, countUndo, countUnlabeled, type CountTally } from './actions';
 
@@ -44,22 +44,32 @@ export function CountScan({
 }) {
   if (!canWork) {
     return (
-      <main className="px-4 pt-3">
-        <InlineAlert tone="info">Hanya akun gudang atau supervisor yang bisa menghitung stok opname.</InlineAlert>
-      </main>
+      <NoAccess action="menghitung stok opname" />
     );
   }
   if (!selected) return <PickCount counts={counts} />;
   if (!rack) return <PickRack count={selected} />;
   if (rack.status !== 'menghitung') {
     return (
-      <main className="px-4 pt-3">
-        <InlineAlert tone="info">
-          Rak <span className="num">{rack.code}</span> sudah ditutup. Minta supervisor membuka ulang kalau perlu dihitung ulang.
-        </InlineAlert>
-        <Link href={`/scan/gudang/opname?count=${selected.id}`} className="mt-4 inline-flex h-12 items-center gap-2 font-medium text-primary">
-          <ArrowLeft size={20} strokeWidth={1.5} aria-hidden /> Pilih rak lain
-        </Link>
+      <main className="flex flex-1 flex-col px-4">
+        <TaskHeader
+          href={`/scan/gudang/opname?count=${selected.id}`}
+          backLabel="Rak lain"
+          title={<span className="num text-small font-normal text-text-muted">{selected.code}</span>}
+        />
+        <div className="mt-4 rounded-lg border border-border bg-surface">
+          <EmptyState variant="check" compact hint="Minta supervisor membuka ulang kalau rak ini perlu dihitung ulang.">
+            Rak <span className="num">{rack.code}</span> sudah ditutup.
+          </EmptyState>
+        </div>
+        <BottomBar>
+          <Link
+            href={`/scan/gudang/opname?count=${selected.id}`}
+            className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-md bg-primary font-semibold text-primary-foreground"
+          >
+            Pilih rak lain
+          </Link>
+        </BottomBar>
       </main>
     );
   }

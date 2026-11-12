@@ -6,12 +6,11 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, ChevronRight, FilePlus2, Truck, Undo2 } from 'lucide-react';
 import { addToOutbound, removeFromOutbound, shipOutbound } from '@/app/(desk)/barang-keluar/actions';
 import { Button } from '@/components/ui/button';
-import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import { OUTBOUND_TYPE, SKIP_LABEL, type OutboundProgress, type OutboundType } from '@/lib/outbound';
 import { forgetLastScan } from '@/lib/scan/bus';
 import { toast } from '@/lib/scan/toast';
-import { SuccessScreen, TaskHeader } from '../../scan-ui';
+import { NoAccess, SuccessScreen, TaskHeader } from '../../scan-ui';
 import { BottomBar, ScannerView } from '../../scanner-view';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -76,9 +75,7 @@ export function OutboundScan({
 
   if (!canWork) {
     return (
-      <main className="px-4 pt-3">
-        <InlineAlert tone="info">Hanya akun gudang atau supervisor yang bisa mengisi barang keluar.</InlineAlert>
-      </main>
+      <NoAccess action="mengisi barang keluar" />
     );
   }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Check, CircleX, Minus, Plus, ScanLine } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/cn';
 import { BottomBar } from './scanner-view';
 
@@ -263,5 +264,21 @@ export function SuccessScreen({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * A warehouse mode opened by an account without the gudang or supervisor role (only by URL:
+ * their tab bar has no warehouse entries). Says what the mode is for and who can use it.
+ */
+export function NoAccess({ action }: { action: string }) {
+  return (
+    <main className="flex flex-1 flex-col px-4 pt-6">
+      <div className="rounded-lg border border-dashed border-border-strong bg-surface">
+        <EmptyState variant="rack" compact hint="Minta admin menambahkan peran gudang ke akunmu kalau perlu.">
+          Hanya akun gudang atau supervisor yang bisa {action}.
+        </EmptyState>
+      </div>
+    </main>
   );
 }

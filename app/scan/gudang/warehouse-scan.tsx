@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { ArrowRightLeft, PackagePlus, Warehouse } from 'lucide-react';
+import { ArrowRight, ArrowRightLeft, PackagePlus, Warehouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import type { PutawayResult, WarehouseLookup } from '@/lib/types';
 import { useScanner } from '@/lib/scan/use-scanner';
-import { RejectedPanel, SuccessScreen, TaskHeader } from '../scan-ui';
+import { NoAccess, RejectedPanel, SuccessScreen, TaskHeader } from '../scan-ui';
 import { BottomBar, loadRecent, pushRecent, ScannerView, type RecentScan } from '../scanner-view';
 import { putaway, warehouseLookup } from './actions';
 
@@ -109,14 +109,12 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
     return () => clearTimeout(t);
   }, [phase, reset]);
 
+  if (!canShelve) return <NoAccess action="memasukkan barang ke rak" />;
+
   return (
     <main className="flex flex-1 flex-col px-4">
       {/* the confirm screen shows it under its own task header */}
       {phase.k !== 'success' && phase.k !== 'item' && <RackBar rack={rack} onClear={clearRack} />}
-
-      {!canShelve && (
-        <InlineAlert tone="info" className="mt-3">Hanya akun gudang atau supervisor yang bisa memasukkan barang ke rak.</InlineAlert>
-      )}
 
       {phase.k === 'scan' || phase.k === 'loading' ? (
         <>
@@ -266,48 +264,52 @@ function ItemView({
     <>
       <TaskHeader title={item.kind === 'bundle' ? 'Masuk rak: bundle' : 'Masuk rak: pcs'} onBack={onRescan} />
       <RackBar rack={rack} onClear={onClearRack} />
-      <section aria-live="polite" className="mt-3 rounded-xl border border-border bg-surface p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="num text-text-muted">
+      <section aria-live="polite" className="mt-3 rounded-xl border border-border bg-surface px-4 py-3">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="num text-small text-text-muted">
               {item.kind === 'bundle' ? 'Bundle' : 'Pcs'} {item.code}
+              {item.kind === 'piece' && <> · {item.bundle_code ? <>bundle {item.bundle_code}</> : 'stok awal'}</>}
             </p>
-            <h2 className="mt-1 text-h2">
+            <h2 className="text-h2">
               {v.product_name} {v.size}
             </h2>
-            <p className="text-small text-text-muted">
+            <p className="truncate text-small text-text-muted">
               {v.color} · <span className="num">{v.sku}</span>
-              {item.kind === 'piece' && (
-                <>
-                  {' '}
-                  · {item.bundle_code ? <>bundle <span className="num">{item.bundle_code}</span></> : 'stok awal'}
-                </>
-              )}
             </p>
           </div>
           {item.kind === 'piece' && (
             <Badge tone={item.sellable ? 'success' : 'danger'}>{item.grade === 'reject' ? 'Reject' : item.condition === 'rusak' ? 'Rusak' : 'Baik'}</Badge>
           )}
         </div>
-        <div className="mt-4 flex items-end justify-between border-t border-border pt-4">
+      </section>
+
+      {/* what will move where */}
+      <section aria-label="Pindah ke rak" className="mt-3 flex items-center gap-3 rounded-lg bg-surface-muted px-4 py-3">
+        <div className="min-w-0 flex-1">
           {item.kind === 'bundle' ? (
-            <div>
-              <p className="text-caption text-text-muted">Menunggu masuk rak</p>
-              <p className="num text-display">
-                {item.unshelved_baik + item.unshelved_reject} <span className="text-h3 font-medium text-text-muted">pcs</span>
-              </p>
-              <p className="text-small text-text-muted">
-                {item.unshelved_baik} baik · {item.unshelved_reject} reject · {item.shelved} sudah di rak
-              </p>
-            </div>
+            <>
+              <p className="text-caption text-text-muted">{forReject ? 'Reject yang masuk' : 'Baik yang masuk'}</p>
+              <p className="num text-h1">{count} pcs</p>
+            </>
           ) : (
-            <div>
-              <p className="text-caption text-text-muted">Lokasi sekarang</p>
-              <p className="num text-h2">{item.location_code ?? 'Belum di rak'}</p>
-            </div>
+            <>
+              <p className="text-caption text-text-muted">Sekarang</p>
+              <p className="num truncate text-h2">{item.location_code ?? 'Belum di rak'}</p>
+            </>
           )}
         </div>
+        <ArrowRight size={22} strokeWidth={2} aria-hidden className="shrink-0 text-text-subtle" />
+        <div className="min-w-0 flex-1 text-right">
+          <p className="text-caption text-text-muted">Ke rak</p>
+          <p className="num truncate text-h1 text-primary">{rack.code}</p>
+        </div>
       </section>
+      {item.kind === 'bundle' && (
+        <p className="num mt-2 px-1 text-small text-text-muted">
+          Belum di rak: {item.unshelved_baik} baik, {item.unshelved_reject} reject · {item.shelved} sudah di rak
+        </p>
+      )}
 
       {blocked || !canShelve ? (
         <RejectedPanel

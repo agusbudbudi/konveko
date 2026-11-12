@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { ArrowRightLeft, PackagePlus, ScanLine, Warehouse } from 'lucide-react';
+import { ArrowRightLeft, PackagePlus, Warehouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
@@ -145,12 +145,7 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
         </>
       ) : phase.k === 'error' ? (
         <>
-          <RejectedPanel message={phase.message} />
-          <BottomBar>
-            <Button size="lg" className="h-14 w-full" onClick={reset} autoFocus>
-              <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-            </Button>
-          </BottomBar>
+          <RejectedPanel message={phase.message} onRescan={reset} />
         </>
       ) : phase.k === 'item' && rack ? (
         <ItemView
@@ -318,14 +313,15 @@ function ItemView({
         </div>
       </section>
 
-      {(blocked || error) && <RejectedPanel message={(error ?? blocked)!} />}
-
-      <BottomBar>
-        {blocked || !canShelve ? (
-          <Button size="lg" className="h-14 w-full" onClick={onRescan} autoFocus>
-            <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-          </Button>
-        ) : (
+      {blocked || !canShelve ? (
+        <RejectedPanel
+          message={blocked ?? 'Hanya akun gudang atau supervisor yang bisa memasukkan barang ke rak.'}
+          onRescan={onRescan}
+        />
+      ) : (
+        <>
+          {error && <RejectedPanel message={error} />}
+          <BottomBar>
           <div className="flex gap-2">
             <Button size="lg" className="h-14 flex-1" onClick={confirm} disabled={pending} autoFocus>
               {item.kind === 'piece' && item.location_code ? (
@@ -336,8 +332,9 @@ function ItemView({
               {pending ? 'Menyimpan...' : action}
             </Button>
           </div>
-        )}
-      </BottomBar>
+          </BottomBar>
+        </>
+      )}
     </>
   );
 }

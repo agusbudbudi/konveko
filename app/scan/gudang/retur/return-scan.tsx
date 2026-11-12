@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
-import { ScanLine, Undo2 } from 'lucide-react';
+import { Undo2 } from 'lucide-react';
 import { returnPiece } from '@/app/(desk)/barang-keluar/actions';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
@@ -63,12 +63,7 @@ export function ReturnScan({ canWork }: { canWork: boolean }) {
       ) : phase.k === 'error' ? (
         <>
           <TaskHeader title="Retur" backLabel="Kembali ke scan" onBack={reset} />
-          <RejectedPanel message={phase.message} />
-          <BottomBar>
-            <Button size="lg" className="h-14 w-full" onClick={reset} autoFocus>
-              <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-            </Button>
-          </BottomBar>
+          <RejectedPanel message={phase.message} onRescan={reset} />
         </>
       ) : phase.k === 'piece' ? (
         <ReturnForm piece={phase.piece} onCancel={reset} onDone={(message) => setPhase({ k: 'done', message })} />

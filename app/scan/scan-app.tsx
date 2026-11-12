@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { Camera, Check, RefreshCw, ScanLine, WifiOff } from 'lucide-react';
+import { Camera, Check, RefreshCw, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
@@ -105,12 +105,7 @@ export function ScanApp({
       ) : phase.k === 'error' ? (
         <>
           <TaskHeader title="Scan" backLabel="Kembali ke scan" onBack={reset} />
-          <RejectedPanel message={phase.message} />
-          <BottomBar>
-            <Button size="lg" className="h-14 w-full" onClick={reset} autoFocus>
-              <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-            </Button>
-          </BottomBar>
+          <RejectedPanel message={phase.message} onRescan={reset} />
         </>
       ) : phase.k === 'result' ? (
         <ResultView
@@ -191,12 +186,7 @@ function ResultView({
       <>
         <TaskHeader title="Bundle" backLabel="Kembali ke scan" onBack={onRescan} />
         <BundleSummary bundle={bundle} />
-        <RejectedPanel message={bundle.message ?? 'Bundle ini tidak bisa diproses sekarang.'} />
-        <BottomBar>
-          <Button size="lg" className="h-14 w-full" onClick={onRescan} autoFocus>
-            <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-          </Button>
-        </BottomBar>
+        <RejectedPanel message={bundle.message ?? 'Bundle ini tidak bisa diproses sekarang.'} onRescan={onRescan} />
       </>
     );
   }

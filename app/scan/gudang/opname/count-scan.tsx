@@ -110,14 +110,8 @@ function PickRack({ count }: { count: OpenCount }) {
 
   return (
     <main className="flex flex-1 flex-col px-4 pb-8">
-      <div className="mt-3 flex items-center justify-between">
-        <Link href="/scan/gudang/opname" className="inline-flex h-10 items-center gap-1 text-small text-text-muted">
-          <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Opname
-        </Link>
-        <p className="num font-medium">{count.code}</p>
-      </div>
-      <p className="mt-2 text-h3">Scan QR rak yang akan dihitung</p>
-      <ScannerView onCode={onCode} loading={false} kinds={['rack']} hint="Scan QR rak yang akan dihitung" className="-mx-4 mt-3" />
+      <BackRow href="/scan/gudang/opname" label="Opname" code={count.code} />
+      <ScannerView onCode={onCode} loading={false} kinds={['rack']} hint="Scan QR rak yang akan dihitung" className="-mx-4 max-h-[50dvh]" />
       {error && (
         <InlineAlert tone="danger" className="mt-3">
           {error}
@@ -199,23 +193,18 @@ function CountRackView({
 
   return (
     <main className="flex flex-1 flex-col px-4">
-      <div className="mt-3 flex items-center justify-between">
-        <Link href={`/scan/gudang/opname?count=${count.id}`} className="inline-flex h-10 items-center gap-1 text-small text-text-muted">
-          <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Rak lain
-        </Link>
-        <p className="num text-small text-text-muted">{count.code}</p>
-      </div>
+      <BackRow href={`/scan/gudang/opname?count=${count.id}`} label="Rak lain" code={count.code} />
 
-      <section aria-live="polite" className="rounded-xl border border-border bg-surface p-4">
+      <section aria-live="polite" className="-mx-4 border-b border-primary/20 bg-primary-soft px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-caption text-text-muted">Rak {rack.kind === 'reject' ? 'reject' : 'stok'}</p>
-            <h1 className="num text-h1">{rack.code}</h1>
+            <p className="text-caption text-primary-hover">Rak {rack.kind === 'reject' ? 'reject' : 'stok'}</p>
+            <h1 className="num text-[28px] leading-9 font-semibold text-primary">{rack.code}</h1>
           </div>
           <div className="text-right">
-            <p className="text-caption text-text-muted">Sudah discan</p>
+            <p className="text-caption text-primary-hover">Sudah discan</p>
             <p className="num text-display">{tally.pieces}</p>
-            {tally.unlabeled > 0 && <p className="num text-small text-text-muted">+ {tally.unlabeled} tanpa label</p>}
+            {tally.unlabeled > 0 && <p className="num text-small text-primary-hover">+ {tally.unlabeled} tanpa label</p>}
           </div>
         </div>
         {feedback && (
@@ -236,7 +225,7 @@ function CountRackView({
 
       {view === 'scan' && (
         <>
-          <ScannerView onCode={onCode} loading={busy} kinds={['piece']} hint="Scan setiap pcs di rak ini" loadingText="Mencatat..." className="-mx-4 mt-3" />
+          <ScannerView onCode={onCode} loading={busy} kinds={['piece']} hint={`Scan setiap pcs di rak ${rack.code}`} loadingText="Mencatat..." className="-mx-4 max-h-[45dvh]" />
           {tally.last.length > 0 && (
             <section className="mt-4">
               <h2 className="text-small font-medium text-text-muted">Scan terakhir</h2>
@@ -264,7 +253,7 @@ function CountRackView({
                 <PackagePlus size={20} strokeWidth={1.5} aria-hidden /> Tanpa label
               </Button>
               <Button size="lg" className="flex-1" onClick={() => setView('close')}>
-                <CircleCheck size={20} strokeWidth={1.5} aria-hidden /> Selesai rak ini
+                <CircleCheck size={20} strokeWidth={1.5} aria-hidden /> Tutup rak {rack.code}
               </Button>
             </div>
           </BottomBar>
@@ -418,5 +407,18 @@ function UnlabeledForm({
         </div>
       </BottomBar>
     </>
+  );
+}
+
+/** Back link plus the stock count code, under the app header. */
+function BackRow({ href, label, code }: { href: string; label: string; code: string }) {
+  return (
+    <div className="-mx-4 flex h-12 items-center border-b border-border bg-surface px-2">
+      <Link href={href} className="inline-flex h-11 items-center gap-1.5 rounded-md px-2 font-medium hover:bg-surface-muted">
+        <ArrowLeft size={20} strokeWidth={1.75} aria-hidden />
+        {label}
+      </Link>
+      <span className="num ml-auto pr-2 text-small text-text-muted">{code}</span>
+    </div>
   );
 }

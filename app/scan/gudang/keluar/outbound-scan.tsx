@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, CircleCheck, FilePlus2, Truck, Undo2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, CircleCheck, FilePlus2, Truck, Undo2 } from 'lucide-react';
 import { addToOutbound, removeFromOutbound, shipOutbound } from '@/app/(desk)/barang-keluar/actions';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
@@ -108,17 +108,20 @@ export function OutboundScan({
   if (!selected) {
     return (
       <main className="flex flex-1 flex-col gap-3 px-4 pt-3 pb-8">
-        <h1 className="text-h2">Pilih dokumen</h1>
+        <div>
+          <h1 className="text-h2">Barang keluar</h1>
+          <p className="text-small text-text-muted">Pilih dokumen yang sedang disiapkan.</p>
+        </div>
         {drafts.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border-strong bg-surface"><EmptyState variant="document" compact>Belum ada dokumen yang sedang disiapkan.</EmptyState></div>
         ) : (
           <ul className="flex flex-col gap-2">
             {drafts.map((d) => (
               <li key={d.id}>
-                <Link href={`/scan/gudang/keluar?doc=${d.id}`} className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4 hover:border-border-strong">
+                <Link href={`/scan/gudang/keluar?doc=${d.id}`} className="flex min-h-16 items-center gap-3 rounded-lg border border-border bg-surface p-4 hover:border-border-strong">
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2">
-                      <span className="num font-medium">{d.code}</span>
+                      <span className="num text-h3">{d.code}</span>
                       <Badge tone={d.type === 'penyesuaian' ? 'warning' : d.type === 'jual_bs' ? 'danger' : 'neutral'}>{OUTBOUND_TYPE[d.type].label}</Badge>
                     </p>
                     <p className="truncate text-small text-text-muted">{d.destination}</p>
@@ -140,28 +143,35 @@ export function OutboundScan({
   const adjustment = selected.type === 'penyesuaian';
   return (
     <main className="flex flex-1 flex-col px-4">
-      <section className="mt-2 rounded-xl border border-primary bg-primary-soft p-4">
+      <div className="-mx-4 flex h-12 items-center border-b border-border bg-surface px-2">
+        <Link href="/scan/gudang/keluar" className="inline-flex h-11 items-center gap-1.5 rounded-md px-2 font-medium hover:bg-surface-muted">
+          <ArrowLeft size={20} strokeWidth={1.75} aria-hidden />
+          Dokumen
+        </Link>
+      </div>
+      <section aria-label="Dokumen aktif" className="-mx-4 border-b border-primary/20 bg-primary-soft px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="flex items-center gap-2">
-              <span className="num text-h3 text-primary">{selected.code}</span>
+              <span className="num text-h2 text-primary">{selected.code}</span>
               <Badge tone="neutral">{OUTBOUND_TYPE[selected.type].label}</Badge>
             </p>
-            <p className="truncate text-small text-text-muted">{selected.destination}</p>
+            <p className="truncate text-small text-primary-hover">{selected.destination}</p>
           </div>
           <p className="text-right">
-            <span className="num text-h2">{total}</span>
-            <span className="block text-small text-text-muted">pcs</span>
+            <span className="num text-h1">{total}</span>
+            <span className="block text-caption text-primary-hover">pcs</span>
           </p>
         </div>
         {progress.length > 0 && (
-          <ul className="mt-3 flex flex-col gap-1 border-t border-primary/20 pt-3 text-small">
+          <ul className="mt-2 flex max-h-28 flex-col gap-1 overflow-y-auto border-t border-primary/20 pt-2 text-small">
             {progress.map((p) => (
               <li key={p.variant_id} className="flex justify-between gap-3">
                 <span className="min-w-0 truncate">{p.label}</span>
                 <span className={`num ${p.planned > 0 && p.scanned > p.planned ? 'text-warning' : ''}`}>
-                  {p.scanned}
+                  <span className="font-semibold">{p.scanned}</span>
                   {p.planned > 0 && <span className="text-text-muted">/{p.planned}</span>}
+                  {p.planned > 0 && p.scanned > p.planned && ' lebih'}
                 </span>
               </li>
             ))}

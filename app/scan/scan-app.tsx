@@ -1,22 +1,32 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import Link from 'next/link';
-import { Camera, CircleCheck, ScanLine } from 'lucide-react';
+import { Camera, Check, RefreshCw, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import { Combobox } from '@/components/ui/combobox';
-import { Input, Label } from '@/components/ui/input';
-import { QtyStepper } from '@/components/ui/qty-stepper';
 import { Badge, StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/cn';
 import { uploadSelisihPhoto } from '@/lib/photo';
-import { STATUS_LABEL, type ActionResult, type LookupResult, type Reason, type ScanResult } from '@/lib/types';
+import { type ActionResult, type LookupResult, type Reason, type ScanResult } from '@/lib/types';
 import { finishBundle, lookupBundle, receiveBundle } from './actions';
-import { CameraScanner } from './camera-scanner';
-import { normalizeScan } from '@/lib/scan/normalize';
-import { setScanPrefs, usesCamera, useScanPrefs } from '@/lib/scan/prefs';
 import { useScanner } from '@/lib/scan/use-scanner';
+import { BigStepper, ReasonChips, RejectedPanel, SuccessScreen, TaskHeader } from './scan-ui';
+import { BottomBar, loadRecent, pushRecent, ScannerView, type RecentScan } from './scanner-view';
+
+const RECENT_KEY = 'konveko:scan-recent';
+
+/**
+ * Server message to a title and a detail:
+ *   "Bundle B-00231 diterima. 18 dari 20 pcs, selisih 2." -> "Diterima", "18 dari 20 pcs, selisih 2"
+ *   "Bundle B-00244 selesai jahit. 19 jadi, 1 reject."   -> "Selesai jahit", "19 jadi, 1 reject"
+ */
+export function splitResult(code: string, message: string) {
+  const s = message.replace(`Bundle ${code} `, '').trim();
+  const dot = s.indexOf('. ');
+  const head = (dot === -1 ? s : s.slice(0, dot)).replace(/\.$/, '');
+  const detail = dot === -1 ? '' : s.slice(dot + 2).replace(/\.$/, '');
+  return { title: head.charAt(0).toUpperCase() + head.slice(1), detail };
+}
 
 type Phase =
   | { k: 'scan' }
@@ -46,7 +56,10 @@ export function ScanApp({
   actions?: ScanActions;
 }) {
   const [phase, setPhase] = useState<Phase>({ k: 'scan' });
+  const [recent, setRecent] = useState<RecentScan[]>([]);
   const busy = useRef(false);
+
+  useEffect(() => setRecent(loadRecent(RECENT_KEY)), []);
 
   const reset = useCallback(() => {
     busy.current = false;
@@ -61,15 +74,22 @@ export function ScanApp({
     setPhase(res.ok ? { k: 'result', bundle: res.data } : { k: 'error', message: res.message });
   }, [actions]);
 
-  // From the error screen, the next hardware scan starts over without tapping "Scan lagi".
+  // From a rejected scan, the next hardware scan starts over without tapping "Scan lagi".
   useScanner((code) => {
     busy.current = false;
     lookup(code);
-  }, phase.k === 'error');
+  }, phase.k === 'error' || (phase.k === 'result' && (!phase.bundle.allowed || !phase.bundle.next_action)));
 
   const onDone = useCallback((result: ScanResult) => {
     navigator.vibrate?.(60);
     setPhase({ k: 'success', result });
+    setRecent((list) =>
+      pushRecent(RECENT_KEY, list, {
+        code: result.code,
+        text: (({ title, detail }) => (detail ? `${title}: ${detail}` : title))(splitResult(result.code, result.message)),
+        tone: (result.selisih ?? 0) > 0 ? 'warning' : 'success',
+      }),
+    );
   }, []);
 
   useEffect(() => {
@@ -79,240 +99,66 @@ export function ScanApp({
   }, [phase, reset]);
 
   return (
-    <main className="flex flex-1 flex-col px-4 pb-32">
+    <main className={cn('flex flex-1 flex-col', phase.k !== 'scan' && phase.k !== 'loading' && 'px-4')}>
       {phase.k === 'scan' || phase.k === 'loading' ? (
-        <ScannerView onCode={lookup} loading={phase.k === 'loading'} />
+        <ScannerView onCode={lookup} loading={phase.k === 'loading'} recent={recent} loadingText="Mencari bundle..." />
       ) : phase.k === 'error' ? (
         <>
-          <InlineAlert tone="danger" className="mt-4">{phase.message}</InlineAlert>
-          <BottomBar>
-            <Button size="lg" className="w-full" onClick={reset} autoFocus>
-              <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-            </Button>
-          </BottomBar>
+          <TaskHeader title="Scan" backLabel="Kembali ke scan" onBack={reset} />
+          <RejectedPanel message={phase.message} onRescan={reset} />
         </>
       ) : phase.k === 'result' ? (
-        <ResultView bundle={phase.bundle} reasons={reasons} userId={userId} actions={actions} onDone={onDone} onRescan={reset} />
+        <ResultView
+          key={`${phase.bundle.code}-${phase.bundle.version}`}
+          bundle={phase.bundle}
+          reasons={reasons}
+          userId={userId}
+          actions={actions}
+          onDone={onDone}
+          onRescan={reset}
+          onReload={() => {
+            busy.current = false;
+            lookup(phase.bundle.code);
+          }}
+        />
       ) : (
-        <SuccessView result={phase.result} />
+        <SuccessView result={phase.result} onNext={reset} />
       )}
     </main>
-  );
-}
-
-// ---------------------------------------------------------------------------
-
-export function ScannerView({
-  onCode,
-  loading,
-  label = 'Ketik kode bundle',
-  placeholder = 'B-00231',
-  loadingText = 'Mencari bundle...',
-}: {
-  onCode: (code: string) => void;
-  loading: boolean;
-  label?: string;
-  placeholder?: string;
-  loadingText?: string;
-}) {
-  const [manual, setManual] = useState('');
-  const [fineP, setFinePointer] = useState(false);
-  const prefs = useScanPrefs();
-  const camera = prefs ? usesCamera(prefs) : null;
-
-  // Desktop / handheld-scanner stations: keep the field focused so the
-  // scanner's keystrokes + Enter land here. On phones, don't pop the keyboard.
-  useEffect(() => setFinePointer(window.matchMedia('(pointer: fine)').matches), []);
-
-  // Hardware scanners (SUNMI, wedge guns, native bridge) work with no field focused.
-  useScanner((code) => {
-    setManual(''); // a scan into the focused code box replaces what was typed
-    onCode(code);
-  }, !loading);
-
-  return (
-    <div className="mt-2 flex flex-col gap-4">
-      {camera === null ? (
-        <div aria-hidden className="h-40 rounded-xl border border-border bg-surface-muted" />
-      ) : camera ? (
-        <CameraScanner onDetected={(c) => onCode(normalizeScan(c))} paused={loading} />
-      ) : (
-        <HardwareReady loading={loading} />
-      )}
-      {camera !== null && (
-        <div className="-mt-2 flex items-center justify-between text-small">
-          <button
-            type="button"
-            onClick={() => setScanPrefs({ input: camera ? 'scanner' : 'camera' })}
-            className="inline-flex h-10 items-center gap-1.5 text-text-muted hover:text-text"
-          >
-            {camera ? <ScanLine size={16} strokeWidth={1.5} aria-hidden /> : <Camera size={16} strokeWidth={1.5} aria-hidden />}
-            {camera ? 'Pakai tombol scan perangkat' : 'Pakai kamera'}
-          </button>
-          <Link href="/scan/perangkat" className="inline-flex h-10 items-center text-text-muted hover:text-text">
-            Atur perangkat
-          </Link>
-        </div>
-      )}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!manual.trim()) return;
-          onCode(manual);
-          setManual(''); // the view can stay mounted (warehouse: rack -> bundle), start clean
-        }}
-        className="flex flex-col gap-2"
-      >
-        <Label htmlFor="manual-code">{label}</Label>
-        <div className="flex gap-2">
-          <Input
-            id="manual-code"
-            data-scan-field
-            value={manual}
-            onChange={(e) => setManual(e.target.value)}
-            placeholder={placeholder}
-            autoComplete="off"
-            autoCapitalize="characters"
-            enterKeyHint="search"
-            autoFocus={fineP}
-            className="num h-12 sm:h-12"
-          />
-          <Button type="submit" variant="secondary" size="lg" disabled={loading || !manual.trim()}>
-            Cari
-          </Button>
-        </div>
-      </form>
-      {loading && <p className="text-small text-text-muted" aria-live="polite">{loadingText}</p>}
-    </div>
-  );
-}
-
-/** Shown instead of the camera on devices with a built-in or attached scanner. */
-function HardwareReady({ loading }: { loading: boolean }) {
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border-strong bg-surface px-6 py-8 text-center">
-      <ScanReadyArt loading={loading} />
-      <p className="text-h3">{loading ? 'Membaca...' : 'Siap scan'}</p>
-      <p className="text-small text-text-muted">Tekan tombol scan di perangkat, arahkan ke QR di label.</p>
-    </div>
-  );
-}
-
-/**
- * Handheld scanner aiming at a QR label, a laser line sweeping the code.
- * Same palette and soft blob as components/ui/empty-state.tsx.
- */
-function ScanReadyArt({ loading }: { loading: boolean }) {
-  const c = {
-    blob: 'var(--primary-soft)',
-    surface: 'var(--surface)',
-    muted: 'var(--surface-muted)',
-    line: 'var(--border-strong)',
-    primary: 'var(--primary)',
-    laser: 'var(--highlight)',
-  };
-  // QR data modules (x, y, w, h) between the three finder squares
-  const modules = [
-    [108, 30, 4, 4], [108, 38, 4, 4], [116, 42, 4, 4], [124, 48, 4, 4], [108, 50, 4, 4],
-    [116, 56, 4, 4], [124, 60, 4, 4], [108, 62, 8, 4], [120, 52, 4, 4],
-  ];
-  const finders = [
-    [92, 28],
-    [118, 28],
-    [92, 54],
-  ];
-  return (
-    <svg aria-hidden viewBox="0 0 160 104" fill="none" className="h-28 w-44 shrink-0">
-      <ellipse cx="80" cy="95" rx="54" ry="6" style={{ fill: c.muted }} />
-      <circle cx="80" cy="50" r="42" style={{ fill: c.blob }} />
-      <circle cx="132" cy="14" r="3" style={{ fill: c.laser }} opacity=".7" />
-      <circle cx="26" cy="78" r="2.5" style={{ fill: c.primary }} opacity=".35" />
-
-      {/* Beam from the scanner window to the label */}
-      <path
-        d="M63 43 88 26v46L63 55Z"
-        style={{ fill: c.laser }}
-        opacity=".18"
-        className={cn(loading && 'motion-safe:animate-pulse')}
-      />
-
-      {/* Label with QR */}
-      <rect x="86" y="22" width="48" height="58" rx="6" style={{ fill: c.surface, stroke: c.line }} strokeWidth="2" />
-      {finders.map(([x, y]) => (
-        <g key={`${x}-${y}`}>
-          <rect x={x} y={y} width="12" height="12" rx="2" style={{ stroke: c.primary }} strokeWidth="2" />
-          <rect x={x + 4} y={y + 4} width="4" height="4" rx="1" style={{ fill: c.primary }} />
-        </g>
-      ))}
-      {modules.map(([x, y, w, h]) => (
-        <rect key={`${x}-${y}`} x={x} y={y} width={w} height={h} rx="1" style={{ fill: c.primary }} opacity=".85" />
-      ))}
-      <path d="M92 73h18" style={{ stroke: c.line }} strokeWidth="2.5" strokeLinecap="round" />
-      <rect
-        x="89"
-        y="46"
-        width="42"
-        height="2"
-        rx="1"
-        style={{ fill: c.laser }}
-        className={cn('motion-safe:animate-[scan-sweep_2.4s_ease-in-out_infinite]', loading && 'opacity-40')}
-      />
-
-      {/* Handheld scanner */}
-      <path
-        d="M40 57 34 80a3 3 0 0 0 3 4h8a3 3 0 0 0 3-2.5L52 57Z"
-        style={{ fill: c.surface, stroke: c.primary }}
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-      />
-      <rect x="28" y="38" width="38" height="21" rx="7" style={{ fill: c.surface, stroke: c.primary }} strokeWidth="2.5" />
-      <rect x="60" y="43" width="4" height="11" rx="1.5" style={{ fill: c.laser }} />
-      <path d="M36 46h12" style={{ stroke: c.line }} strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M53 60c2 4 1 7-2 8" style={{ stroke: c.primary }} strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
   );
 }
 
 function BundleSummary({ bundle }: { bundle: LookupResult }) {
   const v = bundle.variant;
   return (
-    <section aria-live="polite" className="mt-2 rounded-xl border border-border bg-surface p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="num text-text-muted">{bundle.code}</p>
-          <h2 className="mt-1 text-h2">
+    <section aria-live="polite" className="mt-3 rounded-xl border border-border bg-surface px-4 py-3">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="num text-small text-text-muted">
+            {bundle.code} · {bundle.batch_code}
+          </p>
+          <h2 className="text-h2">
             {v.product_name} {v.size}
           </h2>
-          <p className="text-small text-text-muted">
-            {v.color} · Batch <span className="num">{bundle.batch_code}</span>
+          <p className="truncate text-small text-text-muted">
+            {v.color}
+            {bundle.holder_name && <> · {bundle.holder_name}</>}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
           <StatusBadge status={bundle.status} />
           {bundle.rework && <Badge tone="info">Rework</Badge>}
+          <p className="text-caption text-text-muted">
+            Acuan <span className="num text-h3 text-text">{bundle.ref_qty}</span> pcs
+          </p>
         </div>
       </div>
       {bundle.rework && (
-        <p className="mt-3 rounded-md bg-info-soft px-3 py-2 text-small text-info">
+        <p className="mt-2 rounded-md bg-info-soft px-3 py-2 text-small text-info">
           Rework dari <span className="num font-medium">{bundle.rework.of_code}</span>
           {bundle.rework.note && <>: {bundle.rework.note}</>}
         </p>
       )}
-      <div className="mt-4 flex items-end justify-between border-t border-border pt-4">
-        <div>
-          <p className="text-caption text-text-muted">Qty acuan</p>
-          <p className="num text-display">
-            {bundle.ref_qty} <span className="text-h3 font-medium text-text-muted">pcs</span>
-          </p>
-        </div>
-        {bundle.holder_name && (
-          <p className="text-right text-small text-text-muted">
-            Pemegang
-            <br />
-            <span className="text-text">{bundle.holder_name}</span>
-          </p>
-        )}
-      </div>
     </section>
   );
 }
@@ -324,6 +170,7 @@ function ResultView({
   actions,
   onDone,
   onRescan,
+  onReload,
 }: {
   bundle: LookupResult;
   reasons: Reason[];
@@ -331,46 +178,109 @@ function ResultView({
   actions: ScanActions;
   onDone: (r: ScanResult) => void;
   onRescan: () => void;
+  /** Look the same code up again (after a conflict): shows what is recorded now. */
+  onReload: () => void;
 }) {
   if (!bundle.allowed || !bundle.next_action) {
     return (
       <>
+        <TaskHeader title="Bundle" backLabel="Kembali ke scan" onBack={onRescan} />
         <BundleSummary bundle={bundle} />
-        {bundle.message && (
-          <InlineAlert tone="danger" className="mt-4">
-            {bundle.message}
-          </InlineAlert>
-        )}
-        <BottomBar>
-          <Button size="lg" className="w-full" onClick={onRescan} autoFocus>
-            <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-          </Button>
-        </BottomBar>
+        <RejectedPanel message={bundle.message ?? 'Bundle ini tidak bisa diproses sekarang.'} onRescan={onRescan} />
       </>
     );
   }
   return bundle.next_action === 'terima' ? (
-    <ReceiveForm bundle={bundle} reasons={reasons.filter((r) => r.type === 'selisih')} userId={userId} receive={actions.receive} onDone={onDone} onRescan={onRescan} />
+    <ReceiveForm bundle={bundle} reasons={reasons.filter((r) => r.type === 'selisih')} userId={userId} receive={actions.receive} onDone={onDone} onRescan={onRescan} onReload={onReload} />
   ) : (
-    <FinishForm bundle={bundle} reasons={reasons.filter((r) => r.type === 'reject')} finish={actions.finish} onDone={onDone} onRescan={onRescan} />
+    <FinishForm bundle={bundle} reasons={reasons.filter((r) => r.type === 'reject')} finish={actions.finish} onDone={onDone} onRescan={onRescan} onReload={onReload} />
   );
 }
 
+/** Why a send failed: offline (keep the form, send again) or stale (someone changed the bundle). */
+type SendError = { kind: 'network' | 'stale' | 'other'; message: string };
+
 function useSubmit(onDone: (r: ScanResult) => void) {
   const [pending, start] = useTransition();
-  const [error, setError] = useState<{ message: string; stale: boolean } | null>(null);
+  const [error, setError] = useState<SendError | null>(null);
   const submit = (fn: () => Promise<ActionResult<ScanResult>>) =>
     start(async () => {
       setError(null);
+      if (!navigator.onLine) {
+        setError({ kind: 'network', message: 'Koneksi terputus. Cari sinyal atau WiFi, lalu kirim ulang. Tidak perlu scan lagi.' });
+        return;
+      }
       try {
         const res = await fn();
         if (res.ok) onDone(res.data);
-        else setError({ message: res.message, stale: res.code === 'version_conflict' || res.code === 'wrong_status' });
+        else
+          setError({
+            kind: res.code === 'version_conflict' || res.code === 'wrong_status' ? 'stale' : 'other',
+            message: res.message,
+          });
       } catch {
-        setError({ message: 'Koneksi terputus. Scan belum terkirim, coba lagi.', stale: false });
+        setError({ kind: 'network', message: 'Koneksi terputus. Cari sinyal atau WiFi, lalu kirim ulang. Tidak perlu scan lagi.' });
       }
     });
   return { pending, error, submit };
+}
+
+/** The error under a form, and the bottom button that fits it. */
+function SendErrorView({ error, mine }: { error: SendError; mine: React.ReactNode }) {
+  if (error.kind === 'network') {
+    return (
+      <div role="alert" className="flex gap-2.5 rounded-md bg-danger-soft p-3 text-danger">
+        <WifiOff size={20} strokeWidth={1.75} aria-hidden className="mt-0.5 shrink-0" />
+        <div>
+          <p className="font-semibold">Scan belum terkirim</p>
+          <p className="text-small">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+  if (error.kind === 'stale') {
+    return (
+      <div role="alert" className="rounded-md bg-warning-soft p-3 text-warning">
+        <p className="font-semibold">Bundle ini baru saja diubah</p>
+        <p className="text-small">{error.message}</p>
+        <p className="mt-1.5 text-small">
+          Isianmu tadi (tidak disimpan): <span className="font-medium">{mine}</span>
+        </p>
+      </div>
+    );
+  }
+  return <InlineAlert tone="danger">{error.message}</InlineAlert>;
+}
+
+function SubmitBar({
+  error,
+  pending,
+  disabled,
+  label,
+  onSubmit,
+  onReload,
+}: {
+  error: SendError | null;
+  pending: boolean;
+  disabled: boolean;
+  label: string;
+  onSubmit: () => void;
+  onReload: () => void;
+}) {
+  return (
+    <BottomBar>
+      {error?.kind === 'stale' ? (
+        <Button size="lg" className="h-14 w-full" onClick={onReload}>
+          <RefreshCw size={20} strokeWidth={1.75} aria-hidden /> Lihat data terbaru
+        </Button>
+      ) : (
+        <Button size="lg" className="h-14 w-full text-[16px]" disabled={disabled} onClick={onSubmit}>
+          {error?.kind === 'network' && <RefreshCw size={20} strokeWidth={1.75} aria-hidden />}
+          {pending ? 'Mengirim...' : error?.kind === 'network' ? `Kirim ulang: ${label.replace(/^Konfirmasi /, '')}` : label}
+        </Button>
+      )}
+    </BottomBar>
+  );
 }
 
 function ReceiveForm({
@@ -380,6 +290,7 @@ function ReceiveForm({
   receive,
   onDone,
   onRescan,
+  onReload,
 }: {
   bundle: LookupResult;
   reasons: Reason[];
@@ -387,6 +298,7 @@ function ReceiveForm({
   receive: ScanActions['receive'];
   onDone: (r: ScanResult) => void;
   onRescan: () => void;
+  onReload: () => void;
 }) {
   const [qty, setQty] = useState(bundle.ref_qty);
   const [reasonId, setReasonId] = useState('');
@@ -395,6 +307,7 @@ function ReceiveForm({
   const selisih = bundle.ref_qty - qty;
   const needsReason = selisih > 0;
   const canSubmit = !pending && (!needsReason || reasonId !== '');
+  const reasonLabel = reasons.find((r) => r.id === reasonId)?.label;
 
   const confirm = () =>
     submit(async () => {
@@ -417,45 +330,52 @@ function ReceiveForm({
 
   return (
     <>
+      <TaskHeader title="Terima bundle" onBack={onRescan} />
       <BundleSummary bundle={bundle} />
       <div className="mt-4 flex flex-col gap-4">
-        <QtyStepper id="qty-received" label="Qty diterima" value={qty} onChange={setQty} max={bundle.ref_qty} />
+        <BigStepper
+          id="qty-received"
+          label="Qty diterima"
+          value={qty}
+          onChange={setQty}
+          max={bundle.ref_qty}
+          quick={{ label: `Sesuai ${bundle.ref_qty}`, value: bundle.ref_qty }}
+        />
         {needsReason && (
-          <div className="flex flex-col gap-4 motion-safe:animate-[fade-in_150ms_cubic-bezier(0.2,0,0,1)]">
-            <InlineAlert tone="warning">
-              Selisih <span className="num font-medium">{selisih}</span> pcs dari qty kirim{' '}
-              <span className="num">{bundle.ref_qty}</span>.
-            </InlineAlert>
-            <div>
-              <Label htmlFor="reason">Alasan selisih</Label>
-              <Combobox
-                id="reason"
-                value={reasonId}
-                onChange={setReasonId}
-                required
-                size="lg"
-                searchable={false}
-                invalid={reasonId === ''}
-                placeholder="Pilih alasan"
-                options={reasons.map((r) => ({ value: r.id, label: r.label }))}
-              />
-            </div>
+          <>
+            <p role="status" className="rounded-md bg-warning-soft px-3 py-2.5 text-warning">
+              Kurang <span className="num font-semibold">{selisih}</span> pcs dari qty kirim{' '}
+              <span className="num">{bundle.ref_qty}</span>. Pilih alasannya.
+            </p>
+            <ReasonChips
+              legend="Alasan selisih"
+              options={reasons.map((r) => ({ value: r.id, label: r.label }))}
+              value={reasonId}
+              onChange={setReasonId}
+              invalid={reasonId === ''}
+            />
             <PhotoInput file={photo} onChange={setPhoto} />
-          </div>
+          </>
         )}
-        {error && <InlineAlert tone="danger">{error.message}</InlineAlert>}
+        {error && (
+          <SendErrorView
+            error={error}
+            mine={
+              <>
+                terima <span className="num">{qty}</span> pcs{reasonLabel && <>, {reasonLabel.toLowerCase()}</>}
+              </>
+            }
+          />
+        )}
       </div>
-      <BottomBar>
-        {error?.stale ? (
-          <Button size="lg" className="w-full" onClick={onRescan}>
-            <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-          </Button>
-        ) : (
-          <Button size="lg" className="w-full" disabled={!canSubmit} onClick={confirm}>
-            {pending ? 'Mengirim...' : `Konfirmasi terima ${qty} pcs`}
-          </Button>
-        )}
-      </BottomBar>
+      <SubmitBar
+        error={error}
+        pending={pending}
+        disabled={!canSubmit}
+        label={`Konfirmasi terima ${qty} pcs`}
+        onSubmit={confirm}
+        onReload={onReload}
+      />
     </>
   );
 }
@@ -466,12 +386,14 @@ function FinishForm({
   finish,
   onDone,
   onRescan,
+  onReload,
 }: {
   bundle: LookupResult;
   reasons: Reason[];
   finish: ScanActions['finish'];
   onDone: (r: ScanResult) => void;
   onRescan: () => void;
+  onReload: () => void;
 }) {
   const isFinishing = bundle.status === 'proses_finishing';
   const goodLabel = isFinishing ? 'Lolos QC' : 'Jadi';
@@ -482,6 +404,7 @@ function FinishForm({
   const sum = good + reject;
   const balanced = sum === bundle.ref_qty;
   const canSubmit = !pending && balanced && (reject === 0 || reasonId !== '');
+  const goodWord = isFinishing ? 'lolos QC' : 'jadi';
 
   const confirm = () =>
     submit(() =>
@@ -496,44 +419,61 @@ function FinishForm({
 
   return (
     <>
+      <TaskHeader title={isFinishing ? 'Selesai QC' : 'Selesai jahit'} onBack={onRescan} />
       <BundleSummary bundle={bundle} />
-      <div className="mt-4 flex flex-col gap-4">
-        <QtyStepper id="qty-good" label={goodLabel} value={good} onChange={setGood} max={bundle.ref_qty} invalid={!balanced} />
-        <QtyStepper id="qty-reject" label="Reject" value={reject} onChange={setReject} max={bundle.ref_qty} invalid={!balanced} />
-        <p className={cn('num rounded-md px-4 py-3 text-right', balanced ? 'bg-surface-muted text-text' : 'bg-danger-soft text-danger')} aria-live="polite">
-          {good} + {reject} = {sum} dari {bundle.ref_qty}
-        </p>
-        {reject > 0 && (
-          <div>
-            <Label htmlFor="reject-reason">Alasan reject</Label>
-            <Combobox
-                id="reject-reason"
-                value={reasonId}
-                onChange={setReasonId}
-                required
-                size="lg"
-                searchable={false}
-                invalid={reasonId === ''}
-                placeholder="Pilih alasan"
-                options={reasons.map((r) => ({ value: r.id, label: r.label }))}
-              />
+      <div className="mt-4 flex flex-col gap-3">
+        <BigStepper inline id="qty-good" label={goodLabel} value={good} onChange={setGood} max={bundle.ref_qty} invalid={!balanced} />
+        <BigStepper inline id="qty-reject" label="Reject" tone="danger" value={reject} onChange={setReject} max={bundle.ref_qty} invalid={!balanced} />
+        <section aria-live="polite" className={cn('flex flex-col gap-2 rounded-lg p-3', balanced ? 'bg-surface-muted' : 'bg-danger-soft')}>
+          <div aria-hidden className="flex h-2.5 gap-0.5 overflow-hidden rounded-sm bg-border-strong">
+            {good > 0 && <span className="bg-chart-ready" style={{ flex: `${good} 1 0` }} />}
+            {reject > 0 && <span className="bg-chart-reject" style={{ flex: `${reject} 1 0` }} />}
+            {sum < bundle.ref_qty && <span style={{ flex: `${bundle.ref_qty - sum} 1 0` }} />}
           </div>
+          <p className="num flex items-center justify-between">
+            <span className={cn(!balanced && 'text-danger')}>
+              <span className="font-semibold">{good}</span> + <span className="font-semibold">{reject}</span> ={' '}
+              <span className="font-semibold">{sum}</span> dari {bundle.ref_qty}
+            </span>
+            {balanced ? (
+              <span className="inline-flex items-center gap-1 text-small font-semibold text-success">
+                <Check size={16} strokeWidth={2.5} aria-hidden /> Pas
+              </span>
+            ) : (
+              <span className="text-small font-semibold text-danger">
+                {sum < bundle.ref_qty ? `Kurang ${bundle.ref_qty - sum}` : `Lebih ${sum - bundle.ref_qty}`}
+              </span>
+            )}
+          </p>
+        </section>
+        {reject > 0 && (
+          <ReasonChips
+            legend="Alasan reject"
+            options={reasons.map((r) => ({ value: r.id, label: r.label }))}
+            value={reasonId}
+            onChange={setReasonId}
+            invalid={reasonId === ''}
+          />
         )}
-        {error && <InlineAlert tone="danger">{error.message}</InlineAlert>}
+        {error && (
+          <SendErrorView
+            error={error}
+            mine={
+              <>
+                <span className="num">{good}</span> {goodWord}, <span className="num">{reject}</span> reject
+              </>
+            }
+          />
+        )}
       </div>
-      <BottomBar>
-        {error?.stale ? (
-          <Button size="lg" className="w-full" onClick={onRescan}>
-            <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-          </Button>
-        ) : (
-          <Button size="lg" className="w-full" disabled={!canSubmit} onClick={confirm}>
-            {pending
-              ? 'Mengirim...'
-              : `Konfirmasi selesai ${good} ${isFinishing ? 'lolos QC' : 'jadi'}, ${reject} reject`}
-          </Button>
-        )}
-      </BottomBar>
+      <SubmitBar
+        error={error}
+        pending={pending}
+        disabled={!canSubmit}
+        label={`Konfirmasi ${good} ${goodWord}, ${reject} reject`}
+        onSubmit={confirm}
+        onReload={onReload}
+      />
     </>
   );
 }
@@ -552,36 +492,44 @@ function PhotoInput({ file, onChange }: { file: File | null; onChange: (f: File 
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
       />
       {file ? (
-        <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3">
+        <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-2">
           <span className="truncate text-small">Foto terlampir</span>
           <Button variant="ghost" onClick={() => { onChange(null); if (inputRef.current) inputRef.current.value = ''; }}>
             Hapus foto
           </Button>
         </div>
       ) : (
-        <Button variant="secondary" size="lg" className="w-full" onClick={() => inputRef.current?.click()}>
-          <Camera size={24} strokeWidth={1.5} aria-hidden /> Tambah foto (opsional)
-        </Button>
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md border border-dashed border-border-strong bg-surface font-medium text-neutral"
+        >
+          <Camera size={20} strokeWidth={1.75} aria-hidden /> Tambah foto (opsional)
+        </button>
       )}
     </div>
   );
 }
 
-function SuccessView({ result }: { result: ScanResult }) {
+function SuccessView({ result, onNext }: { result: ScanResult; onNext: () => void }) {
+  const { title, detail } = splitResult(result.code, result.message);
   return (
-    <div role="status" className="mt-2 flex flex-1 flex-col items-center justify-center gap-3 rounded-xl bg-success-soft px-6 text-center text-success">
-      <CircleCheck size={24} strokeWidth={1.5} aria-hidden />
-      <p className="text-h2">{result.message}</p>
-      <p className="text-small">Status sekarang: {STATUS_LABEL[result.status].toLowerCase()}</p>
+    <SuccessScreen
+      ms={SUCCESS_MS}
+      onNext={onNext}
+      title={title}
+      subtitle={
+        <>
+          <span className="num font-semibold">{result.code}</span>
+          {detail && <> · {detail}</>}
+        </>
+      }
+    >
+      <p className="inline-flex items-center gap-2 text-small">
+        Status sekarang <StatusBadge status={result.status} />
+      </p>
       {result.status === 'ready_stock' && <p className="text-small">Label pcs masuk antrian cetak.</p>}
-    </div>
-  );
-}
-
-export function BottomBar({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-x-0 bottom-0 border-t border-border bg-surface">
-      <div className="mx-auto w-full max-w-md px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">{children}</div>
-    </div>
+      <p className="text-small text-success">Kembali ke scan otomatis...</p>
+    </SuccessScreen>
   );
 }

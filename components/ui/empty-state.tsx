@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn';
 
-type Variant = 'box' | 'search' | 'document' | 'check' | 'rack' | 'bell';
+type Variant = 'box' | 'search' | 'document' | 'check' | 'rack' | 'bell' | 'count';
 
 const c = {
   blob: 'var(--primary-soft)',
@@ -89,6 +89,31 @@ const art: Record<Variant, React.ReactNode> = {
       <path d="M32 46h56M32 66h56" style={{ stroke: c.line }} strokeWidth="4" strokeLinecap="round" />
       <rect x="40" y="52" width="14" height="14" rx="2" style={{ fill: c.surface, stroke: c.primary }} strokeWidth="2" strokeDasharray="3 3" />
       <rect x="62" y="32" width="14" height="14" rx="2" style={{ fill: c.surface, stroke: c.primary }} strokeWidth="2" strokeDasharray="3 3" />
+    </>
+  ),
+  // Stock count: a shelf with cartons behind a clipboard checklist (two ticked, one to go)
+  count: (
+    <>
+      <Blob />
+      {/* shelf */}
+      <path d="M24 30v50M60 30v50" style={{ stroke: c.line }} strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M24 48h36M24 66h36" style={{ stroke: c.line }} strokeWidth="3.5" strokeLinecap="round" />
+      <rect x="29" y="35" width="13" height="13" rx="1.5" style={{ fill: c.surface, stroke: c.line }} strokeWidth="2" />
+      <path d="M35.5 35v5" style={{ stroke: c.line }} strokeWidth="2" strokeLinecap="round" />
+      <rect x="44" y="39" width="11" height="9" rx="1.5" style={{ fill: c.surface, stroke: c.line }} strokeWidth="2" />
+      <rect x="30" y="54" width="15" height="12" rx="1.5" style={{ fill: c.surface, stroke: c.line }} strokeWidth="2" />
+      <path d="M37.5 54v5" style={{ stroke: c.line }} strokeWidth="2" strokeLinecap="round" />
+      {/* clipboard */}
+      <rect x="56" y="28" width="38" height="52" rx="5" style={{ fill: c.surface, stroke: c.line }} strokeWidth="2" />
+      <rect x="67" y="24" width="16" height="8" rx="2" style={{ fill: c.primary }} />
+      <rect x="62" y="40" width="9" height="9" rx="2" style={{ fill: c.primary }} />
+      <path d="m64.3 44.5 1.8 1.8 3-3.4" style={{ stroke: c.surface }} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M75 44.5h13" style={{ stroke: c.line }} strokeWidth="3" strokeLinecap="round" />
+      <rect x="62" y="53" width="9" height="9" rx="2" style={{ fill: c.primary }} />
+      <path d="m64.3 57.5 1.8 1.8 3-3.4" style={{ stroke: c.surface }} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M75 57.5h13" style={{ stroke: c.line }} strokeWidth="3" strokeLinecap="round" />
+      <rect x="62" y="66" width="9" height="9" rx="2" style={{ fill: c.surface, stroke: c.line }} strokeWidth="2" />
+      <path d="M75 70.5h8" style={{ stroke: c.line }} strokeWidth="3" strokeLinecap="round" />
     </>
   ),
 };

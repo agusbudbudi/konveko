@@ -1,26 +1,28 @@
 'use client';
 
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, CircleCheck, ClipboardList, PackagePlus, X } from 'lucide-react';
+import { ArrowLeft, ChevronRight, CircleCheck, ClipboardList, PackagePlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Combobox } from '@/components/ui/combobox';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Label } from '@/components/ui/input';
-import { QtyStepper } from '@/components/ui/qty-stepper';
 import { Badge } from '@/components/ui/status-badge';
-import { cn } from '@/lib/cn';
 import { normalizeScan } from '@/lib/scan/normalize';
-import { BottomBar, ScannerView } from '../../scan-app';
+import { toast } from '@/lib/scan/toast';
+import { BigStepper, NoAccess, SuccessScreen, TaskHeader } from '../../scan-ui';
+import { BottomBar, ScannerView } from '../../scanner-view';
 import { countCloseRack, countScan, countUndo, countUnlabeled, type CountTally } from './actions';
 
 export type CountRack = { code: string; kind: 'stok' | 'reject'; token: string; status: 'menghitung' | 'ditutup' };
 export type OpenCount = { id: string; code: string; note: string | null; racks: CountRack[] };
 export type UnlabeledLine = { variantId: string; label: string; qty: number };
 
-type Feedback = { tone: 'success' | 'warning' | 'danger' | 'info'; text: string } | null;
 type View = 'scan' | 'unlabeled' | 'close';
+
+const CLOSED_MS = 1600;
 
 /** Stok opname on the phone: pick a count, scan a rack, then count its pcs blind. */
 export function CountScan({
@@ -42,22 +44,32 @@ export function CountScan({
 }) {
   if (!canWork) {
     return (
-      <main className="px-4 pt-3">
-        <InlineAlert tone="info">Hanya akun gudang atau supervisor yang bisa menghitung stok opname.</InlineAlert>
-      </main>
+      <NoAccess action="menghitung stok opname" />
     );
   }
   if (!selected) return <PickCount counts={counts} />;
   if (!rack) return <PickRack count={selected} />;
   if (rack.status !== 'menghitung') {
     return (
-      <main className="px-4 pt-3">
-        <InlineAlert tone="info">
-          Rak <span className="num">{rack.code}</span> sudah ditutup. Minta supervisor membuka ulang kalau perlu dihitung ulang.
-        </InlineAlert>
-        <Link href={`/scan/gudang/opname?count=${selected.id}`} className="mt-4 inline-flex h-12 items-center gap-2 font-medium text-primary">
-          <ArrowLeft size={20} strokeWidth={1.5} aria-hidden /> Pilih rak lain
-        </Link>
+      <main className="flex flex-1 flex-col px-4">
+        <TaskHeader
+          href={`/scan/gudang/opname?count=${selected.id}`}
+          backLabel="Rak lain"
+          title={<span className="num text-small font-normal text-text-muted">{selected.code}</span>}
+        />
+        <div className="mt-4 rounded-lg border border-border bg-surface">
+          <EmptyState variant="check" compact hint="Minta supervisor membuka ulang kalau rak ini perlu dihitung ulang.">
+            Rak <span className="num">{rack.code}</span> sudah ditutup.
+          </EmptyState>
+        </div>
+        <BottomBar>
+          <Link
+            href={`/scan/gudang/opname?count=${selected.id}`}
+            className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-md bg-primary font-semibold text-primary-foreground"
+          >
+            Pilih rak lain
+          </Link>
+        </BottomBar>
       </main>
     );
   }
@@ -66,28 +78,44 @@ export function CountScan({
 
 function PickCount({ counts }: { counts: OpenCount[] }) {
   return (
-    <main className="flex flex-col gap-3 px-4 pt-4 pb-8">
-      <h1 className="text-h2">Pilih stok opname</h1>
+    <main className="flex flex-1 flex-col gap-3 px-4 pt-4 pb-6">
+      <div>
+        <h1 className="text-h2">Stok opname</h1>
+        <p className="text-small text-text-muted">Pilih stok opname yang sedang dihitung.</p>
+      </div>
       {counts.length === 0 ? (
-        <InlineAlert tone="info">Belum ada stok opname yang sedang dihitung. Buat dulu di desk: Gudang → Stok opname.</InlineAlert>
+        <div className="rounded-lg border border-dashed border-border-strong bg-surface">
+          <EmptyState variant="count" compact hint="Buat dulu di desk: Gudang → Stok opname.">
+            Belum ada stok opname yang sedang dihitung.
+          </EmptyState>
+        </div>
       ) : (
-        counts.map((c) => {
-          const left = c.racks.filter((r) => r.status === 'menghitung').length;
-          return (
-            <Link
-              key={c.id}
-              href={`/scan/gudang/opname?count=${c.id}`}
-              className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 hover:border-border-strong"
-            >
-              <div>
-                <p className="num text-h3">{c.code}</p>
-                <p className="num text-small text-text-muted">Rak {c.racks.map((r) => r.code).join(', ')}</p>
-                {c.note && <p className="text-small text-text-muted">{c.note}</p>}
-              </div>
-              <Badge tone={left > 0 ? 'info' : 'success'}>{left > 0 ? `${left} rak lagi` : 'Selesai'}</Badge>
-            </Link>
-          );
-        })
+        <ul className="flex flex-col gap-2">
+          {counts.map((c) => {
+            const left = c.racks.filter((r) => r.status === 'menghitung').length;
+            const done = c.racks.length - left;
+            return (
+              <li key={c.id}>
+                <Link
+                  href={`/scan/gudang/opname?count=${c.id}`}
+                  className="flex min-h-16 items-center gap-3 rounded-lg border border-border bg-surface p-4 hover:border-border-strong"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2">
+                      <span className="num text-h3">{c.code}</span>
+                      <Badge tone={left > 0 ? 'info' : 'success'}>{left > 0 ? `${left} rak lagi` : 'Selesai'}</Badge>
+                    </p>
+                    <p className="num truncate text-small text-text-muted">
+                      {done} dari {c.racks.length} rak ditutup · {c.racks.map((r) => r.code).join(', ')}
+                    </p>
+                    {c.note && <p className="truncate text-small text-text-muted">{c.note}</p>}
+                  </div>
+                  <ChevronRight size={20} strokeWidth={1.5} aria-hidden className="shrink-0 text-text-subtle" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </main>
   );
@@ -95,13 +123,16 @@ function PickCount({ counts }: { counts: OpenCount[] }) {
 
 function PickRack({ count }: { count: OpenCount }) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
   const onCode = useCallback(
     (raw: string) => {
       const code = normalizeScan(raw);
       const hit = count.racks.find((r) => r.token === code || r.code === code.toUpperCase());
-      if (!hit) return setError(`Kode ${code} bukan rak di ${count.code}. Scan QR rak yang ada di daftar.`);
-      if (hit.status !== 'menghitung') return setError(`Rak ${hit.code} sudah ditutup.`);
+      const reject = (text: string) => {
+        navigator.vibrate?.([80, 60, 80]);
+        toast('danger', text);
+      };
+      if (!hit) return reject(`Kode ${code} bukan rak di ${count.code}. Scan QR rak yang ada di daftar.`);
+      if (hit.status !== 'menghitung') return reject(`Rak ${hit.code} sudah ditutup.`);
       navigator.vibrate?.(60);
       router.push(`/scan/gudang/opname?count=${count.id}&rak=${hit.code}`);
     },
@@ -110,26 +141,16 @@ function PickRack({ count }: { count: OpenCount }) {
 
   return (
     <main className="flex flex-1 flex-col px-4 pb-8">
-      <div className="mt-3 flex items-center justify-between">
-        <Link href="/scan/gudang/opname" className="inline-flex h-10 items-center gap-1 text-small text-text-muted">
-          <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Opname
-        </Link>
-        <p className="num font-medium">{count.code}</p>
-      </div>
-      <p className="mt-2 text-h3">Scan QR rak yang akan dihitung</p>
-      <ScannerView onCode={onCode} loading={false} label="Ketik kode rak" placeholder="A1" loadingText="" />
-      {error && (
-        <InlineAlert tone="danger" className="mt-3">
-          {error}
-        </InlineAlert>
-      )}
-      <ul className="mt-4 grid grid-cols-3 gap-2">
+      <TaskHeader href="/scan/gudang/opname" backLabel="Opname" title={<span className="num text-small font-normal text-text-muted">{count.code}</span>} />
+      <ScannerView onCode={onCode} loading={false} kinds={['rack']} hint="Scan QR rak yang akan dihitung" className="-mx-4 max-h-[50dvh]" />
+      <h2 className="mt-4 mb-2 text-h3">Atau pilih rak</h2>
+      <ul className="grid grid-cols-3 gap-2">
         {count.racks.map((r) => (
           <li key={r.code}>
             {r.status === 'menghitung' ? (
               <Link
                 href={`/scan/gudang/opname?count=${count.id}&rak=${r.code}`}
-                className="num flex h-14 flex-col items-center justify-center rounded-md border border-border bg-surface font-medium"
+                className="num flex h-14 flex-col items-center justify-center rounded-md border border-border-strong bg-surface font-semibold hover:border-primary"
               >
                 {r.code}
                 <span className="text-caption font-normal text-text-muted">{r.kind === 'reject' ? 'reject' : 'stok'}</span>
@@ -162,7 +183,7 @@ function CountRackView({
 }) {
   const router = useRouter();
   const [tally, setTally] = useState(initialTally);
-  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [closed, setClosed] = useState<{ racksLeft: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<View>('scan');
   const [pending, start] = useTransition();
@@ -175,16 +196,13 @@ function CountRackView({
       setBusy(false);
       if (!res.ok) {
         navigator.vibrate?.([80, 60, 80]);
-        return setFeedback({ tone: 'danger', text: res.message });
+        return toast('danger', res.message);
       }
       const d = res.data;
       setTally({ pieces: d.pieces, unlabeled: d.unlabeled, last: d.last });
       navigator.vibrate?.(d.duplicate || d.warning ? [80, 60, 80] : 40);
-      setFeedback(
-        d.warning
-          ? { tone: 'warning', text: `${d.code}: ${d.warning}` }
-          : { tone: d.duplicate ? 'info' : 'success', text: d.message },
-      );
+      if (d.warning) toast('warning', `${d.code}: ${d.warning}`);
+      else toast(d.duplicate ? 'info' : 'success', d.message);
     },
     [count.id, rack.code],
   );
@@ -192,51 +210,66 @@ function CountRackView({
   const undo = (code: string) =>
     start(async () => {
       const res = await countUndo(count.id, rack.code, code);
-      if (!res.ok) return setFeedback({ tone: 'danger', text: res.message });
+      if (!res.ok) return toast('danger', res.message);
       setTally({ pieces: res.data.pieces, unlabeled: res.data.unlabeled, last: res.data.last });
-      setFeedback({ tone: 'info', text: res.data.message });
+      toast('info', res.data.message);
     });
 
-  return (
-    <main className="flex flex-1 flex-col px-4 pb-32">
-      <div className="mt-3 flex items-center justify-between">
-        <Link href={`/scan/gudang/opname?count=${count.id}`} className="inline-flex h-10 items-center gap-1 text-small text-text-muted">
-          <ArrowLeft size={16} strokeWidth={1.5} aria-hidden /> Rak lain
-        </Link>
-        <p className="num text-small text-text-muted">{count.code}</p>
-      </div>
+  const next = closed && (closed.racksLeft > 0 ? `/scan/gudang/opname?count=${count.id}` : '/scan/gudang/opname');
+  useEffect(() => {
+    if (!next) return;
+    const t = setTimeout(() => router.push(next), CLOSED_MS);
+    return () => clearTimeout(t);
+  }, [next, router]);
 
-      <section aria-live="polite" className="rounded-xl border border-border bg-surface p-4">
+  if (closed) {
+    return (
+      <main className="flex flex-1 flex-col px-4">
+        <SuccessScreen
+          ms={CLOSED_MS}
+          onNext={() => router.push(next!)}
+          title={`Rak ${rack.code} ditutup`}
+          subtitle={
+            <>
+              <span className="num font-semibold">{tally.pieces}</span> pcs berlabel
+              {tally.unlabeled > 0 && (
+                <>
+                  {' '}
+                  + <span className="num font-semibold">{tally.unlabeled}</span> tanpa label
+                </>
+              )}
+            </>
+          }
+        >
+          <p className="text-small">
+            {closed.racksLeft > 0 ? `${closed.racksLeft} rak lagi di ${count.code}.` : `Semua rak ${count.code} sudah ditutup. Tunggu persetujuan supervisor.`}
+          </p>
+        </SuccessScreen>
+      </main>
+    );
+  }
+
+  return (
+    <main className="flex flex-1 flex-col px-4">
+      <TaskHeader href={`/scan/gudang/opname?count=${count.id}`} backLabel="Rak lain" title={<span className="num text-small font-normal text-text-muted">{count.code}</span>} />
+
+      <section aria-live="polite" className="-mx-4 border-b border-primary/20 bg-primary-soft px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-caption text-text-muted">Rak {rack.kind === 'reject' ? 'reject' : 'stok'}</p>
-            <h1 className="num text-h1">{rack.code}</h1>
+            <p className="text-caption text-primary-hover">Rak {rack.kind === 'reject' ? 'reject' : 'stok'}</p>
+            <h1 className="num text-[28px] leading-9 font-semibold text-primary">{rack.code}</h1>
           </div>
           <div className="text-right">
-            <p className="text-caption text-text-muted">Sudah discan</p>
+            <p className="text-caption text-primary-hover">Sudah discan</p>
             <p className="num text-display">{tally.pieces}</p>
-            {tally.unlabeled > 0 && <p className="num text-small text-text-muted">+ {tally.unlabeled} tanpa label</p>}
+            {tally.unlabeled > 0 && <p className="num text-small text-primary-hover">+ {tally.unlabeled} tanpa label</p>}
           </div>
         </div>
-        {feedback && (
-          <p
-            role="status"
-            className={cn(
-              'mt-3 rounded-md px-3 py-2 text-small',
-              feedback.tone === 'success' && 'bg-success-soft text-success',
-              feedback.tone === 'warning' && 'bg-warning-soft text-warning',
-              feedback.tone === 'danger' && 'bg-danger-soft text-danger',
-              feedback.tone === 'info' && 'bg-info-soft text-info',
-            )}
-          >
-            {feedback.text}
-          </p>
-        )}
       </section>
 
       {view === 'scan' && (
         <>
-          <ScannerView onCode={onCode} loading={busy} label="Ketik kode pcs" placeholder="P-0000123" loadingText="Mencatat..." />
+          <ScannerView onCode={onCode} loading={busy} kinds={['piece']} hint={`Scan setiap pcs di rak ${rack.code}`} loadingText="Mencatat..." className="-mx-4 max-h-[45dvh]" />
           {tally.last.length > 0 && (
             <section className="mt-4">
               <h2 className="text-small font-medium text-text-muted">Scan terakhir</h2>
@@ -260,11 +293,11 @@ function CountRackView({
           )}
           <BottomBar>
             <div className="flex gap-2">
-              <Button size="lg" variant="secondary" onClick={() => setView('unlabeled')}>
+              <Button size="lg" variant="secondary" className="h-14" onClick={() => setView('unlabeled')}>
                 <PackagePlus size={20} strokeWidth={1.5} aria-hidden /> Tanpa label
               </Button>
-              <Button size="lg" className="flex-1" onClick={() => setView('close')}>
-                <CircleCheck size={20} strokeWidth={1.5} aria-hidden /> Selesai rak ini
+              <Button size="lg" className="h-14 flex-1" onClick={() => setView('close')}>
+                <CircleCheck size={20} strokeWidth={1.5} aria-hidden /> Tutup rak {rack.code}
               </Button>
             </div>
           </BottomBar>
@@ -280,7 +313,7 @@ function CountRackView({
           variants={variants}
           onDone={(t, message) => {
             if (t) setTally(t);
-            if (message) setFeedback({ tone: 'success', text: message });
+            if (message) toast('success', message);
             setView('scan');
           }}
         />
@@ -288,40 +321,49 @@ function CountRackView({
 
       {view === 'close' && (
         <>
-          <InlineAlert tone="info" className="mt-4">
-            Tutup rak <span className="num">{rack.code}</span> dengan <span className="num">{tally.pieces}</span> pcs berlabel
-            {tally.unlabeled > 0 && (
-              <>
-                {' '}
-                dan <span className="num">{tally.unlabeled}</span> pcs tanpa label
-              </>
-            )}
-            ? Setelah ditutup, rak ini tidak bisa discan lagi kecuali dibuka ulang oleh supervisor.
-          </InlineAlert>
+          <section aria-label="Konfirmasi tutup rak" className="mt-4 flex flex-col gap-3">
+            <h2 className="text-h2">Tutup rak {rack.code}?</h2>
+            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border">
+              <div className="bg-surface px-3 py-2.5">
+                <dt className="text-caption text-text-muted">Berlabel</dt>
+                <dd className="num text-h1">{tally.pieces} pcs</dd>
+              </div>
+              <div className="bg-surface px-3 py-2.5">
+                <dt className="text-caption text-text-muted">Tanpa label</dt>
+                <dd className="num text-h1">{tally.unlabeled} pcs</dd>
+              </div>
+            </dl>
+            <p className="rounded-md bg-warning-soft px-3 py-2.5 text-small text-warning">
+              Setelah ditutup, rak ini tidak bisa discan lagi kecuali dibuka ulang oleh supervisor.
+            </p>
+            <button
+              type="button"
+              onClick={() => setView('scan')}
+              disabled={pending}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border-strong bg-surface font-medium hover:bg-surface-muted"
+            >
+              <ArrowLeft size={20} strokeWidth={1.75} aria-hidden /> Kembali scan
+            </button>
+          </section>
           <BottomBar>
-            <div className="flex gap-2">
-              <Button size="lg" variant="secondary" onClick={() => setView('scan')} disabled={pending}>
-                Kembali
-              </Button>
-              <Button
-                size="lg"
-                className="flex-1"
-                disabled={pending}
-                onClick={() =>
-                  start(async () => {
-                    const res = await countCloseRack(count.id, rack.code);
-                    if (!res.ok) {
-                      setView('scan');
-                      return setFeedback({ tone: 'danger', text: res.message });
-                    }
-                    navigator.vibrate?.(60);
-                    router.push(res.data.racks_left > 0 ? `/scan/gudang/opname?count=${count.id}` : '/scan/gudang/opname');
-                  })
-                }
-              >
-                <ClipboardList size={20} strokeWidth={1.5} aria-hidden /> {pending ? 'Menutup...' : 'Tutup rak'}
-              </Button>
-            </div>
+            <Button
+              size="lg"
+              className="h-14 w-full"
+              disabled={pending}
+              onClick={() =>
+                start(async () => {
+                  const res = await countCloseRack(count.id, rack.code);
+                  if (!res.ok) {
+                    setView('scan');
+                    return toast('danger', res.message);
+                  }
+                  navigator.vibrate?.(60);
+                  setClosed({ racksLeft: res.data.racks_left });
+                })
+              }
+            >
+              <ClipboardList size={20} strokeWidth={1.5} aria-hidden /> {pending ? 'Menutup...' : `Ya, tutup rak ${rack.code}`}
+            </Button>
           </BottomBar>
         </>
       )}
@@ -361,10 +403,13 @@ function UnlabeledForm({
   return (
     <>
       <section className="mt-4 flex flex-col gap-4">
-        <InlineAlert tone="info">
-          Barang yang belum punya label Konveko. Setelah opname disetujui, sistem membuat pcs stok awal dan labelnya masuk antrean cetak.
-          Kondisi: <strong>{condition}</strong> (sesuai jenis rak).
-        </InlineAlert>
+        <div>
+          <h2 className="text-h2">Barang tanpa label</h2>
+          <p className="text-small text-text-muted">
+            Barang di rak ini yang belum punya label Konveko, kondisi <span className="font-medium text-text">{condition}</span>. Setelah
+            opname disetujui, labelnya masuk antrean cetak.
+          </p>
+        </div>
         <div>
           <Label htmlFor="ul-variant">Variant</Label>
           <Combobox
@@ -380,7 +425,7 @@ function UnlabeledForm({
             size="lg"
           />
         </div>
-        <QtyStepper id="ul-qty" label={existing ? 'Jumlah (mengganti yang sudah dicatat)' : 'Jumlah'} value={qty} onChange={setQty} min={0} max={10000} />
+        <BigStepper id="ul-qty" label={existing ? 'Jumlah (mengganti yang dicatat)' : 'Jumlah'} value={qty} onChange={setQty} min={0} max={10000} />
         {lines.length > 0 && (
           <div>
             <h2 className="text-small font-medium text-text-muted">Sudah dicatat di rak ini</h2>
@@ -406,16 +451,19 @@ function UnlabeledForm({
           </div>
         )}
         {error && <InlineAlert tone="danger">{error}</InlineAlert>}
+        <button
+          type="button"
+          onClick={() => onDone(null, null)}
+          disabled={pending}
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border-strong bg-surface font-medium hover:bg-surface-muted"
+        >
+          <ArrowLeft size={20} strokeWidth={1.75} aria-hidden /> Kembali scan
+        </button>
       </section>
       <BottomBar>
-        <div className="flex gap-2">
-          <Button size="lg" variant="secondary" onClick={() => onDone(null, null)} disabled={pending}>
-            Kembali
-          </Button>
-          <Button size="lg" className="flex-1" disabled={pending || !variantId} onClick={() => save(variantId, qty)}>
-            {pending ? 'Menyimpan...' : qty === 0 ? 'Hapus baris' : 'Simpan'}
-          </Button>
-        </div>
+        <Button size="lg" className="h-14 w-full" disabled={pending || !variantId} onClick={() => save(variantId, qty)}>
+          {pending ? 'Menyimpan...' : !variantId ? 'Pilih variant dulu' : qty === 0 ? 'Hapus baris ini' : `Simpan ${qty} pcs tanpa label`}
+        </Button>
       </BottomBar>
     </>
   );

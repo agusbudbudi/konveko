@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { ArrowRightLeft, CircleCheck, PackagePlus, ScanLine, Warehouse } from 'lucide-react';
+import { ArrowRight, ArrowRightLeft, PackagePlus, Warehouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Badge } from '@/components/ui/status-badge';
 import type { PutawayResult, WarehouseLookup } from '@/lib/types';
 import { useScanner } from '@/lib/scan/use-scanner';
-import { BottomBar, ScannerView } from '../scan-app';
+import { NoAccess, RejectedPanel, SuccessScreen, TaskHeader } from '../scan-ui';
+import { BottomBar, loadRecent, pushRecent, ScannerView, type RecentScan } from '../scanner-view';
 import { putaway, warehouseLookup } from './actions';
 
 type Rack = Extract<WarehouseLookup, { kind: 'location' }>;
@@ -22,6 +23,7 @@ type Phase =
 
 const RACK_KEY = 'konveko:rak-aktif';
 const SUCCESS_MS = 1200;
+const RECENT_KEY = 'konveko:gudang-recent';
 
 /**
  * Warehouse putaway (Fase 2a). The active rack stays set (and survives a
@@ -31,7 +33,7 @@ const SUCCESS_MS = 1200;
 export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
   const [rack, setRack] = useState<Rack | null>(null);
   const [phase, setPhase] = useState<Phase>({ k: 'scan' });
-  const [notice, setNotice] = useState<string | null>(null);
+  const [recent, setRecent] = useState<RecentScan[]>([]);
   // Code of the bundle/pcs that was open when "Ganti rak" was tapped: reopened
   // once the new rack is scanned, so it does not have to be scanned again.
   const [pending, setPending] = useState<string | null>(null);
@@ -39,6 +41,7 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
 
   // Restore the rack code, then re-read it so qty and kind are current.
   useEffect(() => {
+    setRecent(loadRecent(RECENT_KEY));
     let saved: string | null = null;
     try {
       saved = localStorage.getItem(RACK_KEY);
@@ -51,7 +54,6 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
 
   const chooseRack = (r: Rack) => {
     setRack(r);
-    setNotice(`Rak aktif: ${r.code}`);
     try {
       localStorage.setItem(RACK_KEY, r.code);
     } catch {}
@@ -66,7 +68,6 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
     async (raw: string) => {
       if (busy.current) return;
       busy.current = true;
-      setNotice(null);
       setPhase({ k: 'loading' });
       const res = await warehouseLookup(raw);
       if (!res.ok) return setPhase({ k: 'error', message: res.message });
@@ -90,7 +91,6 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
   const clearRack = () => {
     if (phase.k === 'item') setPending(phase.item.code);
     setRack(null);
-    setNotice(null);
     try {
       localStorage.removeItem(RACK_KEY);
     } catch {}
@@ -109,44 +109,33 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
     return () => clearTimeout(t);
   }, [phase, reset]);
 
-  return (
-    <main className="flex flex-1 flex-col px-4 pb-32">
-      <RackCard rack={rack} onClear={clearRack} />
+  if (!canShelve) return <NoAccess action="memasukkan barang ke rak" />;
 
-      {!canShelve && (
-        <InlineAlert tone="info" className="mt-3">Hanya akun gudang atau supervisor yang bisa memasukkan barang ke rak.</InlineAlert>
-      )}
+  return (
+    <main className="flex flex-1 flex-col px-4">
+      {/* the confirm screen shows it under its own task header */}
+      {phase.k !== 'success' && phase.k !== 'item' && <RackBar rack={rack} onClear={clearRack} />}
 
       {phase.k === 'scan' || phase.k === 'loading' ? (
         <>
-          {notice && (
-            <InlineAlert tone="success" className="mt-3">
-              {notice}
-            </InlineAlert>
-          )}
           {pending && !rack && (
-            <InlineAlert tone="info" className="mt-3">
+            <InlineAlert tone="info" className="my-3">
               Scan QR rak baru. <span className="num">{pending}</span> akan dibuka lagi setelah rak dipilih.
             </InlineAlert>
           )}
           <ScannerView
             onCode={onCode}
+            recent={recent}
             loading={phase.k === 'loading'}
-            label={rack ? 'Ketik kode bundle atau pcs' : 'Ketik kode rak'}
-            placeholder={rack ? 'B-00231 atau P-0000123' : 'A1'}
+            kinds={rack ? ['bundle', 'piece', 'rack'] : ['rack']}
+            hint={rack ? `Scan bundle atau pcs untuk masuk ke ${rack.code}` : 'Scan QR rak dulu'}
             loadingText="Mencari..."
+            className="-mx-4"
           />
         </>
       ) : phase.k === 'error' ? (
         <>
-          <InlineAlert tone="danger" className="mt-4">
-            {phase.message}
-          </InlineAlert>
-          <BottomBar>
-            <Button size="lg" className="w-full" onClick={reset} autoFocus>
-              <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-            </Button>
-          </BottomBar>
+          <RejectedPanel message={phase.message} onRescan={reset} />
         </>
       ) : phase.k === 'item' && rack ? (
         <ItemView
@@ -154,27 +143,38 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
           rack={rack}
           canShelve={canShelve}
           onRescan={reset}
+          onClearRack={clearRack}
           onDone={(result) => {
             navigator.vibrate?.(60);
             setRack((r) => (r ? { ...r, qty: r.qty + result.moved } : r));
             setPhase({ k: 'success', result });
+            setRecent((list) =>
+              pushRecent(RECENT_KEY, list, {
+                code: result.code,
+                text: `${result.moved} pcs masuk ${result.location_code}`,
+                tone: 'success',
+              }),
+            );
           }}
         />
       ) : phase.k === 'success' ? (
-        <div role="status" className="mt-4 flex flex-1 flex-col items-center justify-center gap-3 rounded-xl bg-success-soft px-6 text-center text-success">
-          <CircleCheck size={24} strokeWidth={1.5} aria-hidden />
-          <p className="text-h2">{phase.result.message}</p>
-        </div>
+        <SuccessScreen
+          ms={SUCCESS_MS}
+          onNext={reset}
+          title={`${phase.result.moved} pcs masuk ${phase.result.location_code}`}
+          subtitle={phase.result.message}
+        />
       ) : null}
     </main>
   );
 }
 
-function RackCard({ rack, onClear }: { rack: Rack | null; onClear: () => void }) {
+/** Active rack pinned under the header: the context every scan on this screen goes into. */
+function RackBar({ rack, onClear }: { rack: Rack | null; onClear: () => void }) {
   if (!rack) {
     return (
-      <section className="mt-2 flex items-center gap-3 rounded-xl border border-dashed border-border-strong bg-surface p-4">
-        <Warehouse size={24} strokeWidth={1.5} aria-hidden className="text-text-muted" />
+      <section className="-mx-4 flex items-center gap-3 border-b border-border bg-surface px-4 py-3">
+        <Warehouse size={24} strokeWidth={1.75} aria-hidden className="text-text-muted" />
         <div>
           <p className="font-medium">Scan QR rak dulu</p>
           <p className="text-small text-text-muted">Rak tetap aktif sampai diganti.</p>
@@ -183,23 +183,23 @@ function RackCard({ rack, onClear }: { rack: Rack | null; onClear: () => void })
     );
   }
   return (
-    <section className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-primary bg-primary-soft p-4">
-      <div className="flex items-center gap-3">
-        <Warehouse size={24} strokeWidth={1.5} aria-hidden className="text-primary" />
-        <div>
-          <p className="text-caption text-text-muted">Rak aktif</p>
-          <p className="flex items-center gap-2">
-            <span className="num text-h2 text-primary">{rack.code}</span>
-            <Badge tone={rack.location_kind === 'reject' ? 'danger' : 'neutral'}>
-              {rack.location_kind === 'reject' ? 'Reject' : 'Stok'}
-            </Badge>
-          </p>
-          <p className="num text-small text-text-muted">{rack.qty} pcs di rak</p>
-        </div>
+    <section aria-label="Rak aktif" className="-mx-4 flex items-center gap-3 border-b border-primary/20 bg-primary-soft px-4 py-2.5">
+      <div className="min-w-0">
+        <p className="text-caption text-primary-hover">
+          Rak aktif · {rack.location_kind === 'reject' ? 'reject' : 'stok'}
+        </p>
+        <p className="text-h1 text-primary">
+          <span className="num">{rack.code}</span>{' '}
+          <span className="num text-small font-medium text-primary-hover">· {rack.qty} pcs</span>
+        </p>
       </div>
-      <Button variant="ghost" onClick={onClear}>
+      <button
+        type="button"
+        onClick={onClear}
+        className="ml-auto h-11 shrink-0 rounded-md border border-primary bg-surface px-3.5 text-small font-medium text-primary"
+      >
         Ganti rak
-      </Button>
+      </button>
     </section>
   );
 }
@@ -209,12 +209,14 @@ function ItemView({
   rack,
   canShelve,
   onRescan,
+  onClearRack,
   onDone,
 }: {
   item: Item;
   rack: Rack;
   canShelve: boolean;
   onRescan: () => void;
+  onClearRack: () => void;
   onDone: (r: PutawayResult) => void;
 }) {
   const [pending, start] = useTransition();
@@ -260,66 +262,66 @@ function ItemView({
 
   return (
     <>
-      <section aria-live="polite" className="mt-4 rounded-xl border border-border bg-surface p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="num text-text-muted">
+      <TaskHeader title={item.kind === 'bundle' ? 'Masuk rak: bundle' : 'Masuk rak: pcs'} onBack={onRescan} />
+      <RackBar rack={rack} onClear={onClearRack} />
+      <section aria-live="polite" className="mt-3 rounded-xl border border-border bg-surface px-4 py-3">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="num text-small text-text-muted">
               {item.kind === 'bundle' ? 'Bundle' : 'Pcs'} {item.code}
+              {item.kind === 'piece' && <> · {item.bundle_code ? <>bundle {item.bundle_code}</> : 'stok awal'}</>}
             </p>
-            <h2 className="mt-1 text-h2">
+            <h2 className="text-h2">
               {v.product_name} {v.size}
             </h2>
-            <p className="text-small text-text-muted">
+            <p className="truncate text-small text-text-muted">
               {v.color} · <span className="num">{v.sku}</span>
-              {item.kind === 'piece' && (
-                <>
-                  {' '}
-                  · {item.bundle_code ? <>bundle <span className="num">{item.bundle_code}</span></> : 'stok awal'}
-                </>
-              )}
             </p>
           </div>
           {item.kind === 'piece' && (
             <Badge tone={item.sellable ? 'success' : 'danger'}>{item.grade === 'reject' ? 'Reject' : item.condition === 'rusak' ? 'Rusak' : 'Baik'}</Badge>
           )}
         </div>
-        <div className="mt-4 flex items-end justify-between border-t border-border pt-4">
-          {item.kind === 'bundle' ? (
-            <div>
-              <p className="text-caption text-text-muted">Menunggu masuk rak</p>
-              <p className="num text-display">
-                {item.unshelved_baik + item.unshelved_reject} <span className="text-h3 font-medium text-text-muted">pcs</span>
-              </p>
-              <p className="text-small text-text-muted">
-                {item.unshelved_baik} baik · {item.unshelved_reject} reject · {item.shelved} sudah di rak
-              </p>
-            </div>
-          ) : (
-            <div>
-              <p className="text-caption text-text-muted">Lokasi sekarang</p>
-              <p className="num text-h2">{item.location_code ?? 'Belum di rak'}</p>
-            </div>
-          )}
-        </div>
       </section>
 
-      {(blocked || error) && (
-        <InlineAlert tone="danger" className="mt-4">
-          {error ?? blocked}
-        </InlineAlert>
+      {/* what will move where */}
+      <section aria-label="Pindah ke rak" className="mt-3 flex items-center gap-3 rounded-lg bg-surface-muted px-4 py-3">
+        <div className="min-w-0 flex-1">
+          {item.kind === 'bundle' ? (
+            <>
+              <p className="text-caption text-text-muted">{forReject ? 'Reject yang masuk' : 'Baik yang masuk'}</p>
+              <p className="num text-h1">{count} pcs</p>
+            </>
+          ) : (
+            <>
+              <p className="text-caption text-text-muted">Sekarang</p>
+              <p className="num truncate text-h2">{item.location_code ?? 'Belum di rak'}</p>
+            </>
+          )}
+        </div>
+        <ArrowRight size={22} strokeWidth={2} aria-hidden className="shrink-0 text-text-subtle" />
+        <div className="min-w-0 flex-1 text-right">
+          <p className="text-caption text-text-muted">Ke rak</p>
+          <p className="num truncate text-h1 text-primary">{rack.code}</p>
+        </div>
+      </section>
+      {item.kind === 'bundle' && (
+        <p className="num mt-2 px-1 text-small text-text-muted">
+          Belum di rak: {item.unshelved_baik} baik, {item.unshelved_reject} reject · {item.shelved} sudah di rak
+        </p>
       )}
 
-      <BottomBar>
-        {blocked || !canShelve ? (
-          <Button size="lg" className="w-full" onClick={onRescan} autoFocus>
-            <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-          </Button>
-        ) : (
+      {blocked || !canShelve ? (
+        <RejectedPanel
+          message={blocked ?? 'Hanya akun gudang atau supervisor yang bisa memasukkan barang ke rak.'}
+          onRescan={onRescan}
+        />
+      ) : (
+        <>
+          {error && <RejectedPanel message={error} />}
+          <BottomBar>
           <div className="flex gap-2">
-            <Button size="lg" variant="secondary" onClick={onRescan} disabled={pending}>
-              Batal
-            </Button>
-            <Button size="lg" className="flex-1" onClick={confirm} disabled={pending} autoFocus>
+            <Button size="lg" className="h-14 flex-1" onClick={confirm} disabled={pending} autoFocus>
               {item.kind === 'piece' && item.location_code ? (
                 <ArrowRightLeft size={24} strokeWidth={1.5} aria-hidden />
               ) : (
@@ -328,8 +330,9 @@ function ItemView({
               {pending ? 'Menyimpan...' : action}
             </Button>
           </div>
-        )}
-      </BottomBar>
+          </BottomBar>
+        </>
+      )}
     </>
   );
 }

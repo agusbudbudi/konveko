@@ -1,7 +1,7 @@
 // Pure scan helpers. Node strips the TypeScript types itself (node >= 22.18).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyCode, normalizeScan } from '../../lib/scan/normalize.ts';
+import { classifyCode, expandCode, normalizeScan } from '../../lib/scan/normalize.ts';
 import { WedgeDetector } from '../../lib/scan/keyboard-wedge.ts';
 
 const TOKEN = '3f2a9c0d4b5e6f708192a3b4c5d6e7f8';
@@ -103,4 +103,14 @@ test('two scans back to back', () => {
   const d = new WedgeDetector();
   assert.equal(type(d, 'P-0000001', { start: 0 }).last.code, 'P-0000001');
   assert.equal(type(d, 'P-0000002', { start: 300 }).last.code, 'P-0000002');
+});
+
+test('expandCode pads typed digits to a full code', () => {
+  assert.equal(expandCode('bundle', '231'), 'B-00231');
+  assert.equal(expandCode('bundle', '231-1'), 'B-00231-1');
+  assert.equal(expandCode('bundle', 'b-00231'), 'B-00231');
+  assert.equal(expandCode('piece', '123'), 'P-0000123');
+  assert.equal(expandCode('rack', ' a1 '), 'A1');
+  assert.equal(expandCode('bundle', ''), '');
+  assert.equal(expandCode('bundle', '-1'), '');
 });

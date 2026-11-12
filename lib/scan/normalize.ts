@@ -41,3 +41,26 @@ export function classifyCode(code: string): CodeKind {
   if (/^SJ-\d+$/i.test(code)) return 'outbound';
   return 'other';
 }
+
+/** What someone types on the scan keypad: digits for bundle and pcs, letters for a rack. */
+export type EntryKind = 'bundle' | 'piece' | 'rack';
+
+const ENTRY: Record<EntryKind, { prefix: string; pad: number }> = {
+  bundle: { prefix: 'B-', pad: 5 },
+  piece: { prefix: 'P-', pad: 7 },
+  rack: { prefix: '', pad: 0 },
+};
+
+/**
+ * Typed digits to a full code: "231" -> "B-00231", "231-1" -> "B-00231-1" (a split bundle),
+ * "123" -> "P-0000123". A full code passes through; racks are typed as is (A1).
+ */
+export function expandCode(kind: EntryKind, typed: string): string {
+  const t = typed.trim().toUpperCase();
+  if (!t) return '';
+  const k = ENTRY[kind];
+  if (kind === 'rack' || t.startsWith(k.prefix)) return t;
+  const [head, ...rest] = t.split('-');
+  if (!head) return '';
+  return [k.prefix + head.padStart(k.pad, '0'), ...rest].join('-');
+}

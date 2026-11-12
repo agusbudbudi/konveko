@@ -278,10 +278,27 @@ body {
   to   { opacity: 1; transform: none; }
 }
 
+
 /* Laser line sweeping over the QR in the "Siap scan" illustration. */
 @keyframes scan-sweep {
   0%, 100% { transform: translateY(-13px); }
   50%      { transform: translateY(13px); }
+}
+
+/* Scan app: a task screen (result form, return, rack count) brings its own sticky action bar;
+   the bottom tab bar steps aside so nobody switches mode halfway through a task. The code keypad
+   fills the bottom of the screen itself, so the tab bar steps aside then too. */
+body:has([data-scan-task]) [data-scan-nav],
+body:has([data-keypad]) [data-scan-nav] {
+  display: none;
+}
+/* A task screen's own header (back + title) replaces the app header, for a cleaner, taller page. */
+body:has([data-task-header]) [data-app-header] {
+  display: none;
+}
+/* ...and while the code keypad is open, the task bar steps aside too so it does not cover the keys. */
+body:has([data-keypad]) [data-scan-task] {
+  display: none;
 }
 
 /* Clickable codes in tables and lists (bundle, batch, rak, pcs): always underlined so they read as links. */

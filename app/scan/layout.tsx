@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { LogOut, Settings2 } from 'lucide-react';
-import { logout } from '@/app/actions/auth';
 import { Wordmark } from '@/components/brand/wordmark';
-import { getCurrentAppUser } from '@/lib/supabase/server';
+import { roleChip, scanNavKind } from '@/lib/scan/nav';
+import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
+import { OnlineStatus } from './online-status';
+import { ScanNav } from './scan-nav';
+import { ScanToaster } from './scan-toaster';
 
 export const metadata: Metadata = { title: 'Scan' };
 
@@ -12,29 +13,28 @@ export default async function ScanLayout({ children }: { children: React.ReactNo
   const user = await getCurrentAppUser();
   if (!user) redirect('/login?next=/scan');
 
+  let holderName: string | null = null;
+  if (user.holder_id) {
+    const supabase = await createClient();
+    const { data } = await supabase.from('holder').select('name').eq('id', user.holder_id).maybeSingle();
+    holderName = data?.name ?? null;
+  }
+  const chip = roleChip(user.roles, holderName);
+
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
-      {/* sticky like the desk header; z-10 keeps it above the camera's corner overlay.
-          Height = 56px + the notch, so the notch padding does not squeeze the row. */}
-      <header className="sticky top-0 z-10 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)]">
+      {/* Compact header: who and where only. Name, device settings and Keluar live in the Akun tab.
+          z-20 keeps it above the camera's corner overlay; height = 52px + the notch. */}
+      <header data-app-header className="sticky top-0 z-20 flex h-[calc(3.25rem+env(safe-area-inset-top))] items-center gap-2.5 border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)]">
         <Wordmark />
-        <form action={logout} className="flex items-center gap-1">
-          <span className="mr-2 text-small text-text-muted">{user.name}</span>
-          <Link
-            href="/scan/perangkat"
-            aria-label="Perangkat scan"
-            title="Perangkat scan"
-            className="inline-flex size-10 items-center justify-center rounded-md text-text-muted hover:bg-surface-muted"
-          >
-            <Settings2 size={18} strokeWidth={1.5} aria-hidden />
-          </Link>
-          <button type="submit" className="inline-flex h-10 items-center gap-1.5 rounded-md px-2 text-small text-text-muted hover:bg-surface-muted">
-            <LogOut size={16} strokeWidth={1.5} aria-hidden />
-            Keluar
-          </button>
-        </form>
+        {chip && <span className="truncate rounded-sm bg-surface-muted px-2 py-1 text-caption font-medium text-neutral">{chip}</span>}
+        <span className="ml-auto shrink-0">
+          <OnlineStatus />
+        </span>
       </header>
       {children}
+      <ScanToaster />
+      <ScanNav kind={scanNavKind(user.roles)} />
     </div>
   );
 }

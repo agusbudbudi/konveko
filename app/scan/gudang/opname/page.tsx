@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { UUID } from '@/lib/master';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
-import { ModeTabs } from '../mode-tabs';
 import { CountScan, type OpenCount, type UnlabeledLine } from './count-scan';
 
 export const metadata: Metadata = { title: 'Scan stok opname' };
@@ -81,7 +80,6 @@ export default async function CountScanPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <ModeTabs active="opname" />
       <CountScan
         key={`${selected?.id ?? 'pick'}:${rack?.code ?? ''}`}
         canWork={canWork}

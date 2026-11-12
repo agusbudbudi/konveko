@@ -4,7 +4,6 @@ import { UUID } from '@/lib/master';
 import { NONE } from '@/lib/paging';
 import type { OutboundProgress, OutboundType } from '@/lib/outbound';
 import { createClient, getCurrentAppUser } from '@/lib/supabase/server';
-import { ModeTabs } from '../mode-tabs';
 import { OutboundScan, type DraftDoc } from './outbound-scan';
 
 export const metadata: Metadata = { title: 'Scan barang keluar' };
@@ -38,7 +37,6 @@ export default async function OutboundScanPage({ searchParams }: { searchParams:
 
   return (
     <>
-      <ModeTabs active="keluar" />
       <OutboundScan
         key={selected?.id ?? 'pick'}
         canWork={canWork}

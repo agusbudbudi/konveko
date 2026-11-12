@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
-import { CircleCheck, ScanLine, Undo2 } from 'lucide-react';
+import { Undo2 } from 'lucide-react';
 import { returnPiece } from '@/app/(desk)/barang-keluar/actions';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
@@ -11,7 +11,8 @@ import { RETURN_REASONS } from '@/lib/outbound';
 import type { WarehouseLookup } from '@/lib/types';
 import { warehouseLookup } from '../actions';
 import { useScanner } from '@/lib/scan/use-scanner';
-import { BottomBar, ScannerView } from '../../scan-app';
+import { NoAccess, ReasonChips, RejectedPanel, SuccessScreen, TaskHeader } from '../../scan-ui';
+import { BottomBar, ScannerView } from '../../scanner-view';
 
 type Piece = Extract<WarehouseLookup, { kind: 'piece' }>;
 type Phase = { k: 'scan' } | { k: 'loading' } | { k: 'piece'; piece: Piece } | { k: 'error'; message: string } | { k: 'done'; message: string };
@@ -49,34 +50,23 @@ export function ReturnScan({ canWork }: { canWork: boolean }) {
 
   if (!canWork) {
     return (
-      <main className="px-4 pt-3">
-        <InlineAlert tone="info">Hanya akun gudang atau supervisor yang bisa mencatat retur.</InlineAlert>
-      </main>
+      <NoAccess action="mencatat retur" />
     );
   }
 
   return (
-    <main className="flex flex-1 flex-col px-4 pb-32">
+    <main className="flex flex-1 flex-col px-4">
       {phase.k === 'scan' || phase.k === 'loading' ? (
-        <ScannerView onCode={onCode} loading={phase.k === 'loading'} label="Ketik kode pcs" placeholder="P-0000123" loadingText="Mencari pcs..." />
+        <ScannerView onCode={onCode} loading={phase.k === 'loading'} kinds={['piece']} hint="Scan label pcs yang dikembalikan" loadingText="Mencari pcs..." className="-mx-4" />
       ) : phase.k === 'error' ? (
         <>
-          <InlineAlert tone="danger" className="mt-4">
-            {phase.message}
-          </InlineAlert>
-          <BottomBar>
-            <Button size="lg" className="w-full" onClick={reset} autoFocus>
-              <ScanLine size={24} strokeWidth={1.5} aria-hidden /> Scan lagi
-            </Button>
-          </BottomBar>
+          <TaskHeader title="Retur" backLabel="Kembali ke scan" onBack={reset} />
+          <RejectedPanel message={phase.message} onRescan={reset} />
         </>
       ) : phase.k === 'piece' ? (
         <ReturnForm piece={phase.piece} onCancel={reset} onDone={(message) => setPhase({ k: 'done', message })} />
       ) : (
-        <div role="status" className="mt-4 flex flex-1 flex-col items-center justify-center gap-3 rounded-xl bg-success-soft px-6 text-center text-success">
-          <CircleCheck size={24} strokeWidth={1.5} aria-hidden />
-          <p className="text-h2">{phase.message}</p>
-        </div>
+        <SuccessScreen ms={DONE_MS} onNext={reset} title="Retur tersimpan" subtitle={phase.message} />
       )}
     </main>
   );
@@ -93,7 +83,8 @@ function ReturnForm({ piece, onCancel, onDone }: { piece: Piece; onCancel: () =>
 
   return (
     <>
-      <section aria-live="polite" className="mt-2 rounded-xl border border-border bg-surface p-4">
+      <TaskHeader title="Retur pcs" onBack={onCancel} />
+      <section aria-live="polite" className="mt-3 rounded-xl border border-border bg-surface px-4 py-3">
         <p className="num text-text-muted">Pcs {piece.code}</p>
         <h2 className="mt-1 text-h2">
           {v.product_name} {v.size}
@@ -104,7 +95,7 @@ function ReturnForm({ piece, onCancel, onDone }: { piece: Piece; onCancel: () =>
       </section>
 
       <fieldset className="mt-4 flex flex-col gap-2">
-        <legend className="mb-1.5 font-medium">Kondisi barang</legend>
+        <legend className="mb-1.5 text-h3">Kondisi barang</legend>
         <div className="grid grid-cols-2 gap-2">
           {(['baik', 'rusak'] as const).map((c) => (
             <button
@@ -113,40 +104,31 @@ function ReturnForm({ piece, onCancel, onDone }: { piece: Piece; onCancel: () =>
               aria-pressed={condition === c}
               onClick={() => setCondition(c)}
               className={cn(
-                'flex flex-col items-start gap-0.5 rounded-xl border p-4 text-left',
-                condition === c ? (c === 'baik' ? 'border-success bg-success-soft' : 'border-danger bg-danger-soft') : 'border-border bg-surface',
+                'flex min-h-20 flex-col items-start gap-0.5 rounded-lg p-3.5 text-left',
+                condition === c ? 'border-2 border-primary bg-primary-soft' : 'border border-border-strong bg-surface',
               )}
             >
-              <span className="font-medium">{c === 'baik' ? 'Baik' : 'Rusak'}</span>
+              <span className={cn('text-h3', condition === c && 'text-primary')}>{c === 'baik' ? 'Baik' : 'Rusak'}</span>
               <span className="text-small text-text-muted">{c === 'baik' ? 'Kembali ke rak stok' : 'Ke rak reject, bisa dijual BS'}</span>
             </button>
           ))}
         </div>
       </fieldset>
 
-      <fieldset className="mt-4 flex flex-col gap-2">
-        <legend className="mb-1.5 font-medium">Alasan</legend>
-        <div className="flex flex-wrap gap-2">
-          {[...RETURN_REASONS, 'lain'].map((r) => (
-            <button
-              key={r}
-              type="button"
-              aria-pressed={reason === r}
-              onClick={() => setReason(r)}
-              className={cn(
-                'inline-flex h-10 items-center rounded-md border px-3 text-small',
-                reason === r ? 'border-primary bg-primary-soft font-medium text-primary' : 'border-border bg-surface',
-              )}
-            >
-              {r === 'lain' ? 'Lainnya' : r}
-            </button>
-          ))}
+      <div className="mt-4 flex flex-col gap-4">
+        <ReasonChips
+          legend="Alasan retur"
+          options={[...RETURN_REASONS, 'lain'].map((r) => ({ value: r, label: r === 'lain' ? 'Lainnya' : r }))}
+          value={reason}
+          onChange={setReason}
+        />
+        <div>
+          <Label htmlFor="rt-note">
+            Catatan {!other && <span className="font-normal text-text-muted">(opsional)</span>}
+          </Label>
+          <Input id="rt-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} aria-invalid={(other && !note.trim()) || undefined} />
         </div>
-        <Label htmlFor="rt-note">
-          Catatan {!other && <span className="font-normal text-text-muted">(opsional)</span>}
-        </Label>
-        <Input id="rt-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} />
-      </fieldset>
+      </div>
 
       {error && (
         <InlineAlert tone="danger" className="mt-4">
@@ -156,12 +138,9 @@ function ReturnForm({ piece, onCancel, onDone }: { piece: Piece; onCancel: () =>
 
       <BottomBar>
         <div className="flex gap-2">
-          <Button size="lg" variant="secondary" onClick={onCancel} disabled={pending}>
-            Batal
-          </Button>
           <Button
             size="lg"
-            className="flex-1"
+            className="h-14 flex-1"
             disabled={pending || (other && !note.trim())}
             onClick={() =>
               start(async () => {
@@ -174,7 +153,7 @@ function ReturnForm({ piece, onCancel, onDone }: { piece: Piece; onCancel: () =>
               })
             }
           >
-            <Undo2 size={24} strokeWidth={1.5} aria-hidden /> {pending ? 'Menyimpan...' : 'Simpan retur'}
+            <Undo2 size={24} strokeWidth={1.5} aria-hidden /> {pending ? 'Menyimpan...' : condition === 'baik' ? 'Simpan retur, ke rak stok' : 'Simpan retur, ke rak reject'}
           </Button>
         </div>
       </BottomBar>

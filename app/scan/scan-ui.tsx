@@ -224,8 +224,8 @@ export function RejectedPanel({
 }
 
 /**
- * Full-screen success for `ms`, with a bar running down so people know it returns by itself.
- * Tap the button to go back sooner.
+ * Full-screen success. With `ms` a bar runs down so people know it returns by itself (tap to go
+ * back sooner); without it the screen stays until one of `actions` is tapped (e.g. after shipping).
  */
 export function SuccessScreen({
   title,
@@ -233,12 +233,15 @@ export function SuccessScreen({
   children,
   ms,
   onNext,
+  actions,
 }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   children?: React.ReactNode;
-  ms: number;
-  onNext: () => void;
+  ms?: number;
+  onNext?: () => void;
+  /** Replaces the default "Scan berikutnya sekarang" button. */
+  actions?: React.ReactNode;
 }) {
   const [run, setRun] = useState(false);
   useEffect(() => {
@@ -247,12 +250,14 @@ export function SuccessScreen({
   }, []);
   return (
     <div role="status" data-scan-task className="-mx-4 flex flex-1 flex-col bg-success-soft text-success">
-      <div aria-hidden className="h-1.5 bg-success/20">
-        <div
-          className="h-full bg-success transition-[width] ease-linear"
-          style={{ width: run ? '0%' : '100%', transitionDuration: `${ms}ms` }}
-        />
-      </div>
+      {ms !== undefined && (
+        <div aria-hidden className="h-1.5 bg-success/20">
+          <div
+            className="h-full bg-success transition-[width] ease-linear"
+            style={{ width: run ? '0%' : '100%', transitionDuration: `${ms}ms` }}
+          />
+        </div>
+      )}
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
         <span className="flex size-20 items-center justify-center rounded-full bg-success text-white">
           <Check size={44} strokeWidth={2.25} aria-hidden />
@@ -262,13 +267,15 @@ export function SuccessScreen({
         {children}
       </div>
       <div className="px-4 pt-2 pb-[max(20px,env(safe-area-inset-bottom))]">
-        <button
-          type="button"
-          onClick={onNext}
-          className="h-13 w-full rounded-md border border-success py-3.5 font-semibold text-success hover:bg-success/5"
-        >
-          Scan berikutnya sekarang
-        </button>
+        {actions ?? (
+          <button
+            type="button"
+            onClick={onNext}
+            className="h-13 w-full rounded-md border border-success py-3.5 font-semibold text-success hover:bg-success/5"
+          >
+            Scan berikutnya sekarang
+          </button>
+        )}
       </div>
     </div>
   );

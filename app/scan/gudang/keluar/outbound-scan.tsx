@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ChevronRight, CircleCheck, FilePlus2, Truck, Undo2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, FilePlus2, Truck, Undo2 } from 'lucide-react';
 import { addToOutbound, removeFromOutbound, shipOutbound } from '@/app/(desk)/barang-keluar/actions';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/status-badge';
 import { OUTBOUND_TYPE, SKIP_LABEL, type OutboundProgress, type OutboundType } from '@/lib/outbound';
 import { forgetLastScan } from '@/lib/scan/bus';
 import { toast } from '@/lib/scan/toast';
+import { SuccessScreen } from '../../scan-ui';
 import { BottomBar, ScannerView } from '../../scanner-view';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -84,20 +85,26 @@ export function OutboundScan({
   if (shipped) {
     return (
       <main className="flex flex-1 flex-col px-4">
-        <div role="status" className="mt-4 flex flex-col items-center gap-3 rounded-xl bg-success-soft px-6 py-10 text-center text-success">
-          <CircleCheck size={24} strokeWidth={1.5} aria-hidden />
-          <p className="text-h2">{shipped}</p>
-        </div>
-        <BottomBar>
-          <div className="flex gap-2">
-            <Link href={`/barang-keluar/${selected!.id}`} className="inline-flex h-12 flex-1 items-center justify-center rounded-md border border-border bg-surface font-medium">
-              Lihat dokumen
-            </Link>
-            <Link href="/scan/gudang/keluar" className="inline-flex h-12 flex-1 items-center justify-center rounded-md bg-primary font-medium text-primary-foreground">
-              Dokumen lain
-            </Link>
-          </div>
-        </BottomBar>
+        <SuccessScreen
+          title={selected!.type === 'penyesuaian' ? 'Stok dikeluarkan' : 'Barang dikirim'}
+          subtitle={shipped}
+          actions={
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href={`/barang-keluar/${selected!.id}`}
+                className="inline-flex h-13 items-center justify-center rounded-md border border-success font-semibold text-success hover:bg-success/5"
+              >
+                Lihat dokumen
+              </Link>
+              <Link
+                href="/scan/gudang/keluar"
+                className="inline-flex h-13 items-center justify-center rounded-md bg-success font-semibold text-white"
+              >
+                Dokumen lain
+              </Link>
+            </div>
+          }
+        />
       </main>
     );
   }
@@ -176,21 +183,40 @@ export function OutboundScan({
         )}
       </section>
 
-      <ScannerView onCode={onCode} loading={loading} kinds={['piece', 'bundle']} hint="Scan pcs atau bundle, satu per satu" loadingText="Menambahkan..." className="-mx-4" />
+      {confirming ? (
+        <section aria-label="Konfirmasi kirim" className="mt-4 flex flex-col gap-3">
+          <h2 className="text-h2">{adjustment ? 'Keluarkan dari stok?' : 'Kirim sekarang?'}</h2>
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border">
+            <div className="bg-surface px-3 py-2.5">
+              <dt className="text-caption text-text-muted">Jumlah</dt>
+              <dd className="num text-h1">{total} pcs</dd>
+            </div>
+            <div className="bg-surface px-3 py-2.5">
+              <dt className="text-caption text-text-muted">{adjustment ? 'Jenis' : 'Tujuan'}</dt>
+              <dd className="truncate text-h3">{adjustment ? 'Penyesuaian' : selected.destination}</dd>
+            </div>
+          </dl>
+          <p className="rounded-md bg-warning-soft px-3 py-2.5 text-small text-warning">
+            Setelah {adjustment ? 'dikeluarkan' : 'dikirim'}, dokumen <span className="num font-semibold">{selected.code}</span> tidak bisa diubah lagi.
+          </p>
+          <button
+            type="button"
+            onClick={() => setConfirming(false)}
+            disabled={pending}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border-strong bg-surface font-medium hover:bg-surface-muted"
+          >
+            <ArrowLeft size={20} strokeWidth={1.75} aria-hidden /> Kembali scan
+          </button>
+        </section>
+      ) : (
+        <ScannerView onCode={onCode} loading={loading} kinds={['piece', 'bundle']} hint="Scan pcs atau bundle, satu per satu" loadingText="Menambahkan..." className="-mx-4" />
+      )}
 
       <BottomBar>
         {confirming ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-small">
-              <span className="num font-medium">{total} pcs</span> {adjustment ? 'dikeluarkan dari stok' : `dikirim ke ${selected.destination}`}. Dokumen tidak bisa diubah lagi.
-            </p>
-            <div className="flex gap-2">
-              <Button size="lg" variant="secondary" onClick={() => setConfirming(false)} disabled={pending}>
-                Kembali
-              </Button>
               <Button
                 size="lg"
-                className="flex-1"
+                className="h-14 w-full"
                 disabled={pending}
                 onClick={() =>
                   start(async () => {
@@ -205,10 +231,9 @@ export function OutboundScan({
                   })
                 }
               >
-                <Truck size={24} strokeWidth={1.5} aria-hidden /> {pending ? 'Menyimpan...' : adjustment ? 'Ya, keluarkan' : 'Ya, kirim'}
+                <Truck size={24} strokeWidth={1.5} aria-hidden />{' '}
+                {pending ? 'Menyimpan...' : adjustment ? `Ya, keluarkan ${total} pcs` : `Ya, kirim ${total} pcs`}
               </Button>
-            </div>
-          </div>
         ) : (
           <div className="flex gap-2">
             {lastPiece && (
@@ -232,7 +257,7 @@ export function OutboundScan({
                 <Undo2 size={20} strokeWidth={1.5} aria-hidden /> Batalkan scan
               </Button>
             )}
-            <Button size="lg" className="flex-1" disabled={total === 0 || pending} onClick={() => setConfirming(true)}>
+            <Button size="lg" className="h-14 flex-1" disabled={total === 0 || pending} onClick={() => setConfirming(true)}>
               <Truck size={24} strokeWidth={1.5} aria-hidden /> {adjustment ? 'Selesai, keluarkan' : 'Selesai, kirim'}
             </Button>
           </div>

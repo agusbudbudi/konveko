@@ -80,7 +80,7 @@ export function ScannerView({
   );
 
   return (
-    <div className={cn('flex flex-1 flex-col', className)}>
+    <div className={cn('flex flex-col', camera !== false && 'flex-1', className)}>
       {camera === null ? (
         <div aria-hidden className="min-h-64 flex-1 bg-surface-muted" />
       ) : camera ? (

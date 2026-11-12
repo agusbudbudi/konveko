@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/status-badge';
 import { OUTBOUND_TYPE, SKIP_LABEL, type OutboundProgress, type OutboundType } from '@/lib/outbound';
 import { forgetLastScan } from '@/lib/scan/bus';
 import { toast } from '@/lib/scan/toast';
-import { SuccessScreen } from '../../scan-ui';
+import { SuccessScreen, TaskHeader } from '../../scan-ui';
 import { BottomBar, ScannerView } from '../../scanner-view';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -147,12 +147,7 @@ export function OutboundScan({
   const adjustment = selected.type === 'penyesuaian';
   return (
     <main className="flex flex-1 flex-col px-4">
-      <div className="-mx-4 flex h-12 items-center border-b border-border bg-surface px-2">
-        <Link href="/scan/gudang/keluar" className="inline-flex h-11 items-center gap-1.5 rounded-md px-2 font-medium hover:bg-surface-muted">
-          <ArrowLeft size={20} strokeWidth={1.75} aria-hidden />
-          Dokumen
-        </Link>
-      </div>
+      <TaskHeader href="/scan/gudang/keluar" backLabel="Dokumen" title="Barang keluar" />
       <section aria-label="Dokumen aktif" className="-mx-4 border-b border-primary/20 bg-primary-soft px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

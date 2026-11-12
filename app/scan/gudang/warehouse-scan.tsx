@@ -111,7 +111,8 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
 
   return (
     <main className="flex flex-1 flex-col px-4">
-      {phase.k !== 'success' && <RackBar rack={rack} onClear={clearRack} />}
+      {/* the confirm screen shows it under its own task header */}
+      {phase.k !== 'success' && phase.k !== 'item' && <RackBar rack={rack} onClear={clearRack} />}
 
       {!canShelve && (
         <InlineAlert tone="info" className="mt-3">Hanya akun gudang atau supervisor yang bisa memasukkan barang ke rak.</InlineAlert>
@@ -144,6 +145,7 @@ export function WarehouseScan({ canShelve }: { canShelve: boolean }) {
           rack={rack}
           canShelve={canShelve}
           onRescan={reset}
+          onClearRack={clearRack}
           onDone={(result) => {
             navigator.vibrate?.(60);
             setRack((r) => (r ? { ...r, qty: r.qty + result.moved } : r));
@@ -209,12 +211,14 @@ function ItemView({
   rack,
   canShelve,
   onRescan,
+  onClearRack,
   onDone,
 }: {
   item: Item;
   rack: Rack;
   canShelve: boolean;
   onRescan: () => void;
+  onClearRack: () => void;
   onDone: (r: PutawayResult) => void;
 }) {
   const [pending, start] = useTransition();
@@ -261,6 +265,7 @@ function ItemView({
   return (
     <>
       <TaskHeader title={item.kind === 'bundle' ? 'Masuk rak: bundle' : 'Masuk rak: pcs'} onBack={onRescan} />
+      <RackBar rack={rack} onClear={onClearRack} />
       <section aria-live="polite" className="mt-3 rounded-xl border border-border bg-surface p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/input';
 import { Badge } from '@/components/ui/status-badge';
 import { normalizeScan } from '@/lib/scan/normalize';
 import { toast } from '@/lib/scan/toast';
-import { BigStepper, SuccessScreen } from '../../scan-ui';
+import { BigStepper, SuccessScreen, TaskHeader } from '../../scan-ui';
 import { BottomBar, ScannerView } from '../../scanner-view';
 import { countCloseRack, countScan, countUndo, countUnlabeled, type CountTally } from './actions';
 
@@ -130,7 +130,7 @@ function PickRack({ count }: { count: OpenCount }) {
 
   return (
     <main className="flex flex-1 flex-col px-4 pb-8">
-      <BackRow href="/scan/gudang/opname" label="Opname" code={count.code} />
+      <TaskHeader href="/scan/gudang/opname" backLabel="Opname" title={<span className="num text-small font-normal text-text-muted">{count.code}</span>} />
       <ScannerView onCode={onCode} loading={false} kinds={['rack']} hint="Scan QR rak yang akan dihitung" className="-mx-4 max-h-[50dvh]" />
       <h2 className="mt-4 mb-2 text-h3">Atau pilih rak</h2>
       <ul className="grid grid-cols-3 gap-2">
@@ -240,7 +240,7 @@ function CountRackView({
 
   return (
     <main className="flex flex-1 flex-col px-4">
-      <BackRow href={`/scan/gudang/opname?count=${count.id}`} label="Rak lain" code={count.code} />
+      <TaskHeader href={`/scan/gudang/opname?count=${count.id}`} backLabel="Rak lain" title={<span className="num text-small font-normal text-text-muted">{count.code}</span>} />
 
       <section aria-live="polite" className="-mx-4 border-b border-primary/20 bg-primary-soft px-4 py-3">
         <div className="flex items-start justify-between gap-3">
@@ -455,18 +455,5 @@ function UnlabeledForm({
         </Button>
       </BottomBar>
     </>
-  );
-}
-
-/** Back link plus the stock count code, under the app header. */
-function BackRow({ href, label, code }: { href: string; label: string; code: string }) {
-  return (
-    <div className="-mx-4 flex h-12 items-center border-b border-border bg-surface px-2">
-      <Link href={href} className="inline-flex h-11 items-center gap-1.5 rounded-md px-2 font-medium hover:bg-surface-muted">
-        <ArrowLeft size={20} strokeWidth={1.75} aria-hidden />
-        {label}
-      </Link>
-      <span className="num ml-auto pr-2 text-small text-text-muted">{code}</span>
-    </div>
   );
 }

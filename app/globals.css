@@ -292,6 +292,10 @@ body:has([data-scan-task]) [data-scan-nav],
 body:has([data-keypad]) [data-scan-nav] {
   display: none;
 }
+/* A task screen's own header (back + title) replaces the app header, for a cleaner, taller page. */
+body:has([data-task-header]) [data-app-header] {
+  display: none;
+}
 /* ...and while the code keypad is open, the task bar steps aside too so it does not cover the keys. */
 body:has([data-keypad]) [data-scan-task] {
   display: none;

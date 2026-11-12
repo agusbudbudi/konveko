@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, CircleAlert, Keyboard, Loader2, ScanLine } from 'lucide-react';
+import { Camera, Check, CircleAlert, Keyboard, Loader2, ScanLine } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
 import { normalizeScan } from '@/lib/scan/normalize';
@@ -242,7 +242,7 @@ function LastScan({ item }: { item: RecentScan }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">
       <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-md', TONE[item.tone])}>
-        {item.tone === 'danger' ? <CircleAlert size={18} strokeWidth={2} aria-hidden /> : <ScanLine size={18} strokeWidth={2} aria-hidden />}
+        {item.tone === 'danger' ? <CircleAlert size={18} strokeWidth={2} aria-hidden /> : <Check size={18} strokeWidth={2.25} aria-hidden />}
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-caption text-text-muted">Terakhir di-scan</p>

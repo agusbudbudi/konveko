@@ -180,7 +180,7 @@ export function ReasonChips({
 /** A scan that cannot go ahead: one plain sentence, never a modal (DESIGN §6). */
 export function RejectedPanel({ message, children }: { message: string; children?: React.ReactNode }) {
   return (
-    <section role="alert" className="mt-3 rounded-lg border-t-[3px] border-danger bg-surface p-4">
+    <section role="alert" className="mt-3 rounded-lg border border-border bg-surface p-4">
       <div className="flex gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-danger-soft text-danger">
           <CircleX size={22} strokeWidth={2} aria-hidden />

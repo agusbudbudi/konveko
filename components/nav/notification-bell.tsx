@@ -7,6 +7,8 @@ import { Bell, CheckCheck } from 'lucide-react';
 import { getBrowserClient } from '@/lib/supabase/client';
 import { renderNotification, timeAgo, type NotificationData } from '@/lib/notifications/registry';
 import { NotificationIcon } from '@/components/notifications/notification-icon';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Scrim, useScrollLock } from '@/components/ui/scrim';
 import { cn } from '@/lib/cn';
 
 type Item = {
@@ -88,6 +90,9 @@ export function NotificationBell({ userId }: { userId: string }) {
     };
   }, [open]);
 
+  // On phones the tray is a full-width sheet: dim and lock the page behind it.
+  useScrollLock(open);
+
   async function markRead(ids: string[] | null) {
     const now = new Date().toISOString();
     // Optimistic; realtime/refetch brings the server truth.
@@ -124,9 +129,13 @@ export function NotificationBell({ userId }: { userId: string }) {
       </button>
 
       {open && (
+        <>
+        <Scrim onClose={() => setOpen(false)} />
         <div
           role="menu"
-          className="absolute top-full right-0 z-20 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-border-strong bg-surface"
+          // On phones the bell is not at the right edge (the profile menu sits after it), so anchoring to the bell pushes the
+          // panel off-screen. There it spans the viewport width instead, just under the 56px top bar.
+          className="absolute top-full right-0 z-20 mt-1 w-[22rem] rounded-lg border border-border-strong bg-surface max-sm:fixed max-sm:inset-x-4 max-sm:top-[3.75rem] max-sm:mt-0 max-sm:w-auto"
         >
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
             <p className="text-small font-medium">Notifikasi</p>
@@ -147,7 +156,7 @@ export function NotificationBell({ userId }: { userId: string }) {
             ) : failed ? (
               <p className="px-3 py-6 text-center text-small text-text-muted">Notifikasi gagal dimuat.</p>
             ) : items.length === 0 ? (
-              <p className="px-3 py-6 text-center text-small text-text-muted">Belum ada notifikasi.</p>
+              <EmptyState variant="bell" compact>Belum ada notifikasi.</EmptyState>
             ) : (
               items.map((item) => {
                 const r = renderNotification(item);
@@ -189,6 +198,7 @@ export function NotificationBell({ userId }: { userId: string }) {
             </Link>
           </div>
         </div>
+        </>
       )}
     </div>
   );

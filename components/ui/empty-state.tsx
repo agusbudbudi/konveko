@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn';
 
-type Variant = 'box' | 'search' | 'document' | 'check' | 'rack';
+type Variant = 'box' | 'search' | 'document' | 'check' | 'rack' | 'bell';
 
 const c = {
   blob: 'var(--primary-soft)',
@@ -62,6 +62,23 @@ const art: Record<Variant, React.ReactNode> = {
       <path d="M48 40h24M48 50h24" style={{ stroke: c.line }} strokeWidth="3" strokeLinecap="round" />
       <circle cx="74" cy="68" r="12" style={{ fill: c.primary }} />
       <path d="m68.5 68 4 4 7-8" style={{ stroke: c.surface }} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </>
+  ),
+  // Quiet bell
+  bell: (
+    <>
+      <Blob />
+      <path
+        d="M60 26c-11 0-18 8-18 19v9c0 5-3 8-6 11h48c-3-3-6-6-6-11v-9c0-11-7-19-18-19Z"
+        style={{ fill: c.surface, stroke: c.line }}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M60 26v-4" style={{ stroke: c.line }} strokeWidth="3" strokeLinecap="round" />
+      <path d="M54 68c0 4 3 7 6 7s6-3 6-7" style={{ fill: c.primary }} />
+      <path d="M52 44h16" style={{ stroke: c.line }} strokeWidth="3" strokeLinecap="round" />
+      <circle cx="82" cy="32" r="8" style={{ fill: c.primary }} />
+      <path d="m78.5 32 2.5 2.5 4.5-5" style={{ stroke: c.surface }} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </>
   ),
   // Shelf with free slots

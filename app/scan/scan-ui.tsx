@@ -207,14 +207,18 @@ export function RejectedPanel({
       </p>
     </section>
     {onRescan && (
-      <button
-        type="button"
-        onClick={onRescan}
-        autoFocus
-        className="mt-4 inline-flex h-14 w-full items-center justify-center gap-2 rounded-md bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
-      >
-        <ScanLine size={22} strokeWidth={1.75} aria-hidden /> Scan lagi
-      </button>
+      // Pushed to the bottom of the page and stuck right above the tab bar (h-16 + safe area).
+      // Needs to be a direct child of the page's flex column <main>.
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-auto border-t border-border bg-surface px-4 pt-3 pb-3">
+        <button
+          type="button"
+          onClick={onRescan}
+          autoFocus
+          className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-md bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
+        >
+          <ScanLine size={22} strokeWidth={1.75} aria-hidden /> Scan lagi
+        </button>
+      </div>
     )}
     </>
   );

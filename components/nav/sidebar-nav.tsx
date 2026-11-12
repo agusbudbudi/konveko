@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   BarChart3,
   ChevronDown,
+  ClipboardCheck,
   Database,
   Hourglass,
   Layers,
@@ -66,6 +67,7 @@ const GROUPS: Group[] = [
       },
       { href: '/label', label: 'Antrian label', icon: Tag },
       { href: '/barang-keluar', label: 'Barang keluar', icon: Truck },
+      { href: '/opname', label: 'Stok opname', icon: ClipboardCheck },
     ],
   },
   {

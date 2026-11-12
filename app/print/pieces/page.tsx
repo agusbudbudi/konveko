@@ -15,7 +15,7 @@ type PieceRow = {
   code: string;
   qr_token: string;
   grade: 'baik' | 'reject';
-  finish_movement_id: string;
+  finish_movement_id: string | null;
   variant: { sku: string; product_name: string; size: string; color: string } | null;
 };
 
@@ -30,15 +30,16 @@ const MAX = 500;
  *   ?bundle=<id>             not printed yet in one bundle
  *   ?bundle=<id>&all=1       reprint every active piece of a bundle
  *   ?piece=<id>              reprint one piece (also one that left the warehouse)
+ *   ?count=<id>              not printed yet among the stok awal pieces of one stock count
  */
 export default async function PrintPiecesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pending?: string; bundle?: string; all?: string; piece?: string }>;
+  searchParams: Promise<{ pending?: string; bundle?: string; all?: string; piece?: string; count?: string }>;
 }) {
   const user = await getCurrentAppUser();
   if (!user) redirect('/login');
-  const { pending, bundle, all, piece } = await searchParams;
+  const { pending, bundle, all, piece, count } = await searchParams;
 
   const supabase = await createClient();
   let q = supabase
@@ -52,14 +53,17 @@ export default async function PrintPiecesPage({
   else if (bundle && UUID.test(bundle)) {
     q = q.eq('bundle_id', bundle).eq('status', 'aktif');
     if (all !== '1') q = q.is('printed_at', null);
-  } else if (pending === '1') q = q.eq('status', 'aktif').is('printed_at', null);
+  } else if (count && UUID.test(count)) q = q.eq('stock_count_id', count).eq('status', 'aktif').is('printed_at', null);
+  else if (pending === '1') q = q.eq('status', 'aktif').is('printed_at', null);
   else notFound();
 
   const { data } = await q;
   const pieces = (data ?? []) as unknown as PieceRow[];
 
   // Reject reason comes from the (corrected) finishing or sewing scan.
-  const rejectMovements = [...new Set(pieces.filter((p) => p.grade === 'reject').map((p) => p.finish_movement_id))];
+  const rejectMovements = [
+    ...new Set(pieces.filter((p) => p.grade === 'reject' && p.finish_movement_id).map((p) => p.finish_movement_id!)),
+  ];
   const reasonOf = new Map<string, string>();
   if (rejectMovements.length) {
     // reason_id in the view is computed (CASE), so PostgREST cannot embed it
@@ -120,7 +124,7 @@ export default async function PrintPiecesPage({
               // column and may wrap to two lines instead of being cut off
               <div className="pl-reject">
                 <span className="pl-reject-tag">REJECT</span>
-                <span className="pl-reject-why">{reasonOf.get(l.finish_movement_id) ?? '-'}</span>
+                <span className="pl-reject-why">{(l.finish_movement_id && reasonOf.get(l.finish_movement_id)) || '-'}</span>
               </div>
             )}
           </article>

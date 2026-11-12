@@ -34,8 +34,25 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
   const query = await searchParams;
   const tab: Tab = query.tab === 'dicetak' ? 'dicetak' : 'belum';
   const supabase = await createClient();
-  const { data } = await supabase.from('bundle_unshelved').select('*').order('since');
+  const [{ data }, { data: awalData }] = await Promise.all([
+    supabase.from('bundle_unshelved').select('*').order('since'),
+    // Fase 2c: stok awal pieces from a stock count are already on their rack, only the label is missing
+    supabase
+      .from('piece')
+      .select('stock_count:stock_count!piece_stock_count_id_fkey(id, code)')
+      .eq('origin', 'stok_awal')
+      .eq('status', 'aktif')
+      .is('printed_at', null),
+  ]);
   const rows = (data ?? []) as Row[];
+  const awal = new Map<string, { id: string; code: string; n: number }>();
+  for (const a of (awalData ?? []) as unknown as { stock_count: { id: string; code: string } | null }[]) {
+    if (!a.stock_count) continue;
+    const e = awal.get(a.stock_count.id) ?? { ...a.stock_count, n: 0 };
+    e.n++;
+    awal.set(e.id, e);
+  }
+  const awalTotal = [...awal.values()].reduce((n, x) => n + x.n, 0);
   const variantIds = [...new Set(rows.map((r) => r.variant_id))];
   const { data: variants } = variantIds.length
     ? await supabase.from('product_variant').select('id, sku, product_name, size, color').in('id', variantIds)
@@ -44,7 +61,7 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
 
   const toPrint = rows.filter((r) => r.unprinted > 0);
   const waiting = rows.filter((r) => r.unprinted === 0);
-  const total = toPrint.reduce((s, r) => s + r.unprinted, 0);
+  const total = toPrint.reduce((s, r) => s + r.unprinted, 0) + awalTotal;
   const paged = slicePage(tab === 'belum' ? toPrint : waiting, query);
   if (paged.outOfRange) redirect(withQuery('/label', query, { page: String(paged.pages) }));
 
@@ -79,8 +96,23 @@ export default async function LabelQueuePage({ searchParams }: { searchParams: P
       </TabList>
 
       <section role="tabpanel" className="mt-4 overflow-hidden rounded-lg border border-border bg-surface">
+        {tab === 'belum' && awal.size > 0 && (
+          <ul className="divide-y divide-border border-b border-border">
+            {[...awal.values()].map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
+                <Link href={`/opname/${a.id}`} className="num w-24 link-code">
+                  {a.code}
+                </Link>
+                <span className="min-w-0 flex-1">Stok awal dari opname, sudah di rak</span>
+                <Link href={`/print/pieces?count=${a.id}`} className={linkGhost}>
+                  <Printer size={16} strokeWidth={1.5} aria-hidden /> Cetak {a.n}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
         {tab === 'belum' ? (
-          toPrint.length === 0 ? (
+          toPrint.length === 0 && awal.size === 0 ? (
             <EmptyState variant="check">Semua label sudah dicetak.</EmptyState>
           ) : (
             <ul className="divide-y divide-border">

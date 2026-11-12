@@ -29,7 +29,7 @@ export default async function RackDetailPage({
   const { data: rack } = await supabase.from('location').select('*').eq('code', code).maybeSingle();
   if (!rack) notFound();
 
-  const [{ data: stock }, { data: pieces }] = await Promise.all([
+  const [{ data: stock }, { data: pieces }, { data: lock }] = await Promise.all([
     supabase.from('stock_location').select('variant_id, sku, product_name, size, color, grade, qty').eq('location_id', rack.id).order('sku'),
     supabase
       .from('piece')
@@ -38,7 +38,15 @@ export default async function RackDetailPage({
       .eq('status', 'aktif')
       .order('code', { ascending: false })
       .range(from, to),
+    // Fase 2c: a rack in an open stock count is locked
+    supabase
+      .from('stock_count_location')
+      .select('count:stock_count(id, code)')
+      .eq('location_id', rack.id)
+      .eq('is_open', true)
+      .maybeSingle(),
   ]);
+  const lockedBy = (lock as unknown as { count: { id: string; code: string } | null } | null)?.count ?? null;
   const total = (stock ?? []).reduce((s, r) => s + r.qty, 0);
   // = active pieces on this rack; known even when ?page is past the end (that range query errors)
   const pieceTotal = total;
@@ -61,6 +69,11 @@ export default async function RackDetailPage({
           <>
             <Badge tone={rack.kind === 'reject' ? 'danger' : 'neutral'}>{rack.kind === 'reject' ? 'Reject' : 'Stok'}</Badge>
             {!rack.is_active && <Badge tone="neutral">Nonaktif</Badge>}
+            {lockedBy && (
+              <Link href={`/opname/${lockedBy.id}`}>
+                <Badge tone="warning">Sedang opname {lockedBy.code}</Badge>
+              </Link>
+            )}
           </>
         }
         description={
@@ -111,7 +124,7 @@ export default async function RackDetailPage({
                   {p.code}
                 </Link>
                 <span className="num text-text-muted">{p.variant?.sku}</span>
-                <span className="num text-text-subtle">{p.bundle?.code}</span>
+                <span className="num text-text-subtle">{p.bundle?.code ?? 'stok awal'}</span>
               </li>
             ))}
           </ul>

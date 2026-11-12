@@ -5,9 +5,10 @@ const MODES = [
   { key: 'masuk', href: '/scan/gudang', label: 'Masuk rak' },
   { key: 'keluar', href: '/scan/gudang/keluar', label: 'Keluar' },
   { key: 'retur', href: '/scan/gudang/retur', label: 'Retur' },
+  { key: 'opname', href: '/scan/gudang/opname', label: 'Opname' },
 ] as const;
 
-/** Warehouse scan modes: putaway, outbound picking, returns. */
+/** Warehouse scan modes: putaway, outbound picking, returns, stock count. */
 export function ModeTabs({ active }: { active: (typeof MODES)[number]['key'] }) {
   return (
     <nav aria-label="Mode scan gudang" className="mx-4 mt-3 flex gap-1 rounded-md bg-surface-muted p-1">

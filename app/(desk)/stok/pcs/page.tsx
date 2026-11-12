@@ -39,7 +39,8 @@ type Row = {
   condition: 'baik' | 'rusak';
   outbound: { id: string; code: string } | null;
   created_at: string;
-  bundle_id: string;
+  bundle_id: string | null;
+  stock_count: { id: string; code: string } | null;
   variant: { sku: string; product_name: string; size: string; color: string } | null;
   bundle: { code: string } | null;
   batch: { code: string } | null;
@@ -102,7 +103,7 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
       .select(
         'id, code, grade, status, condition, created_at, bundle_id, variant:product_variant(sku, product_name, size, color), ' +
           'outbound:outbound!piece_outbound_id_fkey(id, code), ' +
-          'bundle:bundle(code), batch:production_batch(code), location:location(code)',
+          'bundle:bundle(code), batch:production_batch(code), location:location(code), stock_count:stock_count!piece_stock_count_id_fkey(id, code)',
         { count: 'exact' },
       ),
     tab,
@@ -215,10 +216,25 @@ export default async function StockByPiecePage({ searchParams }: { searchParams:
                       )}
                     </td>
                     <td className="px-5 py-3 max-md:p-0 max-md:text-right max-md:text-small">
-                      <Link href={`/bundle/${r.bundle_id}`} className="num link-code">
-                        {r.bundle?.code}
-                      </Link>
-                      <p className="num text-small text-text-muted">{r.batch?.code}</p>
+                      {r.bundle_id ? (
+                        <>
+                          <Link href={`/bundle/${r.bundle_id}`} className="num link-code">
+                            {r.bundle?.code}
+                          </Link>
+                          <p className="num text-small text-text-muted">{r.batch?.code}</p>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-small">Stok awal</span>
+                          {r.stock_count && (
+                            <p>
+                              <Link href={`/opname/${r.stock_count.id}`} className="num link-code text-small">
+                                {r.stock_count.code}
+                              </Link>
+                            </p>
+                          )}
+                        </>
+                      )}
                     </td>
                     <td className="num px-5 py-3 text-right text-small text-text-muted max-md:col-span-2 max-md:p-0 max-md:text-left">
                       {dateFmt.format(new Date(r.created_at))}

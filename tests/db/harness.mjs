@@ -176,7 +176,8 @@ export async function checkInvariants(db) {
     select pv.sku, coalesce((select sum(qty) from public.stock_ledger sl where sl.variant_id = pv.id), 0)::int as ledger,
            (select count(*) from public.piece p
              join public.bundle b on b.id = p.bundle_id and b.rework_source is distinct from 'retur'
-            where p.variant_id = pv.id and p.status in ('aktif', 'keluar', 'rework') and p.grade = 'baik')::int as baik
+            where p.variant_id = pv.id and p.status in ('aktif', 'keluar', 'rework') and p.grade = 'baik'
+              and p.origin = 'produksi')::int as baik
     from public.product_variant pv`);
   for (const r of ledger) if (r.ledger !== r.baik) problems.push(`ledger vs pieces ${r.sku}: ${r.ledger} vs ${r.baik}`);
 
@@ -185,10 +186,10 @@ export async function checkInvariants(db) {
     from public.piece p
     left join lateral (
       select e.type, e.to_location_id from public.piece_event e
-      where e.piece_id = p.id and e.type in ('masuk_rak', 'pindah_rak', 'keluar_rak', 'batal', 'keluar', 'retur', 'rework', 'batal_rework')
+      where e.piece_id = p.id and e.type in ('masuk_rak', 'pindah_rak', 'keluar_rak', 'batal', 'keluar', 'retur', 'rework', 'batal_rework', 'stok_awal')
       order by e.seq desc limit 1
     ) last on true
-    where p.location_id is distinct from (case when last.type in ('masuk_rak', 'pindah_rak', 'batal_rework') then last.to_location_id end)`);
+    where p.location_id is distinct from (case when last.type in ('masuk_rak', 'pindah_rak', 'batal_rework', 'stok_awal') then last.to_location_id end)`);
   for (const r of pdrift) problems.push(`piece location drift ${r.code}`);
 
   const wrongKind = await all(db, `
@@ -216,6 +217,13 @@ export async function checkInvariants(db) {
            (select count(*) from public.piece p where p.variant_id = pv.id and p.status = 'aktif')::int as aktif
     from public.product_variant pv`);
   for (const r of stockView) if (r.view_qty !== r.aktif) problems.push(`stock view vs active pieces ${r.sku}: ${r.view_qty} vs ${r.aktif}`);
+
+  // Fase 2c: a rack is in at most one open count; a closed count holds no lock
+  const locks = await all(db, `
+    select c.code, c.status from public.stock_count c
+    join public.stock_count_location cl on cl.count_id = c.id
+    where cl.is_open <> (c.status in ('menghitung', 'review'))`);
+  for (const r of locks) problems.push(`stock count lock drift ${r.code} (${r.status})`);
 
   return problems;
 }

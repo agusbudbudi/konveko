@@ -284,6 +284,12 @@ body {
   50%      { transform: translateY(13px); }
 }
 
+/* Scan app: a task screen (result form, return, rack count) brings its own sticky action bar;
+   the bottom tab bar steps aside so nobody switches mode halfway through a task. */
+body:has([data-scan-task]) [data-scan-nav] {
+  display: none;
+}
+
 /* Clickable codes in tables and lists (bundle, batch, rak, pcs): always underlined so they read as links. */
 @utility link-code {
   color: var(--primary);

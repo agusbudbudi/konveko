@@ -11,7 +11,7 @@ export default async function ReturnScanPage() {
   if (!user) redirect('/login?next=/scan/gudang/retur');
   return (
     <>
-      <ModeTabs active="retur" />
+      <ModeTabs active="retur" roles={user.roles} />
       <ReturnScan canWork={user.roles.some((r) => r === 'gudang' || r === 'supervisor')} />
     </>
   );

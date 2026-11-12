@@ -81,7 +81,7 @@ export default async function CountScanPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <ModeTabs active="opname" />
+      <ModeTabs active="opname" roles={user.roles} />
       <CountScan
         key={`${selected?.id ?? 'pick'}:${rack?.code ?? ''}`}
         canWork={canWork}

@@ -11,7 +11,7 @@ export default async function WarehouseScanPage() {
   if (!user) redirect('/login?next=/scan/gudang');
   return (
     <>
-      <ModeTabs active="masuk" />
+      <ModeTabs active="masuk" roles={user.roles} />
       <WarehouseScan canShelve={user.roles.some((r) => r === 'gudang' || r === 'supervisor')} />
     </>
   );

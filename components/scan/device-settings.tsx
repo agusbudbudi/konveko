@@ -36,7 +36,14 @@ type Row = { id: number; code: string; source: ScanEvent['source']; kind: CodeKi
  * One component for both entry points: /scan/perangkat (phones, SUNMI; no sidebar) and
  * /pengaturan/perangkat (desk). Pages only add their own title around it.
  */
-export function DeviceSettings({ className }: { className?: string }) {
+export function DeviceSettings({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  /** Akun tab: only the input choice and the scan test; the key log and SUNMI guide sit on /scan/perangkat. */
+  compact?: boolean;
+}) {
   const prefs = useScanPrefs();
   const [rows, setRows] = useState<Row[]>([]);
   const [keys, setKeys] = useState<KeyTrace[]>([]);
@@ -51,12 +58,17 @@ export function DeviceSettings({ className }: { className?: string }) {
 
   return (
     <div className={cn('flex flex-col gap-6', className)}>
-      <InlineAlert tone="info">
-        Berlaku untuk perangkat ini saja. Pilihan disimpan di browser ini, tidak ikut ke perangkat atau akun lain.
-      </InlineAlert>
+      {!compact && (
+        <InlineAlert tone="info">
+          Berlaku untuk perangkat ini saja. Pilihan disimpan di browser ini, tidak ikut ke perangkat atau akun lain.
+        </InlineAlert>
+      )}
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-h3">Cara scan di perangkat ini</h2>
+        <div>
+          <h2 className="text-h3">Cara scan di perangkat ini</h2>
+          {compact && <p className="text-small text-text-muted">Disimpan di browser ini saja, tidak ikut ke akun.</p>}
+        </div>
         <div role="radiogroup" aria-label="Cara scan" className="flex flex-col gap-2">
           {MODES.map((m) => {
             const on = prefs?.input === m.value;
@@ -117,6 +129,7 @@ export function DeviceSettings({ className }: { className?: string }) {
         )}
       </section>
 
+      {!compact && (<>
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h2 className="text-h3">Log tombol</h2>
@@ -157,6 +170,7 @@ export function DeviceSettings({ className }: { className?: string }) {
           Scanner lain (Zebra, Honeywell, Newland, scanner USB atau Bluetooth) diatur sama: output keyboard dengan akhiran Enter.
         </InlineAlert>
       </section>
+      </>)}
     </div>
   );
 }

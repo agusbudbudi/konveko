@@ -578,9 +578,10 @@ function SuccessView({ result }: { result: ScanResult }) {
   );
 }
 
+/** Sticky action bar of a task screen. Its [data-scan-task] hides the tab bar (globals.css). */
 export function BottomBar({ children }: { children: React.ReactNode }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 border-t border-border bg-surface">
+    <div data-scan-task className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface">
       <div className="mx-auto w-full max-w-md px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">{children}</div>
     </div>
   );

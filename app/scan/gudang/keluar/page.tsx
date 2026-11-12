@@ -38,7 +38,7 @@ export default async function OutboundScanPage({ searchParams }: { searchParams:
 
   return (
     <>
-      <ModeTabs active="keluar" />
+      <ModeTabs active="keluar" roles={user.roles} />
       <OutboundScan
         key={selected?.id ?? 'pick'}
         canWork={canWork}

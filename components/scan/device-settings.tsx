@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Camera, ScanLine, Sparkles } from 'lucide-react';
+import { Camera, Check, ScanLine, Sparkles } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { cn } from '@/lib/cn';
 import { subscribeTrace, type KeyTrace, type ScanEvent } from '@/lib/scan/bus';
@@ -86,7 +86,7 @@ export function DeviceSettings({
                 aria-checked={on}
                 onClick={() => setScanPrefs({ input: m.value })}
                 className={cn(
-                  'flex items-start gap-3 rounded-xl border p-4 text-left',
+                  'relative flex items-start gap-3 rounded-xl border p-4 pr-10 text-left',
                   on ? 'border-primary bg-primary-soft' : 'border-border bg-surface hover:border-border-strong',
                 )}
               >
@@ -95,6 +95,11 @@ export function DeviceSettings({
                   <span className="block font-medium">{m.label}</span>
                   <span className="block text-small text-text-muted">{m.hint}</span>
                 </span>
+                {on && (
+                  <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <Check size={13} strokeWidth={3} aria-hidden />
+                  </span>
+                )}
               </button>
             );
           })}

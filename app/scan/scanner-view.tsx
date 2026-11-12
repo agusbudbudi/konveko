@@ -70,10 +70,10 @@ export function ScannerView({
     <button
       type="button"
       onClick={() => setTyping(true)}
-      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-surface font-medium hover:bg-surface-muted"
+      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-surface font-medium whitespace-nowrap hover:bg-surface-muted"
     >
       <Keyboard size={20} strokeWidth={1.75} aria-hidden />
-      Label rusak? Ketik kode
+      {camera === false ? 'Ketik kode' : 'Label rusak? Ketik kode'}
     </button>
   );
 
@@ -102,7 +102,11 @@ export function ScannerView({
         <HardwareReady loading={loading} />
       )}
 
-      <section aria-live="polite" className="flex flex-col gap-2.5 border-t border-border bg-surface px-4 py-3">
+      {/* under the dark camera the panel is a white strip; in scanner mode it sits on the page like the card above */}
+      <section
+        aria-live="polite"
+        className={cn('flex flex-col gap-2.5 px-4', camera === false ? 'pb-3' : 'border-t border-border bg-surface py-3')}
+      >
         {loading ? (
           <div className="flex items-center gap-3 py-1">
             <Loader2 size={24} strokeWidth={2} aria-hidden className="shrink-0 animate-spin text-primary" />
@@ -280,17 +284,18 @@ function RecentList({ items }: { items: RecentScan[] }) {
 }
 
 /**
- * Sticky action bar of a task screen. Its [data-scan-task] hides the tab bar (globals.css),
- * and the spacer keeps the last content clear of the fixed bar.
+ * Sticky action bar of a task screen. Its [data-scan-task] hides the tab bar (globals.css).
+ * Sticky, not fixed: it sits at the end of the page's flex column <main> (px-4, flex-1), pushed
+ * to the bottom by mt-auto, so no spacer has to guess its height. Render it as a direct child of <main>.
  */
 export function BottomBar({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <div aria-hidden className="h-28 shrink-0" />
-      <div data-scan-task className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface">
-        <div className="mx-auto w-full max-w-md px-4 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">{children}</div>
-      </div>
-    </>
+    <div
+      data-scan-task
+      className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-border bg-surface px-4 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]"
+    >
+      {children}
+    </div>
   );
 }
 

@@ -180,12 +180,12 @@ export function OutboundScan({
       </section>
 
       {result && (
-        <InlineAlert tone={result.tone} className="mt-3">
+        <InlineAlert tone={result.tone} className="my-3">
           {result.text}
         </InlineAlert>
       )}
 
-      <ScannerView onCode={onCode} loading={loading} kinds={['piece', 'bundle']} hint="Scan pcs atau bundle, satu per satu" loadingText="Menambahkan..." className="-mx-4 mt-3" />
+      <ScannerView onCode={onCode} loading={loading} kinds={['piece', 'bundle']} hint="Scan pcs atau bundle, satu per satu" loadingText="Menambahkan..." className="-mx-4" />
 
       <BottomBar>
         {confirming ? (

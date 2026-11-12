@@ -59,7 +59,7 @@ export function ReturnScan({ canWork }: { canWork: boolean }) {
   return (
     <main className="flex flex-1 flex-col px-4">
       {phase.k === 'scan' || phase.k === 'loading' ? (
-        <ScannerView onCode={onCode} loading={phase.k === 'loading'} kinds={['piece']} hint="Scan label pcs yang dikembalikan" loadingText="Mencari pcs..." className="-mx-4 mt-3" />
+        <ScannerView onCode={onCode} loading={phase.k === 'loading'} kinds={['piece']} hint="Scan label pcs yang dikembalikan" loadingText="Mencari pcs..." className="-mx-4" />
       ) : phase.k === 'error' ? (
         <>
           <TaskHeader title="Retur" backLabel="Kembali ke scan" onBack={reset} />

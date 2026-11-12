@@ -38,11 +38,15 @@ type Row = { id: number; code: string; source: ScanEvent['source']; kind: CodeKi
  */
 export function DeviceSettings({
   className,
-  compact = false,
+  part = 'all',
 }: {
   className?: string;
-  /** Akun tab: only the input choice and the scan test; the key log and SUNMI guide sit on /scan/perangkat. */
-  compact?: boolean;
+  /**
+   * all       desk /pengaturan/perangkat: everything on one page
+   * basic     Akun tab: input choice and scan test
+   * advanced  /scan/perangkat (linked from Akun): key log and setup guide, no repeat of the above
+   */
+  part?: 'all' | 'basic' | 'advanced';
 }) {
   const prefs = useScanPrefs();
   const [rows, setRows] = useState<Row[]>([]);
@@ -58,7 +62,8 @@ export function DeviceSettings({
 
   return (
     <div className={cn('flex flex-col gap-6', className)}>
-      {!compact && (
+      {part !== 'advanced' && (<>
+      {part === 'all' && (
         <InlineAlert tone="info">
           Berlaku untuk perangkat ini saja. Pilihan disimpan di browser ini, tidak ikut ke perangkat atau akun lain.
         </InlineAlert>
@@ -67,7 +72,7 @@ export function DeviceSettings({
       <section className="flex flex-col gap-2">
         <div>
           <h2 className="text-h3">Cara scan di perangkat ini</h2>
-          {compact && <p className="text-small text-text-muted">Disimpan di browser ini saja, tidak ikut ke akun.</p>}
+          {part === 'basic' && <p className="text-small text-text-muted">Disimpan di browser ini saja, tidak ikut ke akun.</p>}
         </div>
         <div role="radiogroup" aria-label="Cara scan" className="flex flex-col gap-2">
           {MODES.map((m) => {
@@ -128,8 +133,9 @@ export function DeviceSettings({
           </ul>
         )}
       </section>
+      </>)}
 
-      {!compact && (<>
+      {part !== 'basic' && (<>
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h2 className="text-h3">Log tombol</h2>
@@ -140,7 +146,7 @@ export function DeviceSettings({
           )}
         </div>
         <p className="text-small text-text-muted">
-          Untuk setup scanner baru. Kalau scan tidak muncul di Tes scan tapi ada di sini, jeda antar karakter mungkin di atas 50 ms.
+          Untuk setup scanner baru. Kalau scan tidak muncul di Tes scan (tab Akun) tapi ada di sini, jeda antar karakter mungkin di atas 50 ms.
         </p>
         <div className="num max-h-48 overflow-y-auto rounded-md bg-surface-muted p-3 text-caption">
           {keys.length === 0 ? (
@@ -164,7 +170,7 @@ export function DeviceSettings({
           <li>Suffix / akhiran: Enter.</li>
           <li>Tidak perlu prefix. Kalau AIM ID aktif, sistem membuangnya sendiri.</li>
           <li>Opsional: matikan barcode 1D supaya SKU di label pcs tidak ikut terbaca.</li>
-          <li>Buka Konveko di Chrome, lalu pilih &quot;Scanner perangkat&quot; di atas dan tes.</li>
+          <li>Buka Konveko di Chrome, lalu di Cara scan pilih &quot;Scanner perangkat&quot; dan coba di Tes scan.</li>
         </ol>
         <InlineAlert tone="info">
           Scanner lain (Zebra, Honeywell, Newland, scanner USB atau Bluetooth) diatur sama: output keyboard dengan akhiran Enter.

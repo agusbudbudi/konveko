@@ -36,7 +36,7 @@ export default async function ScanAccountPage() {
         </div>
       </section>
 
-      <DeviceSettings compact />
+      <DeviceSettings part="basic" />
 
       <ul className="rounded-lg border border-border bg-surface">
         <li>

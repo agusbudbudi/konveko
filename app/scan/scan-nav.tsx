@@ -31,11 +31,16 @@ const KELUAR: Item = { href: '/scan/gudang/keluar', label: 'Keluar', icon: Arrow
 const RETUR: Item = { href: '/scan/gudang/retur', label: 'Retur', icon: Undo2, match: prefix('/scan/gudang/retur') };
 const OPNAME: Item = { href: '/scan/gudang/opname', label: 'Opname', icon: ClipboardList, match: prefix('/scan/gudang/opname') };
 
+/** Mixed accounts inside a warehouse mode: back to production scanning, plus the four modes. */
+const PRODUKSI: Item = { href: '/scan', label: 'Produksi', icon: ScanLine, match: () => false };
+
 const ITEMS: Record<ScanNavKind, Item[]> = {
   produksi: [SCAN, RIWAYAT, AKUN],
   gudang: [MASUK, KELUAR, RETUR, OPNAME, AKUN],
   campuran: [SCAN, GUDANG, RIWAYAT, AKUN],
 };
+
+const CAMPURAN_GUDANG: Item[] = [PRODUKSI, MASUK, KELUAR, RETUR, OPNAME];
 
 /**
  * Bottom tab bar of the scan app, in thumb reach. Hidden while a task screen is open
@@ -44,7 +49,8 @@ const ITEMS: Record<ScanNavKind, Item[]> = {
  */
 export function ScanNav({ kind }: { kind: ScanNavKind }) {
   const pathname = usePathname();
-  const items = ITEMS[kind];
+  // a mixed account (supervisor) inside /scan/gudang gets the warehouse modes in the tab bar
+  const items = kind === 'campuran' && prefix('/scan/gudang')(pathname) ? CAMPURAN_GUDANG : ITEMS[kind];
   return (
     <nav
       data-scan-nav

@@ -4,8 +4,8 @@ import type { Role } from '@/lib/supabase/server';
  * Which bottom tab bar the scan app shows.
  *   produksi  Scan, Riwayat, Akun                     (penjahit, finishing, produksi)
  *   gudang    Masuk rak, Keluar, Retur, Opname, Akun  (gudang only)
- *   campuran  Scan, Gudang, Riwayat, Akun             (supervisor, admin: both;
- *             the warehouse modes then sit in a segmented control on top)
+ *   campuran  Scan, Gudang, Riwayat, Akun             (supervisor, admin: both);
+ *             inside /scan/gudang it switches to Produksi + the four warehouse modes
  */
 export type ScanNavKind = 'produksi' | 'gudang' | 'campuran';
 

@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ChevronRight, CircleCheck, ClipboardList, ClipboardX, PackagePlus, X } from 'lucide-react';
+import { ArrowLeft, ChevronRight, CircleCheck, ClipboardList, PackagePlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Combobox } from '@/components/ui/combobox';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Label } from '@/components/ui/input';
@@ -73,10 +74,10 @@ function PickCount({ counts }: { counts: OpenCount[] }) {
         <p className="text-small text-text-muted">Pilih stok opname yang sedang dihitung.</p>
       </div>
       {counts.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border-strong bg-surface px-6 py-10 text-center">
-          <ClipboardX size={28} strokeWidth={1.5} aria-hidden className="text-text-muted" />
-          <p className="font-medium">Belum ada stok opname yang sedang dihitung.</p>
-          <p className="text-small text-text-muted">Buat dulu di desk: Gudang → Stok opname.</p>
+        <div className="rounded-lg border border-dashed border-border-strong bg-surface">
+          <EmptyState variant="rack" compact hint="Buat dulu di desk: Gudang → Stok opname.">
+            Belum ada stok opname yang sedang dihitung.
+          </EmptyState>
         </div>
       ) : (
         <ul className="flex flex-col gap-2">

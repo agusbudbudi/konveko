@@ -303,6 +303,7 @@ const SHORTCUTS: Shortcut[] = [
   { label: 'Semua WIP', href: '/wip', words: ['wip', 'dalam proses', 'belum jadi'] },
   { label: 'Rework berjalan', href: '/rework', words: ['rework', 'perbaikan', 'diperbaiki', 'jahit ulang'] },
   { label: 'Pcs di rework', href: '/stok/pcs?tab=rework', words: ['rework', 'perbaikan'] },
+  { label: 'Stok opname', href: '/opname', words: ['opname', 'stok opname', 'hitung stok', 'stock count'] },
   { label: 'Stok barang jadi', href: '/stok', words: ['stok', 'ready stock', 'gudang'] },
   { label: 'Barang keluar', href: '/barang-keluar', words: ['barang keluar', 'surat jalan', 'kirim', 'retur'] },
 ];

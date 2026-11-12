@@ -274,7 +274,7 @@ function ItemView({
               {item.kind === 'piece' && (
                 <>
                   {' '}
-                  · bundle <span className="num">{item.bundle_code}</span>
+                  · {item.bundle_code ? <>bundle <span className="num">{item.bundle_code}</span></> : 'stok awal'}
                 </>
               )}
             </p>

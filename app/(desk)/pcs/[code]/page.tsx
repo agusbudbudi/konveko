@@ -22,8 +22,10 @@ type Piece = {
   printed_at: string | null;
   print_count: number;
   created_at: string;
-  bundle_id: string;
-  finish_movement_id: string;
+  bundle_id: string | null;
+  finish_movement_id: string | null;
+  origin: 'produksi' | 'stok_awal';
+  stock_count: { id: string; code: string } | null;
   variant: { sku: string; product_name: string; size: string; color: string } | null;
   bundle: { code: string; origin: { id: string; code: string } | null } | null;
   batch: { id: string; code: string; roll: { code: string; material: string; color: string } | null } | null;
@@ -44,7 +46,8 @@ type Event = {
     | 'keluar'
     | 'retur'
     | 'rework'
-    | 'batal_rework';
+    | 'batal_rework'
+    | 'stok_awal';
   doc: { id: string; code: string } | null;
   note: string | null;
   created_by: string;
@@ -66,6 +69,7 @@ const EVENT_LABEL: Record<Event['type'], string> = {
   retur: 'Retur',
   rework: 'Dikirim ke rework',
   batal_rework: 'Rework dibatalkan',
+  stok_awal: 'Dibuat dari stok opname',
 };
 
 const when = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
@@ -74,7 +78,8 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
   const raw = decodeURIComponent((await params).code).trim().slice(0, 64);
   const supabase = await createClient();
   const select =
-    'id, code, grade, status, condition, printed_at, print_count, created_at, bundle_id, finish_movement_id, ' +
+    'id, code, grade, status, condition, printed_at, print_count, created_at, bundle_id, finish_movement_id, origin, ' +
+    'stock_count:stock_count!piece_stock_count_id_fkey(id, code), ' +
     'outbound:outbound!piece_outbound_id_fkey(id, code, destination), ' +
     'variant:product_variant(sku, product_name, size, color), bundle:bundle(code, origin:bundle!rework_of_bundle_id(id, code)), ' +
     'batch:production_batch(id, code, roll:fabric_roll(code, material, color)), location:location(code)';
@@ -104,11 +109,13 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
   const p = data as unknown as Piece;
 
   const [{ data: moves }, { data: evs }, { data: rw }, user] = await Promise.all([
-    supabase
-      .from('effective_movement')
-      .select('id, type, to_holder_id, reason_id, scanned_at')
-      .eq('bundle_id', p.bundle_id)
-      .in('type', ['receive_sew', 'receive_finishing', 'finish_sew', 'finish_finishing']),
+    p.bundle_id
+      ? supabase
+          .from('effective_movement')
+          .select('id, type, to_holder_id, reason_id, scanned_at')
+          .eq('bundle_id', p.bundle_id)
+          .in('type', ['receive_sew', 'receive_finishing', 'finish_sew', 'finish_finishing'])
+      : Promise.resolve({ data: [] as { id: string; type: string; to_holder_id: string | null; reason_id: string | null; scanned_at: string }[] }),
     supabase
       .from('piece_event')
       .select('id, type, note, created_by, created_at, from:location!piece_event_from_location_id_fkey(code), to:location!piece_event_to_location_id_fkey(code), doc:outbound(id, code)')
@@ -129,6 +136,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
   const canRework =
     (user?.roles.some((r) => r === 'supervisor' || r === 'admin') ?? false) &&
     p.status === 'aktif' &&
+    p.origin === 'produksi' &&
     !p.outbound &&
     (p.grade === 'reject' || p.condition === 'rusak');
   const events = (evs ?? []) as unknown as Event[];
@@ -252,22 +260,37 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
                 '-'
               )}
             </Row>
-            <Row label="Bundle">
-              <Link href={`/bundle/${p.bundle_id}`} className="num link-code">
-                {p.bundle?.code}
-              </Link>
-              {p.bundle?.origin && (
-                <span className="text-small text-text-muted">
-                  {' '}
-                  · hasil rework dari{' '}
-                  <Link href={`/bundle/${p.bundle.origin.id}`} className="num link-code">
-                    {p.bundle.origin.code}
+            {p.origin === 'stok_awal' ? (
+              <Row label="Asal">
+                Stok awal dari opname{' '}
+                {p.stock_count ? (
+                  <Link href={`/opname/${p.stock_count.id}`} className="num link-code">
+                    {p.stock_count.code}
                   </Link>
-                </span>
-              )}
-            </Row>
-            <Row label="Penjahit">{holderOf('receive_sew')}</Row>
-            <Row label="Finishing">{holderOf('receive_finishing')}</Row>
+                ) : (
+                  '-'
+                )}
+              </Row>
+            ) : (
+              <>
+                <Row label="Bundle">
+                  <Link href={`/bundle/${p.bundle_id}`} className="num link-code">
+                    {p.bundle?.code}
+                  </Link>
+                  {p.bundle?.origin && (
+                    <span className="text-small text-text-muted">
+                      {' '}
+                      · hasil rework dari{' '}
+                      <Link href={`/bundle/${p.bundle.origin.id}`} className="num link-code">
+                        {p.bundle.origin.code}
+                      </Link>
+                    </span>
+                  )}
+                </Row>
+                <Row label="Penjahit">{holderOf('receive_sew')}</Row>
+                <Row label="Finishing">{holderOf('receive_finishing')}</Row>
+              </>
+            )}
             {p.grade === 'reject' && (
               <Row label="Reject di">
                 {finishType === 'finish_sew' ? 'Jahit' : 'QC finishing'}
@@ -290,7 +313,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
                 <div className="min-w-0">
                   <p className="font-medium">
                     {EVENT_LABEL[e.type]}
-                    {e.type === 'masuk_rak' && e.to && <span className="num"> {e.to.code}</span>}
+                    {(e.type === 'masuk_rak' || e.type === 'stok_awal') && e.to && <span className="num"> {e.to.code}</span>}
                     {e.type === 'pindah_rak' && (
                       <span className="num">
                         {' '}

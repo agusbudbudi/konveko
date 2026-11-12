@@ -323,3 +323,25 @@ describe('fuzz: warehouse work and stock counts keep every invariant', () => {
     assert.ok((rejected.rack_locked ?? 0) > 0, 'the lock was never exercised');
   });
 });
+
+describe('stock count meets rework', () => {
+  it('skips a damaged stok awal pcs in create_rework, and locks a rack against rework moves', async () => {
+    const a = await stocked('kemejaM', 4, { ffReject: 1, rack: 'A1' });
+    const op = await create('gudang', ['RJ1']);
+    // a reject on a locked rack cannot be taken into rework
+    const rej = await pieces(a, `and p.grade = 'reject'`);
+    await rejects(rpc(db, ids.spv, 'create_rework', { p_codes: [rej[0].code], p_start_step: 'jahit', p_note: 'x' }), 'rack_locked');
+    await scan('gudang', op.id, 'RJ1', rej[0].code);
+    await unlabeled('gudang', op.id, 'RJ1', 'kemejaL', 'rusak', 1);
+    await close('gudang', op.id, 'RJ1');
+    await rpc(db, ids.spv, 'stock_count_approve', { p_count_id: op.id });
+
+    await actAs(db, null);
+    const awal = await one(db, `select code from public.piece where origin = 'stok_awal'`);
+    await rejects(rpc(db, ids.spv, 'create_rework', { p_codes: [awal.code], p_start_step: 'jahit', p_note: 'x' }), /stok awal/);
+    const res = await rpc(db, ids.spv, 'create_rework', { p_codes: [awal.code, rej[0].code], p_start_step: 'jahit', p_note: 'x' });
+    assert.equal(res.created.length, 1);
+    assert.equal(res.skipped[0].code, awal.code);
+    await assertInvariants();
+  });
+});

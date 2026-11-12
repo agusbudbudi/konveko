@@ -136,6 +136,7 @@ export default async function PiecePage({ params }: { params: Promise<{ code: st
   const canRework =
     (user?.roles.some((r) => r === 'supervisor' || r === 'admin') ?? false) &&
     p.status === 'aktif' &&
+    p.origin === 'produksi' &&
     !p.outbound &&
     (p.grade === 'reject' || p.condition === 'rusak');
   const events = (evs ?? []) as unknown as Event[];

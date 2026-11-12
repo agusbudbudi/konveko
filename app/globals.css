@@ -290,6 +290,10 @@ body {
 body:has([data-scan-task]) [data-scan-nav] {
   display: none;
 }
+/* ...and while the code keypad is open, the task bar steps aside too so it does not cover the keys. */
+body:has([data-keypad]) [data-scan-task] {
+  display: none;
+}
 
 /* Clickable codes in tables and lists (bundle, batch, rak, pcs): always underlined so they read as links. */
 @utility link-code {

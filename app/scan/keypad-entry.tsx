@@ -25,11 +25,13 @@ export function KeypadEntry({
   onSubmit,
   onClose,
   busy,
+  className,
 }: {
   kinds: EntryKind[];
   onSubmit: (code: string) => void;
   onClose: () => void;
   busy?: boolean;
+  className?: string;
 }) {
   const [kind, setKind] = useState<EntryKind>(kinds[0]);
   const [typed, setTyped] = useState('');
@@ -49,8 +51,9 @@ export function KeypadEntry({
   };
 
   return (
-    <section aria-label="Ketik kode" className="flex flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-4 px-4 pt-3">
+    // data-keypad hides the page's task bar (Kirim, Tutup rak) while typing: it would cover the keys
+    <section data-keypad aria-label="Ketik kode" className={cn('flex flex-1 flex-col', className)}>
+      <div className="flex flex-1 flex-col gap-3 px-4 pt-2 pb-4">
         <button
           type="button"
           onClick={onClose}
@@ -107,7 +110,7 @@ export function KeypadEntry({
               placeholder={isRack ? 'A1' : ''}
               // inline size: globals.css forces fields to 16px on phones (iOS zoom guard) and would
               // beat a text-* class; 32px is above that threshold anyway
-              style={{ fontSize: 32, lineHeight: '40px' }}
+              style={{ fontSize: 32, lineHeight: '40px', outline: 'none' }}
               className="num w-full min-w-0 bg-transparent pl-0.5 font-semibold uppercase outline-none placeholder:text-text-subtle focus-visible:outline-none"
             />
           </div>

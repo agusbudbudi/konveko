@@ -305,7 +305,7 @@ export default async function LandingPage() {
               className="-mx-4 block h-auto w-[calc(100%+32px)] max-w-none sm:mx-0 sm:w-full lg:-mr-10 lg:w-[calc(100%+40px)]"
             />
             {/* Scan result card */}
-            <div className="absolute top-2 -left-2 flex w-[236px] flex-col gap-1.5 rounded-lg border border-border-strong bg-surface p-3 sm:top-1/2 sm:left-6 sm:-translate-y-1/2 sm:gap-2.5 sm:p-4">
+            <div className="absolute top-2 -left-2 flex w-[216px] flex-col gap-1.5 rounded-lg border border-border-strong bg-surface p-3 sm:top-1/2 sm:left-6 sm:-translate-y-1/2 sm:gap-2.5 sm:p-4">
               <div className="flex items-center gap-2">
                 <span className="num font-semibold text-primary">B-00231</span>
                 <Badge tone="info">Proses jahit</Badge>

@@ -23,11 +23,17 @@ import {
 } from 'lucide-react';
 import { Wordmark } from '@/components/brand/wordmark';
 import { LandingHeader } from '@/components/landing/landing-header';
+import { RolesSlider, type RoleSlide } from '@/components/landing/roles-slider';
 import { EMAIL, WA_ASK_URL, WA_DISPLAY, WA_URL } from '@/components/landing/contact';
 import { Badge } from '@/components/ui/status-badge';
 import { homePath } from '@/lib/auth/home';
 import { getCurrentAppUser } from '@/lib/supabase/server';
 import hero from '@/public/hero-login.png';
+import finishingPhoto from '@/public/landing/Finishing.png';
+import gudangPhoto from '@/public/landing/Gudang.png';
+import penjahitPhoto from '@/public/landing/Penjahit.png';
+import produksiPhoto from '@/public/landing/Produksi.png';
+import supervisorPhoto from '@/public/landing/Supervisor.png';
 
 export const metadata: Metadata = {
   title: { absolute: 'Konveko · Tracking produksi konveksi' },
@@ -87,13 +93,12 @@ const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   { icon: BarChart3, title: 'Laporan dan export', body: 'Output, reject, dan selisih per periode. Master data bisa diimport dan diexport lewat Excel.' },
 ];
 
-const ROLES = [
-  ['Produksi', 'Input batch rol, cetak label bundle'],
-  ['Penjahit', 'Scan terima dan selesai jahit'],
-  ['Finishing', 'Scan terima, QC, catat reject'],
-  ['Gudang', 'Masuk rak, barang keluar, retur, opname'],
-  ['Supervisor', 'Pantau rekonsiliasi, selesaikan selisih'],
-  ['Admin', 'Kelola master data dan user'],
+const ROLES: RoleSlide[] = [
+  { role: 'Produksi', task: 'Input batch rol, cetak label bundle', photo: produksiPhoto, alt: 'Petugas produksi menempel label bundle pada rol kain, printer thermal di sebelahnya' },
+  { role: 'Penjahit', task: 'Scan terima dan selesai jahit', photo: penjahitPhoto, alt: 'Penjahit memindai label bundle dengan scanner, layar menunjukkan proses selesai' },
+  { role: 'Finishing', task: 'Scan terima, QC, catat reject', photo: finishingPhoto, alt: 'Petugas finishing memindai label kaos dengan scanner di meja QC' },
+  { role: 'Gudang', task: 'Masuk rak, barang keluar, retur, opname', photo: gudangPhoto, alt: 'Petugas gudang memindai label kardus di depan rak stok' },
+  { role: 'Supervisor', task: 'Pantau rekonsiliasi, selesaikan selisih', photo: supervisorPhoto, alt: 'Supervisor memeriksa laporan rekonsiliasi di laptop' },
 ];
 
 const FAQ = [
@@ -504,31 +509,20 @@ export default async function LandingPage() {
         </section>
 
         {/* Roles */}
-        <section id="peran" className="scroll-mt-16 border-y border-border bg-surface-muted">
-          <div className="mx-auto grid max-w-[1200px] items-start gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-2">
-            <div className="flex flex-col gap-3">
-              <Overline>Untuk siapa</Overline>
-              <SectionTitle>Setiap orang hanya lihat tugasnya.</SectionTitle>
-              <p className="text-pretty text-text-muted">
-                Akses diatur per peran. Satu orang bisa punya lebih dari satu peran, misalnya supervisor yang juga admin.
-              </p>
-            </div>
-            <table className="w-full overflow-hidden rounded-lg border-separate border-spacing-0 border border-border bg-surface text-left">
-              <thead className="bg-surface-muted text-caption tracking-[0.02em] text-text-muted">
-                <tr>
-                  <th scope="col" className="w-[38%] px-4 py-3 font-medium">Peran</th>
-                  <th scope="col" className="px-4 py-3 font-medium">Tugas di Konveko</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ROLES.map(([role, task]) => (
-                  <tr key={role}>
-                    <th scope="row" className="border-t border-border px-4 py-3 font-medium">{role}</th>
-                    <td className="border-t border-border px-4 py-3 text-text-muted">{task}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <section id="peran" className="scroll-mt-16 overflow-hidden border-y border-border bg-surface-muted">
+          <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 sm:py-20">
+            <RolesSlider
+              slides={ROLES}
+              intro={
+                <>
+                  <Overline>Untuk siapa</Overline>
+                  <SectionTitle>Setiap orang hanya lihat tugasnya.</SectionTitle>
+                  <p className="text-pretty text-text-muted">
+                    Akses diatur per peran. Satu orang bisa punya lebih dari satu peran, misalnya supervisor yang juga admin.
+                  </p>
+                </>
+              }
+            />
           </div>
         </section>
 

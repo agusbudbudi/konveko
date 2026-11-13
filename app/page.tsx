@@ -305,7 +305,7 @@ export default async function LandingPage() {
               className="-mx-4 block h-auto w-[calc(100%+32px)] max-w-none sm:mx-0 sm:w-full lg:-mr-10 lg:w-[calc(100%+40px)]"
             />
             {/* Scan result card */}
-            <div className="absolute top-2 -left-2 flex w-[216px] flex-col gap-1.5 rounded-lg border border-border-strong bg-surface p-3 sm:top-1/2 sm:left-6 sm:-translate-y-1/2 sm:gap-2.5 sm:p-4">
+            <div className="absolute top-2 -left-2 flex w-[216px] flex-col gap-1.5 rounded-lg bg-surface p-3 shadow-[0_8px_24px_-6px_rgb(28_27_25/0.12),0_2px_6px_rgb(28_27_25/0.05)] sm:top-1/2 sm:left-6 sm:-translate-y-1/2 sm:gap-2.5 sm:p-4">
               <div className="flex items-center gap-2">
                 <span className="num font-semibold text-primary">B-00231</span>
                 <Badge tone="info">Proses jahit</Badge>
@@ -320,7 +320,7 @@ export default async function LandingPage() {
               </span>
             </div>
             {/* Bundle label */}
-            <div className="absolute -right-2 -bottom-3 flex w-[200px] flex-col gap-2 rounded-sm border border-border-strong bg-surface p-2.5 sm:right-0 sm:bottom-14 sm:p-3 lg:-right-6">
+            <div className="absolute -right-2 -bottom-3 flex w-[200px] flex-col gap-2 rounded-sm bg-surface p-2.5 shadow-[0_8px_24px_-6px_rgb(28_27_25/0.12),0_2px_6px_rgb(28_27_25/0.05)] sm:right-0 sm:bottom-14 sm:p-3 lg:-right-6">
               <span className="flex items-center gap-1.5 text-[11px] leading-4 font-medium text-text-muted">
                 <Printer size={14} strokeWidth={1.5} aria-hidden />
                 Label bundle

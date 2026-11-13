@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 const PUBLIC_PATHS = [
+  '/', // landing page (exact match only: '//' never occurs)
   '/login',
   '/manifest.webmanifest',
   '/api/cron', // Vercel Cron, guarded by CRON_SECRET in each route

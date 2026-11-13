@@ -260,7 +260,7 @@ export default async function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="mx-auto grid max-w-[1200px] items-center gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <section className="mx-auto grid max-w-[1200px] items-center gap-8 px-4 pt-6 pb-14 sm:px-6 lg:pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
           <div className="flex flex-col gap-6">
             <span className="inline-flex h-7 items-center gap-2 self-start rounded-sm bg-primary-soft px-2.5 text-small font-medium text-primary">
               <ScanLine {...iconProps} />

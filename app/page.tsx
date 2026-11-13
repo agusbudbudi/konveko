@@ -45,7 +45,7 @@ function Overline({ children }: { children: React.ReactNode }) {
 }
 
 function SectionTitle({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <h2 className={`text-[24px] leading-8 font-semibold text-balance sm:text-[32px] sm:leading-10 ${className}`}>{children}</h2>;
+  return <h2 className={`text-[28px] leading-9 font-bold tracking-[-0.01em] text-balance sm:text-[40px] sm:leading-[48px] ${className}`}>{children}</h2>;
 }
 
 const btnPrimary =

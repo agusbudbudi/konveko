@@ -260,13 +260,13 @@ export default async function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="mx-auto grid max-w-[1200px] items-center gap-8 px-4 pt-6 pb-14 sm:px-6 lg:pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <section className="mx-auto grid max-w-[1200px] items-center gap-8 px-4 pt-6 pb-14 sm:px-6 lg:pt-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.25fr)]">
           <div className="flex flex-col gap-6">
             <span className="inline-flex h-7 items-center gap-2 self-start rounded-sm bg-primary-soft px-2.5 text-small font-medium text-primary">
               <ScanLine {...iconProps} />
               Tracking produksi konveksi
             </span>
-            <h1 className="text-[32px] leading-10 font-semibold text-balance sm:text-[42px] sm:leading-[52px]">
+            <h1 className="text-[36px] leading-[44px] font-bold tracking-[-0.015em] text-balance sm:text-[52px] sm:leading-[60px]">
               Dari rol kain sampai rak gudang, setiap pcs tercatat.
             </h1>
             <p className="max-w-[520px] text-[17px] leading-7 text-pretty text-text-muted">

@@ -297,3 +297,51 @@ body {
     text-decoration-color: currentColor;
   }
 }
+
+/* ---------- Landing page motion (app/page.tsx only) ----------
+   Hero plays on first paint (pure CSS, no flash before hydration). Everything else fades up when it
+   scrolls into view: <RevealOnScroll> adds .reveal-pending to [data-reveal] elements still below the
+   fold and removes it on intersection, so without JS nothing is ever hidden. */
+@keyframes landing-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes landing-scan {
+  0%, 100% { transform: translateY(-88px); }
+  50%      { transform: translateY(88px); }
+}
+.landing-in {
+  animation: landing-up 700ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation-delay: var(--delay, 0ms);
+}
+/* Floating hero cards: enter, then bob gently. */
+.landing-float {
+  animation:
+    landing-up 700ms cubic-bezier(0.2, 0, 0, 1) var(--delay, 0ms) both,
+    landing-float 6s ease-in-out calc(var(--delay, 0ms) + 700ms) infinite;
+}
+.landing-scan { animation: landing-scan 2.4s ease-in-out infinite; }
+
+/* Per-property timing: the reveal waits for --delay, hover colors on the same element do not. */
+[data-reveal] {
+  transition:
+    opacity 700ms cubic-bezier(0.2, 0, 0, 1) var(--delay, 0ms),
+    transform 700ms cubic-bezier(0.2, 0, 0, 1) var(--delay, 0ms),
+    border-color 200ms ease,
+    background-color 200ms ease;
+}
+[data-reveal].reveal-pending { opacity: 0; transform: translateY(20px); }
+/* Reconciliation bars fill from the left once their block is revealed. */
+.landing-bar { transition: clip-path 1100ms cubic-bezier(0.2, 0, 0, 1) calc(var(--delay, 0ms) + 250ms); clip-path: inset(0 0 0 0); }
+.reveal-pending .landing-bar { clip-path: inset(0 100% 0 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-in, .landing-float, .landing-scan { animation: none; }
+  [data-reveal], .landing-bar { transition: none; }
+  [data-reveal].reveal-pending { opacity: 1; transform: none; }
+  .reveal-pending .landing-bar { clip-path: none; }
+}

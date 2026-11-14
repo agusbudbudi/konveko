@@ -5,18 +5,55 @@ import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { Wordmark } from '@/components/brand/wordmark';
 import { WA_URL } from './contact';
+import { useSignedIn } from './use-signed-in';
 
 const SECTIONS = [
   { href: '#alur', label: 'Alur kerja' },
   { href: '#fitur', label: 'Fitur' },
   { href: '#peran', label: 'Untuk siapa' },
+  { href: '#perangkat', label: 'Perangkat' },
   { href: '#faq', label: 'FAQ' },
   { href: '#kontak', label: 'Kontak' },
 ];
 
-/** Sticky landing top bar. `app` = where a signed-in visitor goes (null when signed out). */
-export function LandingHeader({ app }: { app: string | null }) {
+/**
+ * The section being read: the last one whose top has passed just under the 64px header.
+ * At the very bottom of the page the footer (Kontak) wins, since it is too short to reach the top.
+ */
+function useActiveSection() {
+  const [active, setActive] = useState<string | null>(null);
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      let current: string | null = null;
+      for (const s of SECTIONS) {
+        const el = document.getElementById(s.href.slice(1));
+        if (el && el.getBoundingClientRect().top <= 96) current = s.href;
+      }
+      setActive(atBottom ? '#kontak' : current);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
+  return active;
+}
+
+/** Sticky landing top bar. The session button reads the browser session, so the page itself stays static. */
+export function LandingHeader() {
   const [open, setOpen] = useState(false);
+  const signedIn = useSignedIn();
+  const active = useActiveSection();
 
   useEffect(() => {
     if (!open) return;
@@ -25,13 +62,13 @@ export function LandingHeader({ app }: { app: string | null }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
-  const session = app ? (
-    <Link href={app} className="inline-flex h-10 items-center rounded-md border border-border-strong bg-surface px-4 font-medium text-text hover:bg-surface-muted">
-      Buka aplikasi
-    </Link>
-  ) : (
-    <Link href="/login" className="inline-flex h-10 items-center rounded-md border border-border-strong bg-surface px-4 font-medium text-text hover:bg-surface-muted">
-      Masuk
+  // /app sends a signed-in user to their start page (scanner or Lacak)
+  const session = (
+    <Link
+      href={signedIn ? '/app' : '/login'}
+      className="inline-flex h-10 items-center rounded-md border border-border-strong bg-surface px-4 font-medium text-text transition-[background-color,transform] hover:bg-surface-muted active:scale-[0.98]"
+    >
+      {signedIn ? 'Buka aplikasi' : 'Masuk'}
     </Link>
   );
 
@@ -43,7 +80,12 @@ export function LandingHeader({ app }: { app: string | null }) {
         </Link>
         <nav aria-label="Bagian halaman" className="hidden gap-1 lg:flex">
           {SECTIONS.map((s) => (
-            <a key={s.href} href={s.href} className="rounded-md px-3 py-2 font-medium text-text-muted hover:bg-surface-muted hover:text-text">
+            <a
+              key={s.href}
+              href={s.href}
+              aria-current={active === s.href ? 'location' : undefined}
+              className="rounded-md px-3 py-2 font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-text aria-[current=location]:bg-primary-soft aria-[current=location]:text-primary"
+            >
               {s.label}
             </a>
           ))}
@@ -59,7 +101,7 @@ export function LandingHeader({ app }: { app: string | null }) {
             aria-expanded={open}
             aria-controls="landing-menu"
             onClick={() => setOpen((v) => !v)}
-            className="inline-flex size-11 items-center justify-center rounded-md border border-border-strong bg-surface text-text lg:hidden"
+            className="inline-flex size-10 items-center justify-center rounded-md border border-border-strong bg-surface text-text lg:hidden"
           >
             {open ? <X size={20} strokeWidth={1.5} aria-hidden /> : <Menu size={20} strokeWidth={1.5} aria-hidden />}
           </button>
@@ -73,7 +115,12 @@ export function LandingHeader({ app }: { app: string | null }) {
             <ul className="flex flex-col">
               {SECTIONS.map((s) => (
                 <li key={s.href}>
-                  <a href={s.href} onClick={() => setOpen(false)} className="flex h-12 items-center rounded-md px-3 font-medium text-text hover:bg-surface-muted">
+                  <a
+                    href={s.href}
+                    onClick={() => setOpen(false)}
+                    aria-current={active === s.href ? 'location' : undefined}
+                    className="flex h-12 items-center rounded-md px-3 font-medium text-text hover:bg-surface-muted aria-[current=location]:bg-primary-soft aria-[current=location]:text-primary"
+                  >
                     {s.label}
                   </a>
                 </li>

@@ -1,11 +1,9 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
-import Link from 'next/link';
+import Image, { type StaticImageData } from 'next/image';
 import {
   ArrowRight,
   BarChart3,
   Check,
-  ChevronDown,
   ChevronLeft,
   ClipboardCheck,
   Flashlight,
@@ -22,23 +20,42 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Wordmark } from '@/components/brand/wordmark';
+import { FaqAccordion } from '@/components/landing/faq-accordion';
 import { LandingHeader } from '@/components/landing/landing-header';
+import { RevealOnScroll } from '@/components/landing/reveal-on-scroll';
+import { SessionLink } from '@/components/landing/session-link';
 import { RolesSlider, type RoleSlide } from '@/components/landing/roles-slider';
-import { EMAIL, WA_ASK_URL, WA_DISPLAY, WA_URL } from '@/components/landing/contact';
+import { EMAIL, WA_ASK_URL, WA_DEVICE_URL, WA_DISPLAY, WA_URL } from '@/components/landing/contact';
 import { Badge } from '@/components/ui/status-badge';
-import { homePath } from '@/lib/auth/home';
-import { getCurrentAppUser } from '@/lib/supabase/server';
 import hero from '@/public/hero-login.png';
+import adminPhoto from '@/public/landing/Admin.png';
 import finishingPhoto from '@/public/landing/Finishing.png';
+import laptopPhoto from '@/public/landing/PC atau laptop.png';
+import phonePhoto from '@/public/landing/HP Android.png';
+import printerPhoto from '@/public/landing/Printer label thermal.png';
+import handheldPhoto from '@/public/landing/SUNMI handheld.png';
+import gunScannerPhoto from '@/public/landing/Scanner barcode genggam.png';
 import gudangPhoto from '@/public/landing/Gudang.png';
 import penjahitPhoto from '@/public/landing/Penjahit.png';
 import produksiPhoto from '@/public/landing/Produksi.png';
 import supervisorPhoto from '@/public/landing/Supervisor.png';
 
+const DESCRIPTION =
+  'Konveko mencatat qty di setiap serah-terima lewat scan QR, dari rol kain sampai rak gudang. Selisih ketahuan di step terjadinya, bukan saat stok opname.';
+
 export const metadata: Metadata = {
   title: { absolute: 'Konveko · Tracking produksi konveksi' },
-  description:
-    'Konveko mencatat qty di setiap serah-terima lewat scan QR, dari rol kain sampai rak gudang. Selisih ketahuan di step terjadinya, bukan saat stok opname.',
+  description: DESCRIPTION,
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    url: '/',
+    siteName: 'Konveko',
+    locale: 'id_ID',
+    title: 'Konveko · Tracking produksi konveksi',
+    description: DESCRIPTION,
+  },
+  twitter: { card: 'summary_large_image', title: 'Konveko · Tracking produksi konveksi', description: DESCRIPTION },
 };
 
 /* Public landing page. Marketing-scale type (42/32) and the full-width primary CTA band are
@@ -55,9 +72,9 @@ function SectionTitle({ children, className = '' }: { children: React.ReactNode;
 }
 
 const btnPrimary =
-  'inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-5 font-medium text-primary-foreground transition-colors hover:bg-primary-hover';
+  'inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-5 font-medium text-primary-foreground transition-colors hover:bg-primary-hover active:scale-[0.98]';
 const btnSecondary =
-  'inline-flex h-12 items-center justify-center rounded-md border border-border bg-surface px-5 font-medium text-text transition-colors hover:border-border-strong';
+  'inline-flex h-12 items-center justify-center rounded-md border border-border bg-surface px-5 font-medium text-text transition-colors hover:border-border-strong active:scale-[0.98]';
 
 /* ---------- Sample data (illustrative numbers, written out so they always add up) ---------- */
 
@@ -94,11 +111,38 @@ const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
 ];
 
 const ROLES: RoleSlide[] = [
-  { role: 'Produksi', task: 'Input batch rol, cetak label bundle', photo: produksiPhoto, alt: 'Petugas produksi menempel label bundle pada rol kain, printer thermal di sebelahnya' },
+  { role: 'Produksi', task: 'Input batch rol, cetak label bundle', photo: produksiPhoto, alt: 'Petugas produksi memegang gulungan label QR yang keluar dari printer thermal' },
   { role: 'Penjahit', task: 'Scan terima dan selesai jahit', photo: penjahitPhoto, alt: 'Penjahit memindai label bundle dengan scanner, layar menunjukkan proses selesai' },
   { role: 'Finishing', task: 'Scan terima, QC, catat reject', photo: finishingPhoto, alt: 'Petugas finishing memindai label kaos dengan scanner di meja QC' },
   { role: 'Gudang', task: 'Masuk rak, barang keluar, retur, opname', photo: gudangPhoto, alt: 'Petugas gudang memindai label kardus di depan rak stok' },
-  { role: 'Supervisor', task: 'Pantau rekonsiliasi, selesaikan selisih', photo: supervisorPhoto, alt: 'Supervisor memeriksa laporan rekonsiliasi di laptop' },
+  { role: 'Supervisor', task: 'Pantau rekonsiliasi, selesaikan selisih', photo: supervisorPhoto, alt: 'Supervisor mencatat di clipboard, layar dashboard di sebelahnya' },
+  { role: 'Admin', task: 'Kelola master data dan user', photo: adminPhoto, alt: 'Admin memegang laptop di area produksi, layar dashboard di belakangnya' },
+];
+
+const DEVICES: { art: { src: StaticImageData; alt: string }; use: string; name: string; body: string; tags: string[] }[] = [
+  { art: { src: phonePhoto, alt: 'HP Android membuka kamera untuk scan QR code' }, use: 'Scan', name: 'HP Android', body: 'Kamera HP langsung jadi scanner QR. Cocok untuk penjahit yang sudah pegang HP sendiri.', tags: ['Kamera', 'Chrome'] },
+  {
+    art: { src: handheldPhoto, alt: 'Perangkat SUNMI handheld dengan scanner bawaan menampilkan scan berhasil' },
+    use: 'Scan',
+    name: 'SUNMI handheld',
+    body: 'Perangkat Android dengan scanner bawaan. Tekan tombol samping, label langsung terbaca, cocok untuk scan beruntun.',
+    tags: ['Scanner bawaan', 'Android'],
+  },
+  {
+    art: { src: gunScannerPhoto, alt: 'Scanner barcode genggam dengan sinar scan hijau' },
+    use: 'Scan',
+    name: 'Scanner barcode genggam',
+    body: 'Scanner QR yang terhubung ke HP atau PC dan bekerja seperti keyboard. Hasil scan langsung masuk tanpa perlu buka kamera.',
+    tags: ['Mode keyboard'],
+  },
+  { art: { src: printerPhoto, alt: 'Printer label thermal mencetak label QR' }, use: 'Cetak', name: 'Printer label thermal', body: 'Cetak label QR untuk bundle, pcs, dan rak, lalu tempel di barang sebelum berpindah tangan.', tags: ['Label QR', 'Thermal'] },
+  {
+    art: { src: laptopPhoto, alt: 'Laptop membuka dashboard rekonsiliasi' },
+    use: 'Kelola',
+    name: 'PC atau laptop',
+    body: 'Untuk supervisor dan admin: cek rekonsiliasi, tindak lanjuti selisih, kelola master data, dan export laporan.',
+    tags: ['Browser', 'Excel'],
+  },
 ];
 
 const FAQ = [
@@ -188,7 +232,7 @@ function ScanPhone() {
           <span className="absolute top-0 right-0 size-9 rounded-tr-[14px] border-t-4 border-r-4 border-white" />
           <span className="absolute bottom-0 left-0 size-9 rounded-bl-[14px] border-b-4 border-l-4 border-white" />
           <span className="absolute right-0 bottom-0 size-9 rounded-br-[14px] border-r-4 border-b-4 border-white" />
-          <span className="absolute inset-x-4 top-[118px] h-0.5 rounded-[1px] bg-[#5FD4BF]" />
+          <span className="landing-scan absolute inset-x-4 top-[118px] h-0.5 rounded-[1px] bg-[#5FD4BF] shadow-[0_0_12px_2px_rgb(95_212_191/0.6)]" />
         </div>
 
         <span aria-hidden className="relative mt-5 self-center rounded-2xl bg-black/55 px-3 py-1.5 text-small text-white">
@@ -254,31 +298,30 @@ function ReceivePhone() {
 
 /* ---------- Page ---------- */
 
-export default async function LandingPage() {
-  const user = await getCurrentAppUser();
-  const app = user ? homePath(user.roles) : null;
+export default function LandingPage() {
   const total = EQUATION.reduce((n, e) => n + e.n, 0);
 
   return (
     <div className="overflow-x-clip bg-background">
-      <LandingHeader app={app} />
+      <LandingHeader />
+      <RevealOnScroll />
 
       <main>
         {/* Hero */}
         <section className="mx-auto grid max-w-[1200px] items-center gap-8 px-4 pt-6 pb-14 sm:px-6 lg:pt-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.25fr)]">
           <div className="flex flex-col gap-6">
-            <span className="inline-flex h-7 items-center gap-2 self-start rounded-sm bg-primary-soft px-2.5 text-small font-medium text-primary">
+            <span className="landing-in inline-flex h-7 items-center gap-2 self-start rounded-sm bg-primary-soft px-2.5 text-small font-medium text-primary">
               <ScanLine {...iconProps} />
               Tracking produksi konveksi
             </span>
-            <h1 className="text-[36px] leading-[44px] font-bold tracking-[-0.015em] text-balance sm:text-[52px] sm:leading-[60px]">
+            <h1 style={{ '--delay': '80ms' } as React.CSSProperties} className="landing-in text-[36px] leading-[44px] font-bold tracking-[-0.015em] text-balance sm:text-[52px] sm:leading-[60px]">
               Dari rol kain sampai rak gudang, setiap pcs tercatat.
             </h1>
-            <p className="max-w-[520px] text-[17px] leading-7 text-pretty text-text-muted">
+            <p style={{ '--delay': '160ms' } as React.CSSProperties} className="landing-in max-w-[520px] text-[17px] leading-7 text-pretty text-text-muted">
               Konveko mencatat qty di setiap serah-terima lewat scan QR. Kalau ada yang kurang, ketahuan di step terjadinya, bukan saat
               stok opname.
             </p>
-            <div className="flex flex-wrap gap-3 max-sm:[&>a]:flex-[1_1_100%]">
+            <div style={{ '--delay': '240ms' } as React.CSSProperties} className="landing-in flex flex-wrap gap-3 max-sm:[&>a]:flex-[1_1_100%]">
               <a href={WA_ASK_URL} className={btnPrimary}>
                 <MessageCircle size={18} strokeWidth={1.5} aria-hidden />
                 Tanya via WhatsApp
@@ -287,7 +330,7 @@ export default async function LandingPage() {
                 Lihat alur kerja
               </a>
             </div>
-            <ul className="flex flex-wrap gap-x-5 gap-y-2 text-small text-text-muted">
+            <ul style={{ '--delay': '320ms' } as React.CSSProperties} className="landing-in flex flex-wrap gap-x-5 gap-y-2 text-small text-text-muted">
               {[
                 { icon: Smartphone, label: 'HP Android' },
                 { icon: ScanLine, label: 'Scanner handheld' },
@@ -306,11 +349,12 @@ export default async function LandingPage() {
               src={hero}
               alt="Ilustrasi alur produksi: rol kain, bundle berlabel QR, mesin jahit, tumpukan kaos, sampai rak gudang"
               priority
-              sizes="(min-width: 1024px) 700px, 100vw"
-              className="-mx-4 block h-auto w-[calc(100%+32px)] max-w-none sm:mx-0 sm:w-full lg:-mr-10 lg:w-[calc(100%+40px)]"
+              sizes="(min-width: 1024px) 760px, 100vw"
+              style={{ '--delay': '120ms' } as React.CSSProperties}
+              className="landing-in block h-auto w-[145%] max-w-none sm:w-full lg:-mr-20 lg:w-[calc(100%+100px)]"
             />
             {/* Scan result card */}
-            <div className="absolute top-2 -left-2 flex w-[216px] flex-col gap-1.5 rounded-lg bg-surface p-3 shadow-[0_8px_24px_-6px_rgb(28_27_25/0.12),0_2px_6px_rgb(28_27_25/0.05)] sm:top-1/2 sm:left-6 sm:-translate-y-1/2 sm:gap-2.5 sm:p-4">
+            <div style={{ '--delay': '450ms' } as React.CSSProperties} className="landing-float absolute top-[34%] -left-2 flex w-[216px] flex-col gap-1.5 rounded-lg bg-surface p-3 shadow-[0_8px_24px_-6px_rgb(28_27_25/0.12),0_2px_6px_rgb(28_27_25/0.05)] sm:top-1/2 sm:left-6 sm:-translate-y-1/2 sm:gap-2.5 sm:p-4">
               <div className="flex items-center gap-2">
                 <span className="num font-semibold text-primary">B-00231</span>
                 <Badge tone="info">Proses jahit</Badge>
@@ -325,7 +369,7 @@ export default async function LandingPage() {
               </span>
             </div>
             {/* Bundle label */}
-            <div className="absolute -right-2 -bottom-3 flex w-[200px] flex-col gap-2 rounded-sm bg-surface p-2.5 shadow-[0_8px_24px_-6px_rgb(28_27_25/0.12),0_2px_6px_rgb(28_27_25/0.05)] sm:right-0 sm:bottom-14 sm:p-3 lg:-right-6">
+            <div style={{ '--delay': '650ms' } as React.CSSProperties} className="landing-float absolute -right-2 bottom-6 flex w-[200px] flex-col gap-2 rounded-sm bg-surface p-2.5 shadow-[0_8px_24px_-6px_rgb(28_27_25/0.12),0_2px_6px_rgb(28_27_25/0.05)] sm:right-0 sm:bottom-14 sm:p-3 lg:-right-6">
               <span className="flex items-center gap-1.5 text-[11px] leading-4 font-medium text-text-muted">
                 <Printer size={14} strokeWidth={1.5} aria-hidden />
                 Label bundle
@@ -346,7 +390,7 @@ export default async function LandingPage() {
 
         {/* Equation */}
         <section className="mx-auto max-w-[1200px] px-4 pb-14 sm:px-6 sm:pb-20">
-          <div className="grid items-center gap-8 rounded-lg border border-border bg-surface p-5 sm:p-8 md:grid-cols-2">
+          <div data-reveal className="grid items-center gap-8 rounded-lg border border-border bg-surface p-5 sm:p-8 md:grid-cols-2">
             <div className="flex flex-col gap-3">
               <Overline>Rekonsiliasi per batch</Overline>
               <SectionTitle>Satu persamaan, tidak ada angka yang hilang.</SectionTitle>
@@ -367,7 +411,7 @@ export default async function LandingPage() {
               <div
                 role="img"
                 aria-label="Bar rekonsiliasi: 104 ready stock, 6 reject, 5 sedang dikerjakan, 3 menunggu terima, 2 selisih"
-                className="flex h-3 gap-0.5 overflow-hidden rounded-sm"
+                className="landing-bar flex h-3 gap-0.5 overflow-hidden rounded-sm"
               >
                 {EQUATION.map((e) => (
                   <span key={e.label} className={e.color} style={{ flex: e.n }} />
@@ -390,14 +434,14 @@ export default async function LandingPage() {
         <section id="alur" className="scroll-mt-16 overflow-hidden border-y border-border bg-surface-muted">
           <div className="mx-auto grid max-w-[1200px] items-end gap-12 px-4 pt-14 sm:px-6 sm:pt-20 lg:grid-cols-2">
             <div className="flex flex-col gap-8 lg:pb-20">
-              <div className="flex flex-col gap-3">
+              <div data-reveal className="flex flex-col gap-3">
                 <Overline>Alur kerja</Overline>
                 <SectionTitle>Empat scan per bundle. Dua menangkap selisih, dua mencatat reject.</SectionTitle>
                 <p className="text-pretty text-text-muted">
                   Label QR dicetak sekali di produksi. Setelah itu setiap perpindahan cukup satu scan dan konfirmasi qty, di bawah 30 detik.
                 </p>
               </div>
-              <ol className="overflow-hidden rounded-lg border border-border bg-surface">
+              <ol data-reveal style={{ '--delay': '100ms' } as React.CSSProperties} className="overflow-hidden rounded-lg border border-border bg-surface">
                 {STEPS.map((s) => (
                   <li
                     key={s.no}
@@ -418,7 +462,7 @@ export default async function LandingPage() {
                 ))}
               </ol>
             </div>
-            <div className="flex justify-center">
+            <div data-reveal style={{ '--delay': '150ms' } as React.CSSProperties} className="flex justify-center">
               <ScanPhone />
             </div>
           </div>
@@ -426,12 +470,12 @@ export default async function LandingPage() {
 
         {/* Two places */}
         <section className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-14 sm:px-6 sm:py-20">
-          <div className="flex max-w-[640px] flex-col gap-3">
+          <div data-reveal className="flex max-w-[640px] flex-col gap-3">
             <Overline>Dua tempat kerja</Overline>
             <SectionTitle>Scan di lantai produksi, cocokkan di meja.</SectionTitle>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
-            <div className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-5 sm:p-6">
+            <div data-reveal className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-5 sm:p-6">
               <div className="flex flex-col gap-2">
                 <h3 className="flex items-center gap-2 text-h2">
                   <Smartphone size={20} strokeWidth={1.5} aria-hidden className="text-primary" />
@@ -446,7 +490,7 @@ export default async function LandingPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-5 sm:p-6">
+            <div data-reveal style={{ '--delay': '120ms' } as React.CSSProperties} className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-5 sm:p-6">
               <div className="flex flex-col gap-2">
                 <h3 className="flex items-center gap-2 text-h2">
                   <Monitor size={20} strokeWidth={1.5} aria-hidden className="text-primary" />
@@ -465,7 +509,7 @@ export default async function LandingPage() {
                       pcs dari <span className="num">14</span> batch
                     </span>
                   </span>
-                  <div className="flex h-2 gap-0.5 overflow-hidden rounded-sm">
+                  <div className="landing-bar flex h-2 gap-0.5 overflow-hidden rounded-sm">
                     <span className="bg-primary" style={{ flex: 1012 }} />
                     <span className="bg-danger" style={{ flex: 48 }} />
                     <span className="bg-wip-active" style={{ flex: 110 }} />
@@ -490,14 +534,19 @@ export default async function LandingPage() {
         {/* Features */}
         <section id="fitur" className="scroll-mt-16 border-t border-border">
           <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-14 sm:px-6 sm:py-20">
-            <div className="flex max-w-[640px] flex-col gap-3">
+            <div data-reveal className="flex max-w-[640px] flex-col gap-3">
               <Overline>Setelah ready stock</Overline>
               <SectionTitle>Lacak sampai per pcs, sampai barang keluar gudang.</SectionTitle>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURES.map(({ icon: Icon, title, body }) => (
-                <div key={title} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5">
-                  <span className="flex size-9 items-center justify-center rounded-md bg-primary-soft text-primary">
+              {FEATURES.map(({ icon: Icon, title, body }, i) => (
+                <div
+                  key={title}
+                  data-reveal
+                  style={{ '--delay': `${(i % 3) * 80}ms` } as React.CSSProperties}
+                  className="group flex flex-col gap-2 rounded-lg border border-border bg-surface p-5 hover:border-border-strong"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-md bg-primary-soft text-primary transition-colors duration-200 group-hover:bg-primary group-hover:text-primary-foreground">
                     <Icon size={20} strokeWidth={1.5} aria-hidden />
                   </span>
                   <h3 className="text-h3">{title}</h3>
@@ -512,6 +561,7 @@ export default async function LandingPage() {
         <section id="peran" className="scroll-mt-16 overflow-hidden border-y border-border bg-surface-muted">
           <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 sm:py-20">
             <RolesSlider
+              reveal
               slides={ROLES}
               intro={
                 <>
@@ -526,10 +576,57 @@ export default async function LandingPage() {
           </div>
         </section>
 
+        {/* Devices */}
+        <section id="perangkat" className="scroll-mt-16 border-b border-border">
+          <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-14 sm:px-6 sm:py-20">
+            <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
+              <div data-reveal className="flex max-w-[640px] flex-[1_1_480px] flex-col gap-3">
+                <Overline>Perangkat yang didukung</Overline>
+                <SectionTitle>Pakai perangkat yang sudah ada di lantai produksi.</SectionTitle>
+                <p className="text-pretty text-text-muted">
+                  Konveko jalan di browser. Scan bisa lewat kamera HP, scanner bawaan perangkat handheld, atau scanner genggam. Label dicetak
+                  dari PC ke printer thermal.
+                </p>
+              </div>
+              <a href={WA_DEVICE_URL} className="group inline-flex min-h-11 md:ml-auto items-center gap-1.5 font-medium text-primary hover:text-primary-hover">
+                Tanya perangkat yang cocok
+                <ArrowRight {...iconProps} className="transition-transform duration-200 group-hover:translate-x-1" />
+              </a>
+            </div>
+            {/* Web: 3 cards on the first row, 2 wider ones on the second (6-column grid). */}
+            <ul className="grid grid-cols-1 gap-4 md:grid-cols-6">
+              {DEVICES.map(({ art, use, name, body, tags }, i) => (
+                <li
+                  key={name}
+                  data-reveal
+                  style={{ '--delay': `${(i < 3 ? i : i - 3) * 80}ms` } as React.CSSProperties}
+                  className={`group flex overflow-hidden rounded-lg border border-border bg-surface hover:border-border-strong md:flex-col ${i < 3 ? 'md:col-span-2' : 'md:col-span-3'}`}
+                >
+                  <div className="flex w-28 shrink-0 items-center justify-center bg-surface-muted md:h-[184px] md:w-auto">
+                    <Image src={art.src} alt={art.alt} sizes="(min-width: 768px) 252px, 132px" className="h-auto max-h-[88px] w-auto max-w-[104px] transition-transform duration-500 ease-[cubic-bezier(0.2,0,0,1)] group-hover:scale-105 group-hover:-rotate-2 md:max-h-[168px] md:max-w-[252px]" />
+                  </div>
+                  <div className="flex grow flex-col gap-1 px-4 py-3.5 md:gap-2 md:p-5">
+                    <span className="text-caption text-primary">{use}</span>
+                    <h3 className="text-h3">{name}</h3>
+                    <p className="text-sm leading-[22px] text-pretty text-text-muted">{body}</p>
+                    <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
+                      {tags.map((t) => (
+                        <span key={t} className="inline-flex h-6 items-center rounded-sm bg-neutral-soft px-2 text-xs font-medium text-neutral">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
         {/* FAQ */}
         <section id="faq" className="scroll-mt-16">
           <div className="mx-auto grid max-w-[1200px] items-start gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-2">
-            <div className="flex flex-col gap-3">
+            <div data-reveal className="flex flex-col gap-3">
               <Overline>FAQ</Overline>
               <SectionTitle>Pertanyaan yang sering muncul.</SectionTitle>
               <p className="text-pretty text-text-muted">
@@ -544,21 +641,8 @@ export default async function LandingPage() {
                 .
               </p>
             </div>
-            <div className="overflow-hidden rounded-lg border border-border bg-surface">
-              {FAQ.map((f, i) => (
-                <details key={f.q} open={i === 0} className="group not-last:border-b not-last:border-border">
-                  <summary className="flex min-h-14 cursor-pointer list-none items-center gap-4 px-5 py-4 font-semibold hover:bg-[#FAF9F7] [&::-webkit-details-marker]:hidden">
-                    {f.q}
-                    <ChevronDown
-                      size={20}
-                      strokeWidth={1.5}
-                      aria-hidden
-                      className="ml-auto shrink-0 text-text-muted transition-transform group-open:rotate-180"
-                    />
-                  </summary>
-                  <p className="px-5 pb-5 text-pretty text-text-muted">{f.a}</p>
-                </details>
-              ))}
+            <div data-reveal style={{ '--delay': '120ms' } as React.CSSProperties}>
+              <FaqAccordion items={FAQ} />
             </div>
           </div>
         </section>
@@ -566,40 +650,37 @@ export default async function LandingPage() {
         {/* Closing CTA */}
         <section className="bg-primary">
           <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-6 px-4 py-14 sm:px-6 sm:py-20">
-            <div className="flex flex-[1_1_420px] flex-col gap-2">
+            <div data-reveal className="flex flex-[1_1_420px] flex-col gap-2">
               <SectionTitle className="text-white">Siap tahu di mana setiap pcs berada?</SectionTitle>
               <p className="text-[#CFE3DE]">
                 Ceritakan alur produksi konveksi kamu, kami bantu siapkan Konveko untuk tim jahit, finishing, dan gudang.
               </p>
             </div>
-            <div className="flex flex-col items-start gap-1 max-sm:w-full">
+            <div data-reveal style={{ '--delay': '120ms' } as React.CSSProperties} className="flex flex-col items-start gap-1 max-sm:w-full">
               <a
                 href={WA_ASK_URL}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-surface px-5 font-semibold text-primary transition-colors hover:bg-primary-soft max-sm:w-full"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-surface px-5 font-semibold text-primary transition-[background-color,transform] hover:bg-primary-soft active:scale-[0.98] max-sm:w-full"
               >
                 <MessageCircle size={18} strokeWidth={1.5} aria-hidden />
                 Tanya via WhatsApp
               </a>
-              <Link href={app ?? '/login'} className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-white underline-offset-3 hover:underline">
-                {app ? 'Buka aplikasi' : 'Sudah punya akun? Masuk'}
-                <ArrowRight size={14} strokeWidth={1.5} aria-hidden />
-              </Link>
+              <SessionLink className="group inline-flex min-h-11 items-center gap-1 text-sm font-medium text-white underline-offset-3 hover:underline" />
             </div>
           </div>
         </section>
       </main>
 
-      <footer id="kontak" className="scroll-mt-16 border-t border-border bg-surface">
-        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-6 text-small text-text-muted sm:px-6">
-          <Wordmark size="md" />
+      <footer id="kontak" className="scroll-mt-16 bg-primary">
+        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-6 text-small text-[#CFE3DE] sm:px-6 border-t border-white/15">
+          <Wordmark size="md" onDark />
           <span>Tracking produksi konveksi dari rol kain sampai stok gudang.</span>
           <nav aria-label="Kontak" className="flex flex-wrap items-center gap-x-4 gap-y-1 lg:ml-auto">
-            <a href={`mailto:${EMAIL}`} className="inline-flex min-h-11 items-center gap-1.5 font-medium text-neutral hover:text-text">
-              <Mail {...iconProps} className="text-primary" />
+            <a href={`mailto:${EMAIL}`} className="inline-flex min-h-11 items-center gap-1.5 font-medium text-white hover:underline underline-offset-3">
+              <Mail {...iconProps} />
               {EMAIL}
             </a>
-            <a href={WA_URL} className="inline-flex min-h-11 items-center gap-1.5 font-medium text-neutral hover:text-text">
-              <MessageCircle {...iconProps} className="text-primary" />
+            <a href={WA_URL} className="inline-flex min-h-11 items-center gap-1.5 font-medium text-white hover:underline underline-offset-3">
+              <MessageCircle {...iconProps} />
               <span className="num">WhatsApp {WA_DISPLAY}</span>
             </a>
           </nav>

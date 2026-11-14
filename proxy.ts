@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { TOPIC_PATHS } from '@/lib/site';
 
 // Public and session-free: served as-is with no Supabase round trip, so the landing page and the files
 // link previews and crawlers fetch stay static and fast. The landing page reads the session in the browser.
-const STATIC_PUBLIC = ['/', '/robots.txt', '/sitemap.xml'];
+const STATIC_PUBLIC = ['/', '/robots.txt', '/sitemap.xml', ...TOPIC_PATHS];
 const isStaticPublic = (path: string) => STATIC_PUBLIC.includes(path) || path.startsWith('/opengraph-image');
 
 const PUBLIC_PATHS = [

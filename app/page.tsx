@@ -3,13 +3,15 @@ import Image, { type StaticImageData } from 'next/image';
 import {
   ArrowRight,
   BarChart3,
+  CalendarClock,
   Check,
   ChevronLeft,
+  CircleHelp,
   ClipboardCheck,
   Flashlight,
-  Mail,
-  MessageCircle,
   Monitor,
+  NotebookPen,
+  PackageX,
   Printer,
   ScanLine,
   Search,
@@ -19,15 +21,23 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
-import { Wordmark } from '@/components/brand/wordmark';
 import { FaqAccordion } from '@/components/landing/faq-accordion';
+import { LandingFooter } from '@/components/landing/landing-footer';
 import { LandingHeader } from '@/components/landing/landing-header';
+import { LeadForm } from '@/components/landing/lead-form';
 import { RevealOnScroll } from '@/components/landing/reveal-on-scroll';
 import { SessionLink } from '@/components/landing/session-link';
+import { WhatsAppGlyph } from '@/components/landing/whatsapp-glyph';
+import { WhatsAppWidget } from '@/components/landing/whatsapp-widget';
 import { RolesSlider, type RoleSlide } from '@/components/landing/roles-slider';
-import { EMAIL, WA_ASK_URL, WA_DEVICE_URL, WA_DISPLAY, WA_URL } from '@/components/landing/contact';
+import { EMAIL, WA_ASK_URL, WA_DEVICE_URL, WA_NUMBER, WA_URL } from '@/components/landing/contact';
 import { Badge } from '@/components/ui/status-badge';
+import { SITE_URL } from '@/lib/site';
 import hero from '@/public/hero-login.png';
+import appRekonsiliasi from '@/public/landing/app-rekonsiliasi.png';
+import appSelesai from '@/public/landing/app-selesai.png';
+import appSelisih from '@/public/landing/app-selisih.png';
+import appTerima from '@/public/landing/app-terima.png';
 import adminPhoto from '@/public/landing/Admin.png';
 import finishingPhoto from '@/public/landing/Finishing.png';
 import laptopPhoto from '@/public/landing/PC atau laptop.png';
@@ -86,19 +96,34 @@ const EQUATION = [
   { label: 'Selisih', n: 2, color: 'bg-warning' },
 ];
 
+/* What goes wrong without per-handover counts. Shown right after the hero, before the answer. */
+const PROBLEMS: { icon: LucideIcon; title: string; body: string }[] = [
+  { icon: CalendarClock, title: 'Selisih baru ketahuan saat opname', body: 'Potongan yang kurang di penjahit baru terlihat berminggu-minggu kemudian, saat sudah tidak jelas hilangnya di mana.' },
+  { icon: NotebookPen, title: 'Catatan tersebar di buku dan Excel', body: 'Tiap bagian mencatat sendiri-sendiri. Angkanya jarang sama, dan merekapnya makan waktu.' },
+  { icon: CircleHelp, title: 'Tidak tahu barang ada di siapa', body: 'Bundle sudah keluar dari potong, tapi masih di penjahit atau sudah di finishing harus ditanya satu per satu.' },
+  { icon: PackageX, title: 'Reject tidak masuk hitungan', body: 'Barang rusak dipisahkan tanpa jumlah dan alasan yang jelas, jadi total akhirnya tidak pernah genap.' },
+];
+
+/* Real screens of the scan app (sample data), captured from the app itself. */
+const APP_SCREENS: { src: StaticImageData; alt: string; title: string; body: string }[] = [
+  { src: appTerima, alt: 'Layar Terima bundle: bundle B-00001, Kemeja M, acuan 20 pcs, tombol Konfirmasi terima 20 pcs', title: 'Terima bundle', body: 'Setelah scan, qty acuan sudah terisi. Kalau pas, tinggal konfirmasi.' },
+  { src: appSelisih, alt: 'Layar Terima bundle dengan qty diterima 19: peringatan kurang 1 pcs dan pilihan alasan selisih', title: 'Kurang? Pilih alasannya', body: 'Qty kurang langsung ditandai, lengkap dengan alasan dan foto kalau perlu.' },
+  { src: appSelesai, alt: 'Layar Selesai jahit: 18 jadi dan 1 reject dari 19 pcs, dengan pilihan alasan reject', title: 'Selesai jahit', body: 'Jadi dan reject harus pas dengan qty yang diterima sebelum bisa dikonfirmasi.' },
+];
+
+/* From first chat to first scan. */
+const START_STEPS = [
+  { no: '01', title: 'Ceritakan alur produksi kamu', body: 'Chat lewat WhatsApp atau tinggalkan nomor. Kami tanya soal tim jahit, finishing, dan gudang kamu.' },
+  { no: '02', title: 'Kami bantu siapkan', body: 'Akun tim per peran, master data produk, dan label QR disiapkan mengikuti alur kamu.' },
+  { no: '03', title: 'Tim mulai scan', body: 'Penjahit, finishing, dan gudang scan dari HP yang sudah ada. Kamu memantau rekonsiliasi dari meja.' },
+];
+
 const STEPS: { no: string; who: string; title: string; note?: string; flag?: boolean; badge: [React.ComponentProps<typeof Badge>['tone'], string]; current?: boolean }[] = [
   { no: '01', who: 'Produksi', title: 'Input rol dan cetak label', badge: ['neutral', 'Siap jahit'] },
   { no: '02', who: 'Penjahit', title: 'Scan terima di jahit', note: 'Kurang? Langsung di-flag', flag: true, badge: ['info', 'Proses jahit'], current: true },
   { no: '03', who: 'Penjahit', title: 'Scan selesai jahit', note: 'Jadi + reject dicatat', badge: ['neutral', 'Siap finishing'] },
   { no: '04', who: 'Finishing', title: 'Scan terima di finishing', note: 'Kurang? Langsung di-flag', flag: true, badge: ['info', 'Proses finishing'] },
   { no: '05', who: 'Finishing', title: 'Scan selesai, lolos QC', note: 'Hanya yang lolos QC masuk stok', badge: ['success', 'Ready stock'] },
-];
-
-const DESK_TILES = [
-  { label: 'Ready stock', n: '1.012', color: 'bg-primary' },
-  { label: 'Reject', n: '48', color: 'bg-danger' },
-  { label: 'WIP', n: '171', color: 'bg-wip-active' },
-  { label: 'Selisih', n: '9', color: 'bg-warning', warn: true },
 ];
 
 const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
@@ -175,6 +200,29 @@ const FAQ = [
     a: 'Per rak, dengan hitung buta. Tim scan isi rak tanpa melihat stok sistem, lalu selisihnya dicocokkan di meja.',
   },
 ];
+
+/* Structured data for search engines: who Konveko is, and the FAQ as written on the page. */
+const JSON_LD = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: 'Konveko',
+      url: SITE_URL,
+      logo: `${SITE_URL}/logo-konveko.png`,
+      description: DESCRIPTION,
+      email: EMAIL,
+      contactPoint: { '@type': 'ContactPoint', contactType: 'sales', telephone: `+${WA_NUMBER}`, email: EMAIL, availableLanguage: 'id', areaServed: 'ID' },
+    },
+    { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'Konveko', inLanguage: 'id-ID', publisher: { '@id': `${SITE_URL}/#organization` } },
+    {
+      '@type': 'FAQPage',
+      '@id': `${SITE_URL}/#faq`,
+      mainEntity: FAQ.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+    },
+  ],
+};
 
 /* ---------- Small drawings ---------- */
 
@@ -256,46 +304,6 @@ function ScanPhone() {
 }
 
 /** Receive screen on a phone, inside the "Di lantai produksi" card. */
-function ReceivePhone() {
-  return (
-    <div aria-hidden className="flex w-full max-w-[300px] flex-col overflow-hidden rounded-t-[48px] border-[10px] border-b-0 border-text bg-background">
-      <div className="flex h-11 items-start justify-center bg-surface pt-2.5">
-        <span className="h-7 w-24 rounded-[14px] bg-black" />
-      </div>
-      <div className="flex h-11 items-center gap-2 border-b border-border bg-surface px-3.5">
-        <span className="text-[15px] font-semibold text-primary">konveko</span>
-        <span className="rounded-sm bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium text-neutral">Jahit · Tim A</span>
-      </div>
-      <div className="flex flex-col gap-3 p-3.5">
-        <div className="flex flex-col gap-1">
-          <span className="flex items-center gap-2">
-            <span className="num text-small font-semibold">B-00231</span>
-            <span className="inline-flex h-5 items-center gap-[5px] rounded-sm bg-neutral-soft px-1.5 text-[11px] font-medium text-neutral">
-              <span className="size-[5px] rounded-full bg-current" />
-              Siap jahit
-            </span>
-          </span>
-          <span className="text-[15px] font-semibold">Kaos polo · L · Hijau</span>
-        </div>
-        <span className="text-xs font-medium text-text-muted">Qty diterima</span>
-        <div className="flex items-center gap-2">
-          <span className="flex size-12 items-center justify-center rounded-md border border-border bg-surface text-xl">−</span>
-          <span className="num flex h-12 grow items-center justify-center rounded-md border border-primary text-[28px] font-semibold">19</span>
-          <span className="flex size-12 items-center justify-center rounded-md border border-border bg-surface text-xl">+</span>
-        </div>
-        <span className="num text-xs text-warning">Selisih 1 dari 20 pcs. Pilih alasan.</span>
-        <div className="flex flex-wrap gap-1.5">
-          <span className="inline-flex h-8 items-center rounded-md border border-primary bg-primary-soft px-2.5 text-xs font-medium text-primary">Kurang dari produksi</span>
-          <span className="inline-flex h-8 items-center rounded-md border border-border bg-surface px-2.5 text-xs font-medium">Potongan rusak</span>
-        </div>
-        <span className="flex h-12 items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground">
-          Konfirmasi terima <span className="num ml-1">19</span>&nbsp;pcs
-        </span>
-      </div>
-    </div>
-  );
-}
-
 /* ---------- Page ---------- */
 
 export default function LandingPage() {
@@ -303,6 +311,8 @@ export default function LandingPage() {
 
   return (
     <div className="overflow-x-clip bg-background">
+      {/* "<" escaped so the JSON can never close the script tag */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, '\\u003c') }} />
       <LandingHeader />
       <RevealOnScroll />
 
@@ -319,29 +329,17 @@ export default function LandingPage() {
             </h1>
             <p style={{ '--delay': '160ms' } as React.CSSProperties} className="landing-in max-w-[520px] text-[17px] leading-7 text-pretty text-text-muted">
               Konveko mencatat qty di setiap serah-terima lewat scan QR. Kalau ada yang kurang, ketahuan di step terjadinya, bukan saat
-              stok opname.
+              stok opname. Cukup pakai HP Android yang sudah ada.
             </p>
             <div style={{ '--delay': '240ms' } as React.CSSProperties} className="landing-in flex flex-wrap gap-3 max-sm:[&>a]:flex-[1_1_100%]">
               <a href={WA_ASK_URL} className={btnPrimary}>
-                <MessageCircle size={18} strokeWidth={1.5} aria-hidden />
+                <WhatsAppGlyph size={18} />
                 Tanya via WhatsApp
               </a>
               <a href="#alur" className={btnSecondary}>
                 Lihat alur kerja
               </a>
             </div>
-            <ul style={{ '--delay': '320ms' } as React.CSSProperties} className="landing-in flex flex-wrap gap-x-5 gap-y-2 text-small text-text-muted">
-              {[
-                { icon: Smartphone, label: 'HP Android' },
-                { icon: ScanLine, label: 'Scanner handheld' },
-                { icon: Monitor, label: 'PC dan printer thermal' },
-              ].map(({ icon: Icon, label }) => (
-                <li key={label} className="flex items-center gap-1.5">
-                  <Icon {...iconProps} className="text-text-subtle" />
-                  {label}
-                </li>
-              ))}
-            </ul>
           </div>
 
           <div className="relative flex flex-col items-center pb-3 lg:pb-0">
@@ -388,8 +386,38 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Problem */}
+        <section className="border-y border-border bg-surface-muted">
+          <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-14 sm:px-6 sm:py-20">
+            <div data-reveal className="flex max-w-[640px] flex-col gap-3">
+              <Overline>Kenapa stok sering tidak cocok</Overline>
+              <SectionTitle>Barangnya berpindah tangan, catatannya tertinggal.</SectionTitle>
+              <p className="text-pretty text-text-muted">
+                Di konveksi, satu potongan melewati banyak tangan sebelum jadi stok. Tanpa hitungan di setiap serah-terima, yang hilang
+                baru terasa di akhir.
+              </p>
+            </div>
+            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {PROBLEMS.map(({ icon: Icon, title, body }, i) => (
+                <li
+                  key={title}
+                  data-reveal
+                  style={{ '--delay': `${i * 80}ms` } as React.CSSProperties}
+                  className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-md bg-warning-soft text-warning">
+                    <Icon size={20} strokeWidth={1.5} aria-hidden />
+                  </span>
+                  <h3 className="text-h3">{title}</h3>
+                  <p className="text-sm leading-[22px] text-text-muted">{body}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
         {/* Equation */}
-        <section className="mx-auto max-w-[1200px] px-4 pb-14 sm:px-6 sm:pb-20">
+        <section className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 sm:py-20">
           <div data-reveal className="grid items-center gap-8 rounded-lg border border-border bg-surface p-5 sm:p-8 md:grid-cols-2">
             <div className="flex flex-col gap-3">
               <Overline>Rekonsiliasi per batch</Overline>
@@ -468,66 +496,76 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Two places */}
-        <section className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-14 sm:px-6 sm:py-20">
-          <div data-reveal className="flex max-w-[640px] flex-col gap-3">
-            <Overline>Dua tempat kerja</Overline>
-            <SectionTitle>Scan di lantai produksi, cocokkan di meja.</SectionTitle>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div data-reveal className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-5 sm:p-6">
-              <div className="flex flex-col gap-2">
-                <h3 className="flex items-center gap-2 text-h2">
-                  <Smartphone size={20} strokeWidth={1.5} aria-hidden className="text-primary" />
-                  Di lantai produksi
-                </h3>
-                <p className="text-pretty text-text-muted">
-                  Penjahit dan finishing scan label pakai HP atau scanner. Satu tangan, tombol besar, qty sudah terisi.
-                </p>
-              </div>
-              <div className="flex justify-center overflow-hidden rounded-lg bg-surface-muted px-4 pt-6">
-                <ReceivePhone />
-              </div>
+        {/* Real app screens */}
+        <section>
+          <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-14 sm:px-6 sm:py-20">
+            <div data-reveal className="flex max-w-[640px] flex-col gap-3">
+              <Overline>Dua tempat kerja</Overline>
+              <SectionTitle>Scan di lantai produksi, cocokkan di meja.</SectionTitle>
+              <p className="text-pretty text-text-muted">Tangkapan layar dari aplikasi Konveko, dengan data contoh.</p>
             </div>
-
-            <div data-reveal style={{ '--delay': '120ms' } as React.CSSProperties} className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-5 sm:p-6">
-              <div className="flex flex-col gap-2">
-                <h3 className="flex items-center gap-2 text-h2">
-                  <Monitor size={20} strokeWidth={1.5} aria-hidden className="text-primary" />
-                  Di meja
-                </h3>
-                <p className="text-pretty text-text-muted">
-                  Supervisor dan owner lihat rekonsiliasi semua batch, tindak lanjuti selisih, dan koreksi data.
-                </p>
-              </div>
-              <div aria-hidden className="grid grow grid-cols-2 content-start gap-2 rounded-lg bg-surface-muted p-4">
-                <div className="col-span-full flex flex-col gap-2 rounded-lg border border-border bg-surface p-3.5">
-                  <span className="text-caption text-text-muted">Target</span>
-                  <span className="flex items-baseline gap-2">
-                    <span className="num text-[28px] leading-9 font-semibold">1.240</span>
-                    <span className="text-small text-text-muted">
-                      pcs dari <span className="num">14</span> batch
-                    </span>
-                  </span>
-                  <div className="landing-bar flex h-2 gap-0.5 overflow-hidden rounded-sm">
-                    <span className="bg-primary" style={{ flex: 1012 }} />
-                    <span className="bg-danger" style={{ flex: 48 }} />
-                    <span className="bg-wip-active" style={{ flex: 110 }} />
-                    <span className="bg-neutral/20" style={{ flex: 61 }} />
-                    <span className="bg-warning" style={{ flex: 9 }} />
+            <div data-reveal className="flex max-w-[640px] flex-col gap-2">
+              <h3 className="flex items-center gap-2 text-h2">
+                <Smartphone size={20} strokeWidth={1.5} aria-hidden className="text-primary" />
+                Di lantai produksi
+              </h3>
+              <p className="text-pretty text-text-muted">
+                Penjahit dan finishing scan label pakai HP atau scanner. Satu tangan, tombol besar, satu keputusan per layar.
+              </p>
+            </div>
+            <ol className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible sm:px-0 sm:pb-0">
+              {APP_SCREENS.map((sc, i) => (
+                <li
+                  key={sc.title}
+                  data-reveal
+                  style={{ '--delay': `${i * 100}ms` } as React.CSSProperties}
+                  className="flex w-[78%] max-w-[320px] shrink-0 snap-center flex-col gap-4 sm:w-auto sm:max-w-none"
+                >
+                  {/* Same iPhone body as <ScanPhone>: dark shell, rounded screen, island over a status-bar strip. */}
+                  <div className="rounded-[48px] bg-text p-2.5 sm:mx-auto sm:w-full sm:max-w-[300px]">
+                    <div className="relative overflow-hidden rounded-[38px] bg-surface pt-11">
+                      <div aria-hidden className="absolute top-2.5 left-1/2 h-7 w-[92px] -translate-x-1/2 rounded-2xl bg-black" />
+                      <Image src={sc.src} alt={sc.alt} sizes="(min-width: 640px) 280px, 72vw" className="block h-auto w-full" />
+                    </div>
                   </div>
+                  <div className="flex flex-col gap-1 sm:mx-auto sm:w-full sm:max-w-[300px]">
+                    <h4 className="flex items-center gap-2 text-h3">
+                      <span className="num flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-caption font-semibold text-primary-foreground">{i + 1}</span>
+                      {sc.title}
+                    </h4>
+                    <p className="text-sm leading-[22px] text-text-muted">{sc.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <div data-reveal className="mt-4 flex max-w-[640px] flex-col gap-2 sm:mt-8">
+              <h3 className="flex items-center gap-2 text-h2">
+                <Monitor size={20} strokeWidth={1.5} aria-hidden className="text-primary" />
+                Di meja
+              </h3>
+              <p className="text-pretty text-text-muted">
+                Supervisor dan owner lihat rekonsiliasi semua batch, tindak lanjuti selisih, dan koreksi data.
+              </p>
+            </div>
+            {/* Desk dashboard in a plain browser window */}
+            <figure data-reveal className="mx-auto flex w-full max-w-[1000px] flex-col gap-4">
+              <div className="overflow-hidden rounded-xl border border-border-strong bg-surface">
+                <div aria-hidden className="flex h-9 items-center gap-1.5 border-b border-border bg-surface-muted px-3.5">
+                  <span className="size-2.5 rounded-full bg-border-strong" />
+                  <span className="size-2.5 rounded-full bg-border-strong" />
+                  <span className="size-2.5 rounded-full bg-border-strong" />
                 </div>
-                {DESK_TILES.map((t) => (
-                  <div key={t.label} className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-3.5">
-                    <span className="flex items-center gap-1.5 text-caption text-text-muted">
-                      <span className={`size-2 rounded-[2px] ${t.color}`} />
-                      {t.label}
-                    </span>
-                    <span className={`num text-[24px] leading-8 font-semibold ${t.warn ? 'text-warning' : ''}`}>{t.n}</span>
-                  </div>
-                ))}
+                <Image
+                  src={appRekonsiliasi}
+                  alt="Dashboard Rekonsiliasi: target 508 pcs dari 5 batch, terbagi jadi ready stock, reject, WIP, dan selisih, dengan bar per batch"
+                  sizes="(min-width: 1048px) 1000px, 100vw"
+                  className="block h-auto w-full"
+                />
               </div>
-            </div>
+              <figcaption className="text-sm leading-[22px] text-text-muted sm:mx-auto sm:max-w-[640px] sm:text-center">
+                Target potong selalu terurai jadi ready stock, reject, WIP, dan selisih. Batch yang punya selisih langsung ditandai.
+              </figcaption>
+            </figure>
           </div>
         </section>
 
@@ -623,6 +661,34 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Getting started */}
+        <section id="mulai" className="scroll-mt-16 border-b border-border bg-surface-muted">
+          <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-14 sm:px-6 sm:py-20">
+            <div data-reveal className="flex max-w-[640px] flex-col gap-3">
+              <Overline>Cara mulai</Overline>
+              <SectionTitle>Dari chat pertama sampai scan pertama.</SectionTitle>
+            </div>
+            <ol className="grid gap-4 md:grid-cols-3">
+              {START_STEPS.map((st, i) => (
+                <li
+                  key={st.no}
+                  data-reveal
+                  style={{ '--delay': `${i * 100}ms` } as React.CSSProperties}
+                  className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
+                >
+                  <span className="num text-[28px] leading-9 font-bold text-primary">{st.no}</span>
+                  <h3 className="text-h3">{st.title}</h3>
+                  <p className="text-sm leading-[22px] text-text-muted">{st.body}</p>
+                </li>
+              ))}
+            </ol>
+            <a data-reveal href={WA_ASK_URL} className={`${btnPrimary} self-start max-sm:w-full`}>
+              <WhatsAppGlyph size={18} />
+              Mulai dari chat WhatsApp
+            </a>
+          </div>
+        </section>
+
         {/* FAQ */}
         <section id="faq" className="scroll-mt-16">
           <div className="mx-auto grid max-w-[1200px] items-start gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-2">
@@ -649,44 +715,35 @@ export default function LandingPage() {
 
         {/* Closing CTA */}
         <section className="bg-primary">
-          <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-6 px-4 py-14 sm:px-6 sm:py-20">
-            <div data-reveal className="flex flex-[1_1_420px] flex-col gap-2">
-              <SectionTitle className="text-white">Siap tahu di mana setiap pcs berada?</SectionTitle>
-              <p className="text-[#CFE3DE]">
-                Ceritakan alur produksi konveksi kamu, kami bantu siapkan Konveko untuk tim jahit, finishing, dan gudang.
-              </p>
-            </div>
-            <div data-reveal style={{ '--delay': '120ms' } as React.CSSProperties} className="flex flex-col items-start gap-1 max-sm:w-full">
+          <div className="mx-auto grid max-w-[1200px] items-center gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
+            <div data-reveal className="flex flex-col gap-6">
+              <div className="flex flex-col gap-2">
+                <SectionTitle className="text-white">Siap tahu di mana setiap pcs berada?</SectionTitle>
+                <p className="max-w-[520px] text-[#CFE3DE]">
+                  Ceritakan alur produksi konveksi kamu, kami bantu siapkan Konveko untuk tim jahit, finishing, dan gudang.
+                </p>
+              </div>
+              <div className="flex flex-col items-start gap-1 max-sm:w-full">
               <a
                 href={WA_ASK_URL}
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-surface px-5 font-semibold text-primary transition-[background-color,transform] hover:bg-primary-soft active:scale-[0.98] max-sm:w-full"
               >
-                <MessageCircle size={18} strokeWidth={1.5} aria-hidden />
+                <WhatsAppGlyph size={18} />
                 Tanya via WhatsApp
               </a>
-              <SessionLink className="group inline-flex min-h-11 items-center gap-1 text-sm font-medium text-white underline-offset-3 hover:underline" />
+                <SessionLink className="group inline-flex min-h-11 items-center gap-1 text-sm font-medium text-white underline-offset-3 hover:underline" />
+              </div>
+            </div>
+            <div data-reveal style={{ '--delay': '120ms' } as React.CSSProperties}>
+              <LeadForm />
             </div>
           </div>
         </section>
       </main>
 
-      <footer id="kontak" className="scroll-mt-16 bg-primary">
-        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-6 text-small text-[#CFE3DE] sm:px-6 border-t border-white/15">
-          <Wordmark size="md" onDark />
-          <span>Tracking produksi konveksi dari rol kain sampai stok gudang.</span>
-          <nav aria-label="Kontak" className="flex flex-wrap items-center gap-x-4 gap-y-1 lg:ml-auto">
-            <a href={`mailto:${EMAIL}`} className="inline-flex min-h-11 items-center gap-1.5 font-medium text-white hover:underline underline-offset-3">
-              <Mail {...iconProps} />
-              {EMAIL}
-            </a>
-            <a href={WA_URL} className="inline-flex min-h-11 items-center gap-1.5 font-medium text-white hover:underline underline-offset-3">
-              <MessageCircle {...iconProps} />
-              <span className="num">WhatsApp {WA_DISPLAY}</span>
-            </a>
-          </nav>
-          <span className="num">© 2026 Konveko</span>
-        </div>
-      </footer>
+      <LandingFooter />
+
+      <WhatsAppWidget />
     </div>
   );
 }

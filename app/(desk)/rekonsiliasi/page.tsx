@@ -38,7 +38,7 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
     .limit(1000);
   const batches = (data ?? []) as BatchRow[];
   const paged = slicePage(batches, query);
-  if (paged.outOfRange) redirect(withQuery('/', query, { page: String(paged.pages) }));
+  if (paged.outOfRange) redirect(withQuery('/rekonsiliasi', query, { page: String(paged.pages) }));
   const [{ data: unshelved }, { count: shippedCount }] = await Promise.all([
     supabase.from('bundle_unshelved').select('baik, reject, unprinted, days_waiting'),
     // Fase 2b: good pieces that left the warehouse still count in Ready stock (produced)
@@ -150,7 +150,7 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
             ))}
           </ul>
         )}
-        <UrlPagination path="/" query={query} total={batches.length} unit="batch" className="border-t border-border px-5 pb-4" />
+        <UrlPagination path="/rekonsiliasi" query={query} total={batches.length} unit="batch" className="border-t border-border px-5 pb-4" />
       </section>
     </>
   );

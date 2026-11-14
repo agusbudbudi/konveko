@@ -5,10 +5,9 @@ import { redirect } from 'next/navigation';
 import { isAuthRetryableFetchError, type AuthError } from '@supabase/supabase-js';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { normalizePhone, pinEmail } from '@/lib/phone';
+import { homePath } from '@/lib/auth/home';
 
 export type LoginState = { error: string | null };
-
-const FLOOR_ROLES = ['penjahit', 'finishing', 'gudang'];
 
 const UNREACHABLE = 'Server tidak bisa dihubungi. Periksa koneksi, lalu coba lagi.';
 const FAILED = 'Login sedang bermasalah. Coba lagi sebentar.';
@@ -36,10 +35,7 @@ async function landingPath(next: string | null) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return '/login';
   const { data } = await supabase.from('app_user').select('roles').eq('id', user.id).maybeSingle();
-  const roles: string[] = data?.roles ?? [];
-  const floorOnly = roles.length > 0 && roles.every((r) => FLOOR_ROLES.includes(r));
-  // floor staff land on the scanner; everyone else starts at Lacak (search over production and stock)
-  return floorOnly ? '/scan' : '/lacak';
+  return homePath(data?.roles ?? []);
 }
 
 export async function loginWithEmail(_: LoginState, formData: FormData): Promise<LoginState> {

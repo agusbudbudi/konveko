@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
+import { SITE_URL } from '@/lib/site';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -10,6 +11,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: { default: 'Konveko', template: '%s · Konveko' },
   description: 'Tracking produksi konveksi dari rol kain sampai stok gudang.',
   applicationName: 'Konveko',

@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
+// Public and session-free: served as-is with no Supabase round trip, so the landing page and the files
+// link previews and crawlers fetch stay static and fast. The landing page reads the session in the browser.
+const STATIC_PUBLIC = ['/', '/robots.txt', '/sitemap.xml'];
+const isStaticPublic = (path: string) => STATIC_PUBLIC.includes(path) || path.startsWith('/opengraph-image');
+
 const PUBLIC_PATHS = [
   '/login',
   '/manifest.webmanifest',
@@ -12,6 +17,8 @@ const PUBLIC_PATHS = [
 // signed-out visitors to /login. Authorization is still enforced by RLS
 // and the database functions; this is only for navigation.
 export async function proxy(request: NextRequest) {
+  if (isStaticPublic(request.nextUrl.pathname)) return NextResponse.next();
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

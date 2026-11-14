@@ -36,7 +36,7 @@ const GROUPS: Group[] = [
   {
     label: 'Monitoring',
     items: [
-      { href: '/', label: 'Rekonsiliasi', icon: LayoutDashboard },
+      { href: '/rekonsiliasi', label: 'Rekonsiliasi', icon: LayoutDashboard },
       { href: '/wip', label: 'WIP', icon: Hourglass },
       { href: '/selisih', label: 'Selisih', icon: AlertTriangle },
       { href: '/laporan', label: 'Laporan', icon: BarChart3 },
